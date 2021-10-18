@@ -22,6 +22,13 @@ enum ScenarioType : std::uint16_t
 	UserInterface = 0x2,
 };
 
+enum ResourceMapType : std::uint32_t
+{
+	Bitmaps = 0x0,
+	Sounds  = 0x1,
+	Loc     = 0x2,
+};
+
 #pragma pack(push, 1)
 
 struct MapHeader
@@ -55,6 +62,14 @@ struct TagIndexHeader
 	std::uint32_t ModelPartCount_1;
 	std::uint32_t VertexDataSize;
 	std::uint32_t Magic; // 'tags'
+};
+
+struct ResourceMapHeader
+{
+	ResourceMapType Type;
+	std::uint32_t   TagPathsOffset;
+	std::uint32_t   ResourceOffset;
+	std::uint32_t   ResourceCount;
 };
 
 #pragma pack(pop)
