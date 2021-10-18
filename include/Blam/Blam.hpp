@@ -30,8 +30,8 @@ struct MapHeader
 	CacheVersion  Version;
 	std::uint32_t FileSize;
 	std::uint32_t PaddingLength; // Xbox Only
-	std::uint32_t TagDataOffset;
-	std::uint32_t TagDataSize;
+	std::uint32_t TagIndexOffset;
+	std::uint32_t TagIndexSize;
 	std::byte     Pad18[8];
 	char          ScenarioName[32];
 	char          BuildVersion[32];
@@ -42,6 +42,19 @@ struct MapHeader
 
 	std::byte     Pad6C[1936];
 	std::uint32_t MagicFoot; // 'foot'
+};
+
+struct TagIndexHeader
+{
+	std::uint32_t TagArrayOffset;
+	std::uint32_t Checksum;
+	std::uint32_t ScenarioTagID;
+	std::uint32_t TagCount;
+	std::uint32_t ModelPartCount;
+	std::uint32_t ModelDataOffset;
+	std::uint32_t ModelPartCount_1;
+	std::uint32_t VertexDataSize;
+	std::uint32_t Magic; // 'tags'
 };
 
 #pragma pack(pop)
