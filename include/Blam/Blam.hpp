@@ -50,6 +50,7 @@ struct MapHeader
 	std::byte Pad6C[1936];
 	char      MagicFoot[4]; // 'foot'
 };
+static_assert(sizeof(MapHeader) == 2048);
 
 struct TagIndexHeader
 {
@@ -64,6 +65,7 @@ struct TagIndexHeader
 	std::uint32_t ModelDataSize;
 	char          MagicTags[4]; // 'tags'
 };
+static_assert(sizeof(TagIndexHeader) == 40);
 
 struct TagArrayEntry
 {
@@ -73,8 +75,10 @@ struct TagArrayEntry
 	std::uint32_t TagID;
 	std::uint32_t TagPathOffset;
 	std::uint32_t TagDataRef;
-	std::uint32_t IsExternal;
+	std::uint32_t IsExternal; // For bitmaps
+	std::uint32_t Unused;
 };
+static_assert(sizeof(TagArrayEntry) == 32);
 
 struct ResourceMapHeader
 {
