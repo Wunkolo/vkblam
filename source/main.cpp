@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <span>
 
 // #define VULKAN_HPP_NO_EXCEPTIONS
 // #include <vulkan/vulkan.hpp>
@@ -40,20 +41,20 @@ int main(int argc, char* argv[])
 		TagIndexHeader.ScenarioTagID);
 
 	const std::uint32_t MapMagic
-		= (TagIndexHeader.TagArrayOffset - 0x28) - MapHeader.TagIndexOffset;
+		= (TagIndexHeader.TagArrayOffset - sizeof(Blam::TagIndexHeader))
+		- MapHeader.TagIndexOffset;
 
-	const Blam::TagArrayEntry* TagArray
-		= reinterpret_cast<const Blam::TagArrayEntry*>(
+	const std::span<const Blam::TagArrayEntry> TagArray(
+		reinterpret_cast<const Blam::TagArrayEntry*>(
 			MapFile.data() + MapHeader.TagIndexOffset
-			+ sizeof(Blam::TagIndexHeader));
+			+ sizeof(Blam::TagIndexHeader)),
+		TagIndexHeader.TagCount);
 
-	for( std::size_t i = 0; i < TagIndexHeader.TagCount; ++i )
+	for( const auto& CurTag : TagArray )
 	{
-		const Blam::TagArrayEntry& CurTag = TagArray[i];
-
 		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
 		std::printf(
-			"%08X %.4s %s\n", CurTag.TagID, CurTag.TagGroupPrimary, Name);
+			"%08X %.4s \"%s\"\n", CurTag.TagID, CurTag.TagGroupPrimary, Name);
 	}
 
 	return EXIT_SUCCESS;
