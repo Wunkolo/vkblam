@@ -33,7 +33,7 @@ enum ResourceMapType : std::uint32_t
 
 struct MapHeader
 {
-	std::uint32_t MagicHead; // 'head'
+	char          MagicHead[4]; // 'head'
 	CacheVersion  Version;
 	std::uint32_t FileSize;
 	std::uint32_t PaddingLength; // Xbox Only
@@ -47,8 +47,8 @@ struct MapHeader
 	std::uint32_t Checksum;
 	std::uint32_t H1AFlags; // Todo
 
-	std::byte     Pad6C[1936];
-	std::uint32_t MagicFoot; // 'foot'
+	std::byte Pad6C[1936];
+	char      MagicFoot[4]; // 'foot'
 };
 
 struct TagIndexHeader
@@ -57,11 +57,23 @@ struct TagIndexHeader
 	std::uint32_t Checksum;
 	std::uint32_t ScenarioTagID;
 	std::uint32_t TagCount;
-	std::uint32_t ModelPartCount;
-	std::uint32_t ModelDataOffset;
-	std::uint32_t ModelPartCount_1;
-	std::uint32_t VertexDataSize;
-	std::uint32_t Magic; // 'tags'
+	std::uint32_t VertexCount;
+	std::uint32_t VertexOffset;
+	std::uint32_t IndexCount;
+	std::uint32_t IndexOffset;
+	std::uint32_t ModelDataSize;
+	char          MagicTags[4]; // 'tags'
+};
+
+struct TagArrayEntry
+{
+	char          TagGroupPrimary[4];
+	char          TagGroupSecondary[4];
+	char          TagGroupTertiary[4];
+	std::uint32_t TagID;
+	std::uint32_t TagPathOffset;
+	std::uint32_t TagDataRef;
+	std::uint32_t IsExternal;
 };
 
 struct ResourceMapHeader
