@@ -11,6 +11,18 @@
 
 #include <Blam/Blam.hpp>
 
+std::string FormatTagGroup(std::uint32_t TagClass)
+{
+	if( TagClass == -1 )
+	{
+		TagClass = '-' * 0x01010101;
+	}
+	TagClass = __builtin_bswap32(TagClass);
+	std::string Result(reinterpret_cast<const char*>(&TagClass), 4);
+
+	return Result;
+}
+
 int main(int argc, char* argv[])
 {
 	if( argc < 2 )
@@ -54,7 +66,10 @@ int main(int argc, char* argv[])
 	{
 		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
 		std::printf(
-			"%08X %.4s \"%s\"\n", CurTag.TagID, CurTag.TagGroupPrimary, Name);
+			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
+			FormatTagGroup(CurTag.TagGroupPrimary).c_str(),
+			FormatTagGroup(CurTag.TagGroupSecondary).c_str(),
+			FormatTagGroup(CurTag.TagGroupTertiary).c_str(), Name);
 	}
 
 	return EXIT_SUCCESS;
