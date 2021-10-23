@@ -31,11 +31,11 @@ enum ResourceMapType : std::uint32_t
 
 #pragma pack(push, 1)
 
-using TagGroup = std::uint32_t;
+using TagClass = std::uint32_t;
 
 struct TagReference
 {
-	TagGroup      Group;
+	TagClass      Group;
 	std::uint32_t PathOffset;
 	std::uint32_t Unknown;
 	std::uint32_t TagID;
@@ -86,9 +86,9 @@ static_assert(sizeof(TagIndexHeader) == 40);
 
 struct TagIndexEntry
 {
-	TagGroup      GroupPrimary;
-	TagGroup      GroupSecondary;
-	TagGroup      GroupTertiary;
+	TagClass      ClassPrimary;
+	TagClass      ClassSecondary;
+	TagClass      ClassTertiary;
 	std::uint32_t TagID;
 	std::uint32_t TagPathOffset;
 	std::uint32_t TagDataRef;
