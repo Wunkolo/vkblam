@@ -72,7 +72,7 @@ static_assert(sizeof(MapHeader) == 2048);
 struct TagIndexHeader
 {
 	std::uint32_t TagArrayOffset;
-	std::uint32_t Checksum;
+	std::uint32_t BaseTag;
 	std::uint32_t ScenarioTagID;
 	std::uint32_t TagCount;
 	std::uint32_t VertexCount;

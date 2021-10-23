@@ -46,11 +46,22 @@ int main(int argc, char* argv[])
 			MapFile.data() + MapHeader.TagIndexOffset);
 
 	std::printf(
-		"Checksum: %08X\n"
-		"TagCount: %08X\n"
-		"ScenarioTag: %08X\n",
-		TagIndexHeader.Checksum, TagIndexHeader.TagCount,
-		TagIndexHeader.ScenarioTagID);
+		"Tag Index Header:\n"
+		" - TagArrayOffset:  0x%08X\n"
+		" - BaseTag:         0x%08X\n"
+		" - ScenarioTagID:   0x%08X\n"
+		" - TagCount:        0x%08X\n"
+		" - VertexCount:     0x%08X\n"
+		" - VertexOffset:    0x%08X\n"
+		" - IndexCount:      0x%08X\n"
+		" - IndexOffset:     0x%08X\n"
+		" - ModelDataSize:   0x%08X\n",
+		TagIndexHeader.TagArrayOffset, TagIndexHeader.BaseTag,
+		TagIndexHeader.ScenarioTagID, TagIndexHeader.TagCount,
+		TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
+		TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
+		TagIndexHeader.ModelDataSize);
+	return 1;
 
 	const std::uint32_t MapMagic
 		= (TagIndexHeader.TagArrayOffset - sizeof(Blam::TagIndexHeader))
@@ -61,7 +72,6 @@ int main(int argc, char* argv[])
 			MapFile.data() + MapHeader.TagIndexOffset
 			+ sizeof(Blam::TagIndexHeader)),
 		TagIndexHeader.TagCount);
-
 	for( const auto& CurTag : TagArray )
 	{
 		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
