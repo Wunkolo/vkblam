@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -11,6 +12,23 @@
 #include <mio/mmap.hpp>
 
 #include <Blam/Blam.hpp>
+
+void HexDump(const std::span<const std::byte>& Data, std::uint8_t Columns = 16)
+{
+
+	for( std::size_t CurOffset = 0; CurOffset < Data.size();
+		 CurOffset += Columns )
+	{
+		std::printf("0x%08X:", CurOffset);
+		for( const auto& Byte : Data.subspan(
+				 CurOffset,
+				 std::min<std::size_t>(Data.size() - CurOffset, Columns)) )
+		{
+			std::printf(" %02X", Byte);
+		}
+		std::printf("\n");
+	}
+}
 
 std::string FormatTagGroup(std::uint32_t TagClass)
 {
@@ -92,16 +110,26 @@ int main(int argc, char* argv[])
 	}
 
 	// Find the base-tag
-	if( const auto CurTagIt = TagIndexLUT.find(TagIndexHeader.BaseTag);
+	if( const auto CurTagIt = TagIndexLUT.find(0xEA7B0905);
 		CurTagIt != TagIndexLUT.end() )
 	{
-		const auto& CurTag = *CurTagIt->second;
-		const char* Name   = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
+		const auto& CurTag  = *CurTagIt->second;
+		const auto& NextTag = *std::next(CurTagIt)->second;
+		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
 		std::printf(
 			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
 			FormatTagGroup(CurTag.ClassPrimary).c_str(),
 			FormatTagGroup(CurTag.ClassSecondary).c_str(),
 			FormatTagGroup(CurTag.ClassTertiary).c_str(), Name);
+
+		if( !CurTag.IsExternal )
+		{
+			const std::span<const std::byte> TagData(
+				reinterpret_cast<const std::byte*>(
+					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
+				NextTag.TagDataOffset - CurTag.TagDataOffset);
+			HexDump(TagData);
+		}
 	}
 
 	return EXIT_SUCCESS;

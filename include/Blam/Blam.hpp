@@ -91,7 +91,7 @@ struct TagIndexEntry
 	TagClass      ClassTertiary;
 	std::uint32_t TagID;
 	std::uint32_t TagPathOffset;
-	std::uint32_t TagDataRef;
+	std::uint32_t TagDataOffset;
 	std::uint32_t IsExternal; // For bitmaps
 	std::uint32_t Unused;
 };
