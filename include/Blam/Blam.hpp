@@ -31,6 +31,23 @@ enum ResourceMapType : std::uint32_t
 
 #pragma pack(push, 1)
 
+using TagGroup = std::uint32_t;
+
+struct TagReference
+{
+	TagGroup      Group;
+	std::uint32_t PathOffset;
+	std::uint32_t Unknown;
+	std::uint32_t TagID;
+};
+
+struct Reflexive
+{
+	std::uint32_t Count;
+	std::uint32_t Offset;
+	std::uint32_t UnknownC;
+};
+
 struct MapHeader
 {
 	std::uint32_t MagicHead; // 'head'
@@ -69,9 +86,9 @@ static_assert(sizeof(TagIndexHeader) == 40);
 
 struct TagArrayEntry
 {
-	std::uint32_t TagGroupPrimary;
-	std::uint32_t TagGroupSecondary;
-	std::uint32_t TagGroupTertiary;
+	TagGroup      GroupPrimary;
+	TagGroup      GroupSecondary;
+	TagGroup      GroupTertiary;
 	std::uint32_t TagID;
 	std::uint32_t TagPathOffset;
 	std::uint32_t TagDataRef;

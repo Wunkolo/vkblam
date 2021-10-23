@@ -67,9 +67,9 @@ int main(int argc, char* argv[])
 		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
 		std::printf(
 			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
-			FormatTagGroup(CurTag.TagGroupPrimary).c_str(),
-			FormatTagGroup(CurTag.TagGroupSecondary).c_str(),
-			FormatTagGroup(CurTag.TagGroupTertiary).c_str(), Name);
+			FormatTagGroup(CurTag.GroupPrimary).c_str(),
+			FormatTagGroup(CurTag.GroupSecondary).c_str(),
+			FormatTagGroup(CurTag.GroupTertiary).c_str(), Name);
 	}
 
 	return EXIT_SUCCESS;
