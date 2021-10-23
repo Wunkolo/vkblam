@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
 #include <span>
 
 // #define VULKAN_HPP_NO_EXCEPTIONS
@@ -70,20 +71,32 @@ int main(int argc, char* argv[])
 		TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
 		TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
 		TagIndexHeader.ModelDataSize);
-	return 1;
 
 	const std::uint32_t MapMagic
 		= (TagIndexHeader.TagArrayOffset - sizeof(Blam::TagIndexHeader))
 		- MapHeader.TagIndexOffset;
 
-	const std::span<const Blam::TagArrayEntry> TagArray(
-		reinterpret_cast<const Blam::TagArrayEntry*>(
+	const std::span<const Blam::TagIndexEntry> TagArray(
+		reinterpret_cast<const Blam::TagIndexEntry*>(
 			MapFile.data() + MapHeader.TagIndexOffset
 			+ sizeof(Blam::TagIndexHeader)),
 		TagIndexHeader.TagCount);
+
+	// Acceleration structure for fast tag lookups
+	// TagID -> TagArrayEntry
+	std::map<std::uint32_t, const Blam::TagIndexEntry*> TagIndexLUT;
+
 	for( const auto& CurTag : TagArray )
 	{
-		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
+		TagIndexLUT[CurTag.TagID] = &CurTag;
+	}
+
+	// Find the base-tag
+	if( const auto CurTagIt = TagIndexLUT.find(TagIndexHeader.BaseTag);
+		CurTagIt != TagIndexLUT.end() )
+	{
+		const auto& CurTag = *CurTagIt->second;
+		const char* Name   = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
 		std::printf(
 			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
 			FormatTagGroup(CurTag.GroupPrimary).c_str(),
