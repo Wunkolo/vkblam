@@ -84,7 +84,7 @@ struct TagIndexHeader
 };
 static_assert(sizeof(TagIndexHeader) == 40);
 
-struct TagArrayEntry
+struct TagIndexEntry
 {
 	TagGroup      GroupPrimary;
 	TagGroup      GroupSecondary;
@@ -95,7 +95,7 @@ struct TagArrayEntry
 	std::uint32_t IsExternal; // For bitmaps
 	std::uint32_t Unused;
 };
-static_assert(sizeof(TagArrayEntry) == 32);
+static_assert(sizeof(TagIndexEntry) == 32);
 
 struct ResourceMapHeader
 {
