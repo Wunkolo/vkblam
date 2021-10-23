@@ -37,9 +37,18 @@ int main(int argc, char* argv[])
 		= *reinterpret_cast<const Blam::MapHeader*>(MapFile.data());
 
 	std::printf(
-		"Map Name: %.32s\n"
-		"Build Date: %.32s\n",
-		MapHeader.ScenarioName, MapHeader.BuildVersion);
+		"Map Header:\n"
+		" - Version:         0x%08X\n"
+		" - FileSize:        0x%08X\n"
+		" - TagIndexOffset:  0x%08X\n"
+		" - TagIndexSize:    0x%08X\n"
+		" - ScenarioName:    \"%.32s\"\n"
+		" - BuildVersion:    \"%.32s\"\n"
+		" - Type:            0x%08X\n"
+		" - Checksum:        0x%08X\n",
+		MapHeader.Version, MapHeader.FileSize, MapHeader.TagIndexOffset,
+		MapHeader.TagIndexSize, MapHeader.ScenarioName, MapHeader.BuildVersion,
+		MapHeader.Type, MapHeader.Checksum);
 
 	const Blam::TagIndexHeader& TagIndexHeader
 		= *reinterpret_cast<const Blam::TagIndexHeader*>(
