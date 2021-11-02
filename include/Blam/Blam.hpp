@@ -198,6 +198,22 @@ struct ResourceMapHeader
 	std::uint32_t   ResourceCount;
 };
 
-#pragma pack(pop)
+template<TagClass Class>
+struct Tag
+{
+};
 
+template<>
+struct Tag<TagClass::Wind>
+{
+	float MinWindSpeed;
+	float MaxWindSpeed;
+	float VariationYaw;
+	float VariationPitch;
+	float LocalVariationWeight;
+	float LocalVariationRate;
+	float Damping;
+};
+
+#pragma pack(pop)
 } // namespace Blam

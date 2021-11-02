@@ -128,6 +128,22 @@ int main(int argc, char* argv[])
 					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
 				NextTag.TagDataOffset - CurTag.TagDataOffset);
 			HexDump(TagData);
+
+			const auto& TestWind
+				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Wind>*>(
+					TagData.data());
+			std::printf(
+				"\tMinWindSpeed: %f\n"
+				"\tMaxWindSpeed: %f\n"
+				"\tVariationYaw: %f\n"
+				"\tVariationPitch: %f\n"
+				"\tLocalVariationWeight: %f\n"
+				"\tLocalVariationRate: %f\n"
+				"\tDamping: %f\n",
+				TestWind.MinWindSpeed, TestWind.MaxWindSpeed,
+				TestWind.VariationYaw, TestWind.VariationPitch,
+				TestWind.LocalVariationWeight, TestWind.LocalVariationRate,
+				TestWind.Damping);
 		}
 	}
 
