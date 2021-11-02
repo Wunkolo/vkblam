@@ -125,6 +125,14 @@ struct TagDependency
 	std::uint32_t PathLength;
 	std::uint32_t TagID;
 };
+static_assert(sizeof(TagDependency) == 0x10);
+
+struct TagDataReference
+{
+	std::uint32_t FileOffset;
+	std::uint32_t IsExternal;
+	std::uint32_t Unused;
+};
 
 struct Reflexive
 {
@@ -138,10 +146,10 @@ template<typename T = void>
 struct TagBlock
 {
 	std::uint32_t Count;
-	std::uint32_t Offset;
+	std::uint64_t Offset;
 	// Todo: Add function to get an std::span
 };
-static_assert(sizeof(TagBlock<void>) == 8);
+static_assert(sizeof(TagBlock<void>) == 12);
 
 struct MapHeader
 {
@@ -166,7 +174,7 @@ static_assert(sizeof(MapHeader) == 2048);
 
 struct TagIndexHeader
 {
-	std::uint32_t TagArrayOffset;
+	std::uint32_t TagIndexOffset;
 	std::uint32_t BaseTag;
 	std::uint32_t ScenarioTagID;
 	std::uint32_t TagCount;
@@ -181,14 +189,12 @@ static_assert(sizeof(TagIndexHeader) == 40);
 
 struct TagIndexEntry
 {
-	TagClass      ClassPrimary;
-	TagClass      ClassSecondary;
-	TagClass      ClassTertiary;
-	std::uint32_t TagID;
-	std::uint32_t TagPathOffset;
-	std::uint32_t TagDataOffset;
-	std::uint32_t IsExternal; // For bitmaps
-	std::uint32_t Unused;
+	TagClass         ClassPrimary;
+	TagClass         ClassSecondary;
+	TagClass         ClassTertiary;
+	std::uint32_t    TagID;
+	std::uint32_t    TagPathOffset;
+	TagDataReference TagData;
 };
 static_assert(sizeof(TagIndexEntry) == 32);
 
@@ -226,10 +232,19 @@ struct Tag<TagClass::Scenario>
 	TagDependency                     UnusedSky;
 	TagBlock<Tag<TagClass::Sky>>      Skies; // Max: 8
 	ScenarioType                      Type;
-	std::uint32_t                     Flags;
+	std::uint16_t                     Flags;
 	TagBlock<Tag<TagClass::Scenario>> ChildScenarios; // Max: 16
 	float                             LocalNorth;
+	TagDataReference                  EditorData;
 };
+static_assert(offsetof(Tag<TagClass::Scenario>, UnusedBSP0) == 0x0);
+static_assert(offsetof(Tag<TagClass::Scenario>, UnusedBSP1) == 0x10);
+static_assert(offsetof(Tag<TagClass::Scenario>, UnusedSky) == 0x20);
+static_assert(offsetof(Tag<TagClass::Scenario>, Skies) == 0x30);
+static_assert(offsetof(Tag<TagClass::Scenario>, Type) == 0x3C);
+static_assert(offsetof(Tag<TagClass::Scenario>, Flags) == 0x3E);
+static_assert(offsetof(Tag<TagClass::Scenario>, ChildScenarios) == 0x40);
+static_assert(offsetof(Tag<TagClass::Scenario>, LocalNorth) == 0x4C);
 
 #pragma pack(pop)
 } // namespace Blam

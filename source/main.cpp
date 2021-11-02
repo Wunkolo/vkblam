@@ -83,14 +83,14 @@ int main(int argc, char* argv[])
 		" - IndexCount:      0x%08X\n"
 		" - IndexOffset:     0x%08X\n"
 		" - ModelDataSize:   0x%08X\n",
-		TagIndexHeader.TagArrayOffset, TagIndexHeader.BaseTag,
+		TagIndexHeader.TagIndexOffset, TagIndexHeader.BaseTag,
 		TagIndexHeader.ScenarioTagID, TagIndexHeader.TagCount,
 		TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
 		TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
 		TagIndexHeader.ModelDataSize);
 
 	const std::uint32_t MapMagic
-		= (TagIndexHeader.TagArrayOffset - sizeof(Blam::TagIndexHeader))
+		= (TagIndexHeader.TagIndexOffset - sizeof(Blam::TagIndexHeader))
 		- MapHeader.TagIndexOffset;
 
 	const std::span<const Blam::TagIndexEntry> TagArray(
@@ -121,12 +121,12 @@ int main(int argc, char* argv[])
 			FormatTagClass(CurTag.ClassSecondary).c_str(),
 			FormatTagClass(CurTag.ClassTertiary).c_str(), Name);
 
-		if( !CurTag.IsExternal )
+		if( !CurTag.TagData.IsExternal )
 		{
 			const std::span<const std::byte> TagData(
 				reinterpret_cast<const std::byte*>(
-					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
-				NextTag.TagDataOffset - CurTag.TagDataOffset);
+					MapFile.data() + (CurTag.TagData.FileOffset - MapMagic)),
+				NextTag.TagData.FileOffset - CurTag.TagData.FileOffset);
 			const auto& TestScenario
 				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
 					TagData.data());
