@@ -30,16 +30,15 @@ void HexDump(const std::span<const std::byte>& Data, std::uint8_t Columns = 16)
 	}
 }
 
-std::string FormatTagGroup(std::uint32_t TagClass)
+std::string FormatTagClass(Blam::TagClass Class)
 {
-	if( TagClass == -1 )
+	std::uint32_t TagStr = static_cast<std::uint32_t>(Class);
+	if( Class == Blam::TagClass::None )
 	{
-		TagClass = '-' * 0x01010101;
+		TagStr = '-' * 0x01010101;
 	}
-	TagClass = __builtin_bswap32(TagClass);
-	std::string Result(reinterpret_cast<const char*>(&TagClass), 4);
-
-	return Result;
+	TagStr = __builtin_bswap32(TagStr);
+	return std::string(reinterpret_cast<const char*>(&TagStr), 4);
 }
 
 int main(int argc, char* argv[])
@@ -101,7 +100,7 @@ int main(int argc, char* argv[])
 		TagIndexHeader.TagCount);
 
 	// Acceleration structure for fast tag lookups
-	// TagID -> TagArrayEntry
+	// TagID -> TagIndexEntry
 	std::map<std::uint32_t, const Blam::TagIndexEntry*> TagIndexLUT;
 
 	for( const auto& CurTag : TagArray )
@@ -118,9 +117,9 @@ int main(int argc, char* argv[])
 		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
 		std::printf(
 			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
-			FormatTagGroup(CurTag.ClassPrimary).c_str(),
-			FormatTagGroup(CurTag.ClassSecondary).c_str(),
-			FormatTagGroup(CurTag.ClassTertiary).c_str(), Name);
+			FormatTagClass(CurTag.ClassPrimary).c_str(),
+			FormatTagClass(CurTag.ClassSecondary).c_str(),
+			FormatTagClass(CurTag.ClassTertiary).c_str(), Name);
 
 		if( !CurTag.IsExternal )
 		{
