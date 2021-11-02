@@ -118,7 +118,7 @@ enum class TagClass : std::uint32_t
 
 #pragma pack(push, 1)
 
-struct TagReference
+struct TagDependency
 {
 	TagClass      Class;
 	std::uint32_t PathOffset;
@@ -134,12 +134,14 @@ struct Reflexive
 };
 
 // Header for variable-sized array of data in a tag
-struct Block
+template<typename T = void>
+struct TagBlock
 {
 	std::uint32_t Count;
-	std::uint64_t Offset;
+	std::uint32_t Offset;
+	// Todo: Add function to get an std::span
 };
-static_assert(sizeof(Block) == 12);
+static_assert(sizeof(TagBlock<void>) == 8);
 
 struct MapHeader
 {
@@ -213,6 +215,20 @@ struct Tag<TagClass::Wind>
 	float LocalVariationWeight;
 	float LocalVariationRate;
 	float Damping;
+};
+
+template<>
+struct Tag<TagClass::Scenario>
+{
+	// Depreciated fields, don't use
+	TagDependency                     UnusedBSP0;
+	TagDependency                     UnusedBSP1;
+	TagDependency                     UnusedSky;
+	TagBlock<Tag<TagClass::Sky>>      Skies; // Max: 8
+	ScenarioType                      Type;
+	std::uint32_t                     Flags;
+	TagBlock<Tag<TagClass::Scenario>> ChildScenarios; // Max: 16
+	float                             LocalNorth;
 };
 
 #pragma pack(pop)

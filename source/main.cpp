@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 	}
 
 	// Find the base-tag
-	if( const auto CurTagIt = TagIndexLUT.find(0xEA7B0905);
+	if( const auto CurTagIt = TagIndexLUT.find(TagIndexHeader.BaseTag);
 		CurTagIt != TagIndexLUT.end() )
 	{
 		const auto& CurTag  = *CurTagIt->second;
@@ -127,23 +127,10 @@ int main(int argc, char* argv[])
 				reinterpret_cast<const std::byte*>(
 					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
 				NextTag.TagDataOffset - CurTag.TagDataOffset);
-			HexDump(TagData);
-
-			const auto& TestWind
-				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Wind>*>(
+			const auto& TestScenario
+				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
 					TagData.data());
-			std::printf(
-				"\tMinWindSpeed: %f\n"
-				"\tMaxWindSpeed: %f\n"
-				"\tVariationYaw: %f\n"
-				"\tVariationPitch: %f\n"
-				"\tLocalVariationWeight: %f\n"
-				"\tLocalVariationRate: %f\n"
-				"\tDamping: %f\n",
-				TestWind.MinWindSpeed, TestWind.MaxWindSpeed,
-				TestWind.VariationYaw, TestWind.VariationPitch,
-				TestWind.LocalVariationWeight, TestWind.LocalVariationRate,
-				TestWind.Damping);
+			HexDump(TagData);
 		}
 	}
 
