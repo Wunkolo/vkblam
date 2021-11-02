@@ -129,10 +129,12 @@ static_assert(sizeof(TagDependency) == 0x10);
 
 struct TagDataReference
 {
-	std::uint32_t FileOffset;
+	std::uint32_t Size;
 	std::uint32_t IsExternal;
-	std::uint32_t Unused;
+	std::uint32_t Offset;
+	std::uint64_t Pointer;
 };
+static_assert(sizeof(TagDataReference) == 20);
 
 struct Reflexive
 {
@@ -189,12 +191,14 @@ static_assert(sizeof(TagIndexHeader) == 40);
 
 struct TagIndexEntry
 {
-	TagClass         ClassPrimary;
-	TagClass         ClassSecondary;
-	TagClass         ClassTertiary;
-	std::uint32_t    TagID;
-	std::uint32_t    TagPathOffset;
-	TagDataReference TagData;
+	TagClass      ClassPrimary;
+	TagClass      ClassSecondary;
+	TagClass      ClassTertiary;
+	std::uint32_t TagID;
+	std::uint32_t TagPathOffset;
+	std::uint32_t TagDataOffset;
+	std::uint32_t IsExternal;
+	std::uint32_t Unused;
 };
 static_assert(sizeof(TagIndexEntry) == 32);
 
@@ -230,12 +234,84 @@ struct Tag<TagClass::Scenario>
 	TagDependency                     UnusedBSP0;
 	TagDependency                     UnusedBSP1;
 	TagDependency                     UnusedSky;
-	TagBlock<Tag<TagClass::Sky>>      Skies; // Max: 8
+	TagBlock<Tag<TagClass::Sky>>      Skies;
 	ScenarioType                      Type;
 	std::uint16_t                     Flags;
-	TagBlock<Tag<TagClass::Scenario>> ChildScenarios; // Max: 16
+	TagBlock<Tag<TagClass::Scenario>> ChildScenarios;
 	float                             LocalNorth;
-	TagDataReference                  EditorData;
+
+	std::byte _Padding50[0x9C];
+
+	TagBlock<void> /*Todo*/ PredictedResources;
+	TagBlock<void> /*Todo*/ Functions;
+	TagDataReference        EditorData;
+	TagBlock<void> /*Todo*/ Comments;
+
+	std::byte _Padding124[0xE0];
+
+	TagBlock<std::array<char, 32>> ObjectNames;
+	TagBlock<void> /*Todo*/        Scenery;
+	TagBlock<void> /*Todo*/        SceneryPalette;
+	TagBlock<void> /*Todo*/        Bipeds;
+	TagBlock<void> /*Todo*/        BipedPalette;
+	TagBlock<void> /*Todo*/        Vehicles;
+	TagBlock<void> /*Todo*/        VehiclePalette;
+	TagBlock<void> /*Todo*/        Equipment;
+	TagBlock<void> /*Todo*/        EquipmentPalette;
+	TagBlock<void> /*Todo*/        Weapons;
+	TagBlock<void> /*Todo*/        WeaponPalette;
+	TagBlock<void> /*Todo*/        DeviceGroups;
+	TagBlock<void> /*Todo*/        Machines;
+	TagBlock<void> /*Todo*/        MachinePalette;
+	TagBlock<void> /*Todo*/        Controls;
+	TagBlock<void> /*Todo*/        ControlPalette;
+	TagBlock<void> /*Todo*/        LightFixtures;
+	TagBlock<void> /*Todo*/        LightFixturePalette;
+	TagBlock<void> /*Todo*/        SoundScenery;
+	TagBlock<void> /*Todo*/        SoundSceneryPalette;
+
+	std::byte _Padding2F4[0x54];
+
+	TagBlock<void> /*Todo*/ PlayerStartingProfile;
+	TagBlock<void> /*Todo*/ PlayerStartingLocations;
+	TagBlock<void> /*Todo*/ TriggerVolumes;
+	TagBlock<void> /*Todo*/ RecordedAnimations;
+	TagBlock<void> /*Todo*/ NetgameFlags;
+	TagBlock<void> /*Todo*/ NetgameEquipment;
+	TagBlock<void> /*Todo*/ StartingEquipment;
+	TagBlock<void> /*Todo*/ BSPSwitchTriggerVolumes;
+	TagBlock<void> /*Todo*/ Decals;
+	TagBlock<void> /*Todo*/ DecalPalette;
+	TagBlock<void> /*Todo*/ DetailObjectCollectionPalette;
+
+	std::byte _Padding3CC[0x54];
+
+	TagBlock<void> /*Todo*/ ActorPalette;
+	TagBlock<void> /*Todo*/ Encounters;
+	TagBlock<void> /*Todo*/ CommandLists;
+	TagBlock<void> /*Todo*/ AIAnimationReferences;
+	TagBlock<void> /*Todo*/ AIScriptReferences;
+	TagBlock<void> /*Todo*/ AIRecordingReferences;
+	TagBlock<void> /*Todo*/ AIConversations;
+	TagDataReference        ScriptSyntaxData;
+	TagDataReference        ScriptStringData;
+	TagBlock<void> /*Todo*/ Scripts;
+	TagBlock<void> /*Todo*/ Globals;
+	TagBlock<void> /*Todo*/ References;
+	TagBlock<void> /*Todo*/ SourceFiles;
+
+	std::byte _Padding4CC[0x18];
+
+	TagBlock<void> /*Todo*/ CutsceneFlags;
+	TagBlock<void> /*Todo*/ CutsceneCameraPoints;
+	TagBlock<void> /*Todo*/ CutsceneTitles;
+
+	std::byte _Padding508[0x6C];
+
+	TagDependency           CustomObjectNames;
+	TagDependency           IngameHelpText;
+	TagDependency           HudMessages;
+	TagBlock<void> /*Todo*/ StructureBSPs;
 };
 static_assert(offsetof(Tag<TagClass::Scenario>, UnusedBSP0) == 0x0);
 static_assert(offsetof(Tag<TagClass::Scenario>, UnusedBSP1) == 0x10);
@@ -245,6 +321,37 @@ static_assert(offsetof(Tag<TagClass::Scenario>, Type) == 0x3C);
 static_assert(offsetof(Tag<TagClass::Scenario>, Flags) == 0x3E);
 static_assert(offsetof(Tag<TagClass::Scenario>, ChildScenarios) == 0x40);
 static_assert(offsetof(Tag<TagClass::Scenario>, LocalNorth) == 0x4C);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, PredictedResources) == 0xEC);
+static_assert(offsetof(Tag<TagClass::Scenario>, Functions) == 0xF8);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, EditorData) == 0x104);
+static_assert(offsetof(Tag<TagClass::Scenario>, Comments) == 0x118);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, ObjectNames) == 0x204);
+static_assert(offsetof(Tag<TagClass::Scenario>, Bipeds) == 0x228);
+static_assert(offsetof(Tag<TagClass::Scenario>, Vehicles) == 0x240);
+static_assert(offsetof(Tag<TagClass::Scenario>, Equipment) == 0x258);
+static_assert(offsetof(Tag<TagClass::Scenario>, Weapons) == 0x270);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, SoundSceneryPalette) == 0x2E8);
+static_assert(
+	offsetof(Tag<TagClass::Scenario>, PlayerStartingProfile) == 0x348);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, ActorPalette) == 0x420);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, Globals) == 0x4A8);
+static_assert(offsetof(Tag<TagClass::Scenario>, Scripts) == 0x49C);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, SourceFiles) == 0x4C0);
+static_assert(offsetof(Tag<TagClass::Scenario>, CutsceneFlags) == 0x4E4);
+static_assert(offsetof(Tag<TagClass::Scenario>, CutsceneCameraPoints) == 0x4F0);
+static_assert(offsetof(Tag<TagClass::Scenario>, CutsceneTitles) == 0x4FC);
+
+static_assert(offsetof(Tag<TagClass::Scenario>, CustomObjectNames) == 0x574);
+static_assert(offsetof(Tag<TagClass::Scenario>, StructureBSPs) == 0x5A4);
+
+static_assert(sizeof(Tag<TagClass::Scenario>) == 0x5B0);
 
 #pragma pack(pop)
 } // namespace Blam

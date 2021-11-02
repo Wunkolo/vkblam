@@ -121,12 +121,12 @@ int main(int argc, char* argv[])
 			FormatTagClass(CurTag.ClassSecondary).c_str(),
 			FormatTagClass(CurTag.ClassTertiary).c_str(), Name);
 
-		if( !CurTag.TagData.IsExternal )
+		if( !CurTag.IsExternal )
 		{
 			const std::span<const std::byte> TagData(
 				reinterpret_cast<const std::byte*>(
-					MapFile.data() + (CurTag.TagData.FileOffset - MapMagic)),
-				NextTag.TagData.FileOffset - CurTag.TagData.FileOffset);
+					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
+				NextTag.TagDataOffset - CurTag.TagDataOffset);
 			const auto& TestScenario
 				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
 					TagData.data());
