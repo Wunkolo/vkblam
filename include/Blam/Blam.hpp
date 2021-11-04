@@ -265,31 +265,34 @@ struct Tag<TagClass::Scenario>
 	TagBlock<std::array<char, 32>> ObjectNames;
 	TagBlock<void> /*Todo*/        Scenery;
 
-	struct SceneryPaletteEntry
+	// A lot of the palettes are really just TagDependency aligned up to a size
+	// of 0x30. So this is just a utility-wrapper for TagDependency that adds
+	// the extra padding
+	struct PaletteEntry : public TagDependency
 	{
-		TagDependency Name;
-		std::byte     _Padding10[0x20];
+	private:
+		std::byte _Padding10[0x20];
 	};
-	static_assert(sizeof(SceneryPaletteEntry) == 0x30);
-	TagBlock<SceneryPaletteEntry> SceneryPalette;
+	static_assert(sizeof(PaletteEntry) == 0x30);
 
+	TagBlock<PaletteEntry>  SceneryPalette;
 	TagBlock<void> /*Todo*/ Bipeds;
-	TagBlock<TagDependency> BipedPalette;
+	TagBlock<PaletteEntry>  BipedPalette;
 	TagBlock<void> /*Todo*/ Vehicles;
-	TagBlock<TagDependency> VehiclePalette;
+	TagBlock<PaletteEntry>  VehiclePalette;
 	TagBlock<void> /*Todo*/ Equipment;
-	TagBlock<TagDependency> EquipmentPalette;
+	TagBlock<PaletteEntry>  EquipmentPalette;
 	TagBlock<void> /*Todo*/ Weapons;
-	TagBlock<TagDependency> WeaponPalette;
+	TagBlock<PaletteEntry>  WeaponPalette;
 	TagBlock<void> /*Todo*/ DeviceGroups;
 	TagBlock<void> /*Todo*/ Machines;
-	TagBlock<TagDependency> MachinePalette;
+	TagBlock<PaletteEntry>  MachinePalette;
 	TagBlock<void> /*Todo*/ Controls;
-	TagBlock<TagDependency> ControlPalette;
+	TagBlock<PaletteEntry>  ControlPalette;
 	TagBlock<void> /*Todo*/ LightFixtures;
-	TagBlock<TagDependency> LightFixturePalette;
+	TagBlock<PaletteEntry>  LightFixturePalette;
 	TagBlock<void> /*Todo*/ SoundScenery;
-	TagBlock<TagDependency> SoundSceneryPalette;
+	TagBlock<PaletteEntry>  SoundSceneryPalette;
 
 	std::byte _Padding2F4[0x54];
 
@@ -329,7 +332,7 @@ struct Tag<TagClass::Scenario>
 	TagBlock<Decal>         Decals;
 	TagBlock<TagDependency> DecalPalette;
 
-	TagBlock<TagDependency> DetailObjectCollectionPalette;
+	TagBlock<PaletteEntry> DetailObjectCollectionPalette;
 
 	std::byte _Padding3CC[0x54];
 

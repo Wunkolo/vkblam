@@ -132,28 +132,11 @@ int main(int argc, char* argv[])
 					TagData.data());
 			// HexDump(TagData);
 
-			// For iterating Scenery-palettes
-			{
-				std::printf("Iterating Palette: SceneryPalette\n");
-				for( const auto& CurEntry :
-					 Scenario.SceneryPalette.GetSpan(MapFile.data(), MapMagic) )
-				{
-					const char* Name
-						= (MapFile.data()
-						   + (CurEntry.Name.PathOffset - MapMagic));
-					std::printf(
-						"\t - %s: %08X | \"%s\"\n",
-						FormatTagClass(CurEntry.Name.Class).c_str(),
-						CurEntry.Name.TagID,
-						CurEntry.Name.PathOffset ? Name : "");
-				}
-			}
-
 			// For iterating simple tag-ref palettes
 			auto IteratePalette
-				= [&](const char*                                Name,
-					  const Blam::TagBlock<Blam::TagDependency>& Palette)
-				-> void {
+				= [&]<typename T>(
+					  const char*              Name,
+					  const Blam::TagBlock<T>& Palette) -> void {
 				std::printf("Iterating Palette: %s\n", Name);
 				for( const auto& CurEntry :
 					 Palette.GetSpan(MapFile.data(), MapMagic) )
@@ -166,6 +149,7 @@ int main(int argc, char* argv[])
 						CurEntry.PathOffset ? Name : "");
 				}
 			};
+			IteratePalette("SceneryPalette", Scenario.SceneryPalette);
 			IteratePalette("BipedPalette", Scenario.BipedPalette);
 			IteratePalette("VehiclePalette", Scenario.VehiclePalette);
 			IteratePalette("EquipmentPalette", Scenario.EquipmentPalette);
