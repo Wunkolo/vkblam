@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace Blam
 {
@@ -149,7 +150,19 @@ struct TagBlock
 {
 	std::uint32_t Count;
 	std::uint64_t Offset;
-	// Todo: Add function to get an std::span
+
+	template<
+		typename U = T,
+		typename = typename std::enable_if_t<std::is_same_v<U, void> == false>>
+	std::span<const U>
+		GetSpan(const void* MapData, std::uint32_t MapMagic) const
+	{
+		return std::span<const U>(
+			reinterpret_cast<const U*>(
+				reinterpret_cast<const std::byte*>(MapData)
+				+ (Offset - MapMagic)),
+			Count);
+	}
 };
 static_assert(sizeof(TagBlock<void>) == 12);
 
@@ -273,7 +286,22 @@ struct Tag<TagClass::Scenario>
 	std::byte _Padding2F4[0x54];
 
 	TagBlock<void> /*Todo*/ PlayerStartingProfile;
-	TagBlock<void> /*Todo*/ PlayerStartingLocations;
+
+	struct PlayerStartingLocation
+	{
+		float         Position[3];
+		float         Facing;
+		std::uint16_t TeamIndex;
+		std::uint16_t _BSPIndex;
+		std::uint16_t Type0;
+		std::uint16_t Type1;
+		std::uint16_t Type2;
+		std::uint16_t Type3;
+		std::byte     _Padding[0x18];
+	};
+	static_assert(sizeof(PlayerStartingLocation) == 0x34);
+	TagBlock<PlayerStartingLocation> PlayerStartingLocations;
+
 	TagBlock<void> /*Todo*/ TriggerVolumes;
 	TagBlock<void> /*Todo*/ RecordedAnimations;
 	TagBlock<void> /*Todo*/ NetgameFlags;

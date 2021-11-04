@@ -127,10 +127,20 @@ int main(int argc, char* argv[])
 				reinterpret_cast<const std::byte*>(
 					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
 				NextTag.TagDataOffset - CurTag.TagDataOffset);
-			const auto& TestScenario
+			const auto& Scenario
 				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
 					TagData.data());
-			HexDump(TagData);
+			// HexDump(TagData);
+
+			for( const auto CurPlayerLocation :
+				 Scenario.PlayerStartingLocations.GetSpan(
+					 MapFile.data(), MapMagic) )
+			{
+				std::printf(
+					"Spawn: %f, %f, %f\n", CurPlayerLocation.Position[0],
+					CurPlayerLocation.Position[1],
+					CurPlayerLocation.Position[2]);
+			}
 		}
 	}
 
