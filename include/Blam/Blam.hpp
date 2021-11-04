@@ -264,24 +264,32 @@ struct Tag<TagClass::Scenario>
 
 	TagBlock<std::array<char, 32>> ObjectNames;
 	TagBlock<void> /*Todo*/        Scenery;
-	TagBlock<TagDependency>        SceneryPalette;
-	TagBlock<void> /*Todo*/        Bipeds;
-	TagBlock<TagDependency>        BipedPalette;
-	TagBlock<void> /*Todo*/        Vehicles;
-	TagBlock<TagDependency>        VehiclePalette;
-	TagBlock<void> /*Todo*/        Equipment;
-	TagBlock<TagDependency>        EquipmentPalette;
-	TagBlock<void> /*Todo*/        Weapons;
-	TagBlock<TagDependency>        WeaponPalette;
-	TagBlock<void> /*Todo*/        DeviceGroups;
-	TagBlock<void> /*Todo*/        Machines;
-	TagBlock<TagDependency>        MachinePalette;
-	TagBlock<void> /*Todo*/        Controls;
-	TagBlock<TagDependency>        ControlPalette;
-	TagBlock<void> /*Todo*/        LightFixtures;
-	TagBlock<TagDependency>        LightFixturePalette;
-	TagBlock<void> /*Todo*/        SoundScenery;
-	TagBlock<TagDependency>        SoundSceneryPalette;
+
+	struct SceneryPaletteEntry
+	{
+		TagDependency Name;
+		std::byte     _Padding10[0x20];
+	};
+	static_assert(sizeof(SceneryPaletteEntry) == 0x30);
+	TagBlock<SceneryPaletteEntry> SceneryPalette;
+
+	TagBlock<void> /*Todo*/ Bipeds;
+	TagBlock<TagDependency> BipedPalette;
+	TagBlock<void> /*Todo*/ Vehicles;
+	TagBlock<TagDependency> VehiclePalette;
+	TagBlock<void> /*Todo*/ Equipment;
+	TagBlock<TagDependency> EquipmentPalette;
+	TagBlock<void> /*Todo*/ Weapons;
+	TagBlock<TagDependency> WeaponPalette;
+	TagBlock<void> /*Todo*/ DeviceGroups;
+	TagBlock<void> /*Todo*/ Machines;
+	TagBlock<TagDependency> MachinePalette;
+	TagBlock<void> /*Todo*/ Controls;
+	TagBlock<TagDependency> ControlPalette;
+	TagBlock<void> /*Todo*/ LightFixtures;
+	TagBlock<TagDependency> LightFixturePalette;
+	TagBlock<void> /*Todo*/ SoundScenery;
+	TagBlock<TagDependency> SoundSceneryPalette;
 
 	std::byte _Padding2F4[0x54];
 
