@@ -264,24 +264,24 @@ struct Tag<TagClass::Scenario>
 
 	TagBlock<std::array<char, 32>> ObjectNames;
 	TagBlock<void> /*Todo*/        Scenery;
-	TagBlock<void> /*Todo*/        SceneryPalette;
+	TagBlock<TagDependency>        SceneryPalette;
 	TagBlock<void> /*Todo*/        Bipeds;
-	TagBlock<void> /*Todo*/        BipedPalette;
+	TagBlock<TagDependency>        BipedPalette;
 	TagBlock<void> /*Todo*/        Vehicles;
-	TagBlock<void> /*Todo*/        VehiclePalette;
+	TagBlock<TagDependency>        VehiclePalette;
 	TagBlock<void> /*Todo*/        Equipment;
-	TagBlock<void> /*Todo*/        EquipmentPalette;
+	TagBlock<TagDependency>        EquipmentPalette;
 	TagBlock<void> /*Todo*/        Weapons;
-	TagBlock<void> /*Todo*/        WeaponPalette;
+	TagBlock<TagDependency>        WeaponPalette;
 	TagBlock<void> /*Todo*/        DeviceGroups;
 	TagBlock<void> /*Todo*/        Machines;
-	TagBlock<void> /*Todo*/        MachinePalette;
+	TagBlock<TagDependency>        MachinePalette;
 	TagBlock<void> /*Todo*/        Controls;
-	TagBlock<void> /*Todo*/        ControlPalette;
+	TagBlock<TagDependency>        ControlPalette;
 	TagBlock<void> /*Todo*/        LightFixtures;
-	TagBlock<void> /*Todo*/        LightFixturePalette;
+	TagBlock<TagDependency>        LightFixturePalette;
 	TagBlock<void> /*Todo*/        SoundScenery;
-	TagBlock<void> /*Todo*/        SoundSceneryPalette;
+	TagBlock<TagDependency>        SoundSceneryPalette;
 
 	std::byte _Padding2F4[0x54];
 
@@ -321,11 +321,11 @@ struct Tag<TagClass::Scenario>
 	TagBlock<Decal>         Decals;
 	TagBlock<TagDependency> DecalPalette;
 
-	TagBlock<void> /*Todo*/ DetailObjectCollectionPalette;
+	TagBlock<TagDependency> DetailObjectCollectionPalette;
 
 	std::byte _Padding3CC[0x54];
 
-	TagBlock<void> /*Todo*/ ActorPalette;
+	TagBlock<TagDependency> ActorPalette;
 	TagBlock<void> /*Todo*/ Encounters;
 	TagBlock<void> /*Todo*/ CommandLists;
 	TagBlock<void> /*Todo*/ AIAnimationReferences;

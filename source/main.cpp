@@ -132,18 +132,32 @@ int main(int argc, char* argv[])
 					TagData.data());
 			// HexDump(TagData);
 
-			for( const auto CurDecal :
-				 Scenario.Decals.GetSpan(MapFile.data(), MapMagic) )
-			{
-				std::printf(
-					"Decal: %f, %f, %f\n", CurDecal.Position[0],
-					CurDecal.Position[1], CurDecal.Position[2]);
-			}
-			for( const auto CurDecalEntry :
-				 Scenario.DecalPalette.GetSpan(MapFile.data(), MapMagic) )
-			{
-				std::printf("Decal: %08X\n", CurDecalEntry.TagID);
-			}
+			auto IteratePalette
+				= [&](const char*                                Name,
+					  const Blam::TagBlock<Blam::TagDependency>& Palette)
+				-> void {
+				std::printf("Iterating Palette: %s\n", Name);
+				for( const auto& CurEntry :
+					 Palette.GetSpan(MapFile.data(), MapMagic) )
+				{
+					std::printf(
+						"\t - %s: %08X\n",
+						FormatTagClass(CurEntry.Class).c_str(), CurEntry.TagID);
+				}
+			};
+			IteratePalette("SceneryPalette", Scenario.SceneryPalette);
+			IteratePalette("BipedPalette", Scenario.BipedPalette);
+			IteratePalette("VehiclePalette", Scenario.VehiclePalette);
+			IteratePalette("EquipmentPalette", Scenario.EquipmentPalette);
+			IteratePalette("WeaponPalette", Scenario.WeaponPalette);
+			IteratePalette("MachinePalette", Scenario.MachinePalette);
+			IteratePalette("ControlPalette", Scenario.ControlPalette);
+			IteratePalette("LightFixturePalette", Scenario.LightFixturePalette);
+			IteratePalette("SoundSceneryPalette", Scenario.SoundSceneryPalette);
+			IteratePalette("DecalPalette", Scenario.DecalPalette);
+			IteratePalette(
+				"DetailObjectCollectionPalette",
+				Scenario.DetailObjectCollectionPalette);
 		}
 	}
 
