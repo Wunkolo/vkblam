@@ -358,10 +358,20 @@ struct Tag<TagClass::Scenario>
 
 	std::byte _Padding508[0x6C];
 
-	TagDependency           CustomObjectNames;
-	TagDependency           IngameHelpText;
-	TagDependency           HudMessages;
-	TagBlock<void> /*Todo*/ StructureBSPs;
+	TagDependency CustomObjectNames;
+	TagDependency IngameHelpText;
+	TagDependency HudMessages;
+
+	struct StructureBSP
+	{
+		std::uint32_t BSPStart;
+		std::uint32_t BSPSize;
+		std::uint32_t BSPAddress;
+		std::uint32_t _PaddingC;
+		TagDependency BSP;
+	};
+	static_assert(sizeof(StructureBSP) == 0x20);
+	TagBlock<StructureBSP> StructureBSPs;
 };
 static_assert(offsetof(Tag<TagClass::Scenario>, _UnusedBSP0) == 0x0);
 static_assert(offsetof(Tag<TagClass::Scenario>, _UnusedBSP1) == 0x10);

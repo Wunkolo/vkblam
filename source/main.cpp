@@ -162,6 +162,18 @@ int main(int argc, char* argv[])
 			IteratePalette(
 				"DetailObjectCollectionPalette",
 				Scenario.DetailObjectCollectionPalette);
+
+			std::printf("Iterating Palette: %s\n", Name);
+			for( const auto& CurEntry :
+				 Scenario.StructureBSPs.GetSpan(MapFile.data(), MapMagic) )
+			{
+				const char* Name
+					= (MapFile.data() + (CurEntry.BSP.PathOffset - MapMagic));
+				std::printf(
+					"\t - %s: %08X | \"%s\"\n",
+					FormatTagClass(CurEntry.BSP.Class).c_str(),
+					CurEntry.BSP.TagID, CurEntry.BSP.PathOffset ? Name : "");
+			}
 		}
 	}
 
