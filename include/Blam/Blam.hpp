@@ -300,6 +300,7 @@ struct Tag<TagClass::Scenario>
 		std::byte     _Padding[0x18];
 	};
 	static_assert(sizeof(PlayerStartingLocation) == 0x34);
+
 	TagBlock<PlayerStartingLocation> PlayerStartingLocations;
 
 	TagBlock<void> /*Todo*/ TriggerVolumes;
@@ -308,8 +309,18 @@ struct Tag<TagClass::Scenario>
 	TagBlock<void> /*Todo*/ NetgameEquipment;
 	TagBlock<void> /*Todo*/ StartingEquipment;
 	TagBlock<void> /*Todo*/ BSPSwitchTriggerVolumes;
-	TagBlock<void> /*Todo*/ Decals;
-	TagBlock<void> /*Todo*/ DecalPalette;
+
+	struct Decal
+	{
+		std::uint16_t DecalIndex;
+		std::int8_t   Yaw;
+		std::int8_t   Pitch;
+		float         Position[3];
+	};
+	static_assert(sizeof(Decal) == 0x10);
+	TagBlock<Decal>         Decals;
+	TagBlock<TagDependency> DecalPalette;
+
 	TagBlock<void> /*Todo*/ DetailObjectCollectionPalette;
 
 	std::byte _Padding3CC[0x54];

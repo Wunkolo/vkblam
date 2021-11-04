@@ -132,14 +132,17 @@ int main(int argc, char* argv[])
 					TagData.data());
 			// HexDump(TagData);
 
-			for( const auto CurPlayerLocation :
-				 Scenario.PlayerStartingLocations.GetSpan(
-					 MapFile.data(), MapMagic) )
+			for( const auto CurDecal :
+				 Scenario.Decals.GetSpan(MapFile.data(), MapMagic) )
 			{
 				std::printf(
-					"Spawn: %f, %f, %f\n", CurPlayerLocation.Position[0],
-					CurPlayerLocation.Position[1],
-					CurPlayerLocation.Position[2]);
+					"Decal: %f, %f, %f\n", CurDecal.Position[0],
+					CurDecal.Position[1], CurDecal.Position[2]);
+			}
+			for( const auto CurDecalEntry :
+				 Scenario.DecalPalette.GetSpan(MapFile.data(), MapMagic) )
+			{
+				std::printf("Decal: %08X\n", CurDecalEntry.TagID);
 			}
 		}
 	}
