@@ -231,9 +231,9 @@ template<>
 struct Tag<TagClass::Scenario>
 {
 	// Depreciated fields, don't use
-	TagDependency                     UnusedBSP0;
-	TagDependency                     UnusedBSP1;
-	TagDependency                     UnusedSky;
+	TagDependency                     _UnusedBSP0;
+	TagDependency                     _UnusedBSP1;
+	TagDependency                     _UnusedSky;
 	TagBlock<Tag<TagClass::Sky>>      Skies;
 	ScenarioType                      Type;
 	std::uint16_t                     Flags;
@@ -313,9 +313,9 @@ struct Tag<TagClass::Scenario>
 	TagDependency           HudMessages;
 	TagBlock<void> /*Todo*/ StructureBSPs;
 };
-static_assert(offsetof(Tag<TagClass::Scenario>, UnusedBSP0) == 0x0);
-static_assert(offsetof(Tag<TagClass::Scenario>, UnusedBSP1) == 0x10);
-static_assert(offsetof(Tag<TagClass::Scenario>, UnusedSky) == 0x20);
+static_assert(offsetof(Tag<TagClass::Scenario>, _UnusedBSP0) == 0x0);
+static_assert(offsetof(Tag<TagClass::Scenario>, _UnusedBSP1) == 0x10);
+static_assert(offsetof(Tag<TagClass::Scenario>, _UnusedSky) == 0x20);
 static_assert(offsetof(Tag<TagClass::Scenario>, Skies) == 0x30);
 static_assert(offsetof(Tag<TagClass::Scenario>, Type) == 0x3C);
 static_assert(offsetof(Tag<TagClass::Scenario>, Flags) == 0x3E);
