@@ -176,23 +176,9 @@ int main(int argc, char* argv[])
 					FormatTagClass(CurEntry.BSP.Class).c_str(),
 					CurEntry.BSP.TagID, CurEntry.BSP.PathOffset ? Name : "");
 
-				if( const auto CurTagIt = TagIndexLUT.find(CurEntry.BSP.TagID);
-					CurTagIt != TagIndexLUT.end() )
-				{
-					const auto& CurTag = *CurTagIt->second;
+				const auto& ScenarioBSP = CurEntry.GetBSP(MapFile.data());
 
-					// BSPs are different have have an offset of "0" for some
-					// reason.
-					const std::span<const std::byte> TagData(
-						reinterpret_cast<const std::byte*>(
-							MapFile.data() + CurEntry.BSPStart),
-						CurEntry.BSPSize);
-					const auto& ScenarioBSP = *reinterpret_cast<
-						const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
-						TagData.data());
-
-					std::printf("VehicleFloor: %f\n", ScenarioBSP.VehicleFloor);
-				}
+				std::printf("Vehicle Floor: %f\n", ScenarioBSP.VehicleFloor);
 			}
 		}
 	}

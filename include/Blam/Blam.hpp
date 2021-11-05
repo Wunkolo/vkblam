@@ -155,11 +155,11 @@ struct TagBlock
 		typename U = T,
 		typename = typename std::enable_if_t<std::is_same_v<U, void> == false>>
 	std::span<const U>
-		GetSpan(const void* MapData, std::uint32_t MapMagic) const
+		GetSpan(const void* MapFile, std::uint32_t MapMagic) const
 	{
 		return std::span<const U>(
 			reinterpret_cast<const U*>(
-				reinterpret_cast<const std::byte*>(MapData)
+				reinterpret_cast<const std::byte*>(MapFile)
 				+ (Offset - MapMagic)),
 			Count);
 	}
@@ -366,9 +366,36 @@ struct Tag<TagClass::Scenario>
 	{
 		std::uint32_t BSPStart;
 		std::uint32_t BSPSize;
-		std::uint32_t BSPAddress;
+		std::uint32_t BSPMagic;
 		std::uint32_t _PaddingC;
 		TagDependency BSP;
+
+		struct BSPHeader
+		{
+			std::uint32_t Offset;
+			// These are unused on PC
+			std::uint32_t LightmapMaterialCountA;
+			std::uint32_t RenderedVertexOffset;
+			std::uint32_t LightmapMaterialCountB;
+			std::uint32_t LightmapVerticesOffset;
+			TagClass      Class; // `sbsp`
+		};
+
+		const BSPHeader& GetBSPHeader(const void* MapFile) const
+		{
+			return *reinterpret_cast<const BSPHeader*>(
+				reinterpret_cast<const std::byte*>(MapFile) + BSPStart);
+		}
+
+		const Tag<TagClass::ScenarioStructureBsp>&
+			GetBSP(const void* MapFile) const
+		{
+			const auto& BSPHeader = GetBSPHeader(MapFile);
+			return *reinterpret_cast<
+				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
+				reinterpret_cast<const std::byte*>(MapFile)
+				+ ((BSPHeader.Offset - BSPMagic) + BSPStart));
+		}
 	};
 	static_assert(sizeof(StructureBSP) == 0x20);
 	TagBlock<StructureBSP> StructureBSPs;
@@ -416,16 +443,6 @@ static_assert(sizeof(Tag<TagClass::Scenario>) == 0x5B0);
 template<>
 struct Tag<TagClass::ScenarioStructureBsp>
 {
-	struct BSPHeader
-	{
-		std::uint32_t Offset;
-		// These are unused on PC
-		std::uint32_t LightmapMaterialCountA;
-		std::uint32_t RenderedVertexOffset;
-		std::uint32_t LightmapMaterialCountB;
-		std::uint32_t LightmapVerticesOffset;
-		TagClass      Class; // `sbsp`
-	} Header;
 	TagDependency LightmapTexture;
 	float         VehicleFloor;
 	float         VehicleCeiling;
@@ -501,52 +518,41 @@ struct Tag<TagClass::ScenarioStructureBsp>
 };
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, LightmapTexture)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x0));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LightmapTexture) == 0x0);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultAmbientColor)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x2C));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultAmbientColor) == 0x2C);
 
 static_assert(
 	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultDistantLight0Color)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x3C));
+	== 0x3C);
 
 static_assert(
 	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultShadowDirection)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x88));
+	== 0x88);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, CollisionMaterials)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0xA4));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, CollisionMaterials) == 0xA4);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, LensFlares)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x11C));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LensFlares) == 0x11C);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, BreakableSurfaces)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x16C));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, BreakableSurfaces) == 0x16C);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, WeatherPalette)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x1B4));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, WeatherPalette) == 0x1B4);
 
 static_assert(
 	offsetof(Tag<TagClass::ScenarioStructureBsp>, PathfindingSurfaces)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x1E4));
+	== 0x1E4);
+
+static_assert(offsetof(Tag<TagClass::ScenarioStructureBsp>, Markers) == 0x240);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, Markers)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x240));
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LeafMapLeaves) == 0x270);
 
-static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, LeafMapLeaves)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x270));
-
-static_assert(
-	sizeof(Tag<TagClass::ScenarioStructureBsp>)
-	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x288));
+static_assert(sizeof(Tag<TagClass::ScenarioStructureBsp>) == (0x288));
 
 #pragma pack(pop)
 } // namespace Blam
