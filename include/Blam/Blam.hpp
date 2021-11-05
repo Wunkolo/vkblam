@@ -425,17 +425,30 @@ struct Tag<TagClass::ScenarioStructureBsp>
 		std::uint32_t LightmapMaterialCountB;
 		std::uint32_t LightmapVerticesOffset;
 		TagClass      Class; // `sbsp`
-	};
-	TagDependency           LightmapTexture;
-	float                   VehicleFloor;
-	float                   VehicleCeiling;
-	float                   DefaultAmbientColor[3];
-	float                   DefaultDistantLight0Color[3];
-	float                   DefaultDistantLight0Direction[3];
-	float                   DefaultDistantLight1Color[3];
-	float                   DefaultDistantLight1Direction[3];
-	float                   DefaultDistantShadowColor[3];
-	float                   DefaultDistantShadowDirection[3];
+	} Header;
+	TagDependency LightmapTexture;
+	float         VehicleFloor;
+	float         VehicleCeiling;
+
+	std::byte _Padding18[0x14];
+
+	float DefaultAmbientColor[3];
+
+	std::byte _Padding38[0x4];
+
+	float DefaultDistantLight0Color[3];
+	float DefaultDistantLight0Direction[3];
+	float DefaultDistantLight1Color[3];
+	float DefaultDistantLight1Direction[3];
+
+	std::byte _Padding6C[0xC];
+
+	float DefaultReflectionTint[4];
+	float DefaultShadowDirection[3];
+	float DefaultShadowColor[3];
+
+	std::byte _PaddingA0[0x4];
+
 	TagBlock<void> /*Todo*/ CollisionMaterials;
 	TagBlock<void> /*Todo*/ CollisionBSPs;
 	TagBlock<void> /*Todo*/ Nodes;
@@ -446,25 +459,94 @@ struct Tag<TagClass::ScenarioStructureBsp>
 	TagBlock<void> /*Todo*/ LeafSurfaces;
 	TagBlock<void> /*Todo*/ Surfaces;
 	TagBlock<void> /*Todo*/ Lightmaps;
+
+	std::byte _Padding110[0xC];
+
 	TagBlock<void> /*Todo*/ LensFlares;
 	TagBlock<void> /*Todo*/ LensFlareMarkers;
+	TagBlock<void> /*Todo*/ Clusters;
 	TagDataReference        ClusterData;
 	TagBlock<void> /*Todo*/ ClusterPortals;
+
+	std::byte _Padding160[0xC];
+
 	TagBlock<void> /*Todo*/ BreakableSurfaces;
 	TagBlock<void> /*Todo*/ FogPlanes;
 	TagBlock<void> /*Todo*/ FogRegions;
 	TagBlock<void> /*Todo*/ FogPalette;
+
+	std::byte _Padding19C[0x18];
+
 	TagBlock<void> /*Todo*/ WeatherPalette;
 	TagBlock<void> /*Todo*/ WeatherPolyhedra;
+
+	std::byte _Padding1CC[0x18];
+
 	TagBlock<void> /*Todo*/ PathfindingSurfaces;
+	TagBlock<void> /*Todo*/ PathfindingEdges;
 	TagBlock<void> /*Todo*/ BackgroundSoundPalette;
 	TagBlock<void> /*Todo*/ SoundEnvironmentPalette;
 	TagDataReference        SoundPASData;
+
+	std::byte _Padding228[0x18];
+
 	TagBlock<void> /*Todo*/ Markers;
 	TagBlock<void> /*Todo*/ DetailObjects;
+	TagBlock<void> /*Todo*/ RuntimeDecals;
+
+	std::byte _Padding264[0xC];
+
 	TagBlock<void> /*Todo*/ LeafMapLeaves;
 	TagBlock<void> /*Todo*/ LeafMapPortals;
 };
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LightmapTexture)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x0));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultAmbientColor)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x2C));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultDistantLight0Color)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x3C));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultShadowDirection)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x88));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, CollisionMaterials)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0xA4));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LensFlares)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x11C));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, BreakableSurfaces)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x16C));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, WeatherPalette)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x1B4));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, PathfindingSurfaces)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x1E4));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, Markers)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x240));
+
+static_assert(
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LeafMapLeaves)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x270));
+
+static_assert(
+	sizeof(Tag<TagClass::ScenarioStructureBsp>)
+	== (sizeof(Tag<TagClass::ScenarioStructureBsp>::BSPHeader) + 0x288));
 
 #pragma pack(pop)
 } // namespace Blam
