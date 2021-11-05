@@ -166,19 +166,28 @@ int main(int argc, char* argv[])
 
 			// Iterate BSP
 			std::printf("Iterating BSPs: %s\n", Name);
-			for( const auto& CurEntry :
+			for( const auto& CurBSPEntry :
 				 Scenario.StructureBSPs.GetSpan(MapFile.data(), MapMagic) )
 			{
 				const char* Name
-					= (MapFile.data() + (CurEntry.BSP.PathOffset - MapMagic));
+					= (MapFile.data()
+					   + (CurBSPEntry.BSP.PathOffset - MapMagic));
 				std::printf(
-					"\t - %s: %08X | \"%s\"\n",
-					FormatTagClass(CurEntry.BSP.Class).c_str(),
-					CurEntry.BSP.TagID, CurEntry.BSP.PathOffset ? Name : "");
+					"%s: %08X | \"%s\"\n",
+					FormatTagClass(CurBSPEntry.BSP.Class).c_str(),
+					CurBSPEntry.BSP.TagID,
+					CurBSPEntry.BSP.PathOffset ? Name : "");
 
-				const auto& ScenarioBSP = CurEntry.GetBSP(MapFile.data());
+				const auto& ScenarioBSP = CurBSPEntry.GetBSP(MapFile.data());
 
-				std::printf("Vehicle Floor: %f\n", ScenarioBSP.VehicleFloor);
+				std::printf(
+					"Bounds:\n"
+					"\tX:[%12.4f, %12.4f]\n"
+					"\tY:[%12.4f, %12.4f]\n"
+					"\tZ:[%12.4f, %12.4f]\n",
+					ScenarioBSP.WorldBoundsX[0], ScenarioBSP.WorldBoundsX[1],
+					ScenarioBSP.WorldBoundsY[0], ScenarioBSP.WorldBoundsY[1],
+					ScenarioBSP.WorldBoundsZ[0], ScenarioBSP.WorldBoundsZ[1]);
 			}
 		}
 	}
