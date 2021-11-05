@@ -133,37 +133,39 @@ int main(int argc, char* argv[])
 			// HexDump(TagData);
 
 			// For iterating simple tag-ref palettes
-			auto IteratePalette
-				= [&]<typename T>(
-					  const char*              Name,
-					  const Blam::TagBlock<T>& Palette) -> void {
-				std::printf("Iterating Palette: %s\n", Name);
-				for( const auto& CurEntry :
-					 Palette.GetSpan(MapFile.data(), MapMagic) )
-				{
-					const char* Name
-						= (MapFile.data() + (CurEntry.PathOffset - MapMagic));
-					std::printf(
-						"\t - %s: %08X | \"%s\"\n",
-						FormatTagClass(CurEntry.Class).c_str(), CurEntry.TagID,
-						CurEntry.PathOffset ? Name : "");
-				}
-			};
-			IteratePalette("SceneryPalette", Scenario.SceneryPalette);
-			IteratePalette("BipedPalette", Scenario.BipedPalette);
-			IteratePalette("VehiclePalette", Scenario.VehiclePalette);
-			IteratePalette("EquipmentPalette", Scenario.EquipmentPalette);
-			IteratePalette("WeaponPalette", Scenario.WeaponPalette);
-			IteratePalette("MachinePalette", Scenario.MachinePalette);
-			IteratePalette("ControlPalette", Scenario.ControlPalette);
-			IteratePalette("LightFixturePalette", Scenario.LightFixturePalette);
-			IteratePalette("SoundSceneryPalette", Scenario.SoundSceneryPalette);
-			IteratePalette("DecalPalette", Scenario.DecalPalette);
-			IteratePalette(
-				"DetailObjectCollectionPalette",
-				Scenario.DetailObjectCollectionPalette);
+			// auto IteratePalette
+			// 	= [&]<typename T>(
+			// 		  const char*              Name,
+			// 		  const Blam::TagBlock<T>& Palette) -> void {
+			// 	std::printf("Iterating Palette: %s\n", Name);
+			// 	for( const auto& CurEntry :
+			// 		 Palette.GetSpan(MapFile.data(), MapMagic) )
+			// 	{
+			// 		const char* Name
+			// 			= (MapFile.data() + (CurEntry.PathOffset - MapMagic));
+			// 		std::printf(
+			// 			"\t - %s: %08X | \"%s\"\n",
+			// 			FormatTagClass(CurEntry.Class).c_str(), CurEntry.TagID,
+			// 			CurEntry.PathOffset ? Name : "");
+			// 	}
+			// };
+			// IteratePalette("SceneryPalette", Scenario.SceneryPalette);
+			// IteratePalette("BipedPalette", Scenario.BipedPalette);
+			// IteratePalette("VehiclePalette", Scenario.VehiclePalette);
+			// IteratePalette("EquipmentPalette", Scenario.EquipmentPalette);
+			// IteratePalette("WeaponPalette", Scenario.WeaponPalette);
+			// IteratePalette("MachinePalette", Scenario.MachinePalette);
+			// IteratePalette("ControlPalette", Scenario.ControlPalette);
+			// IteratePalette("LightFixturePalette",
+			// Scenario.LightFixturePalette);
+			// IteratePalette("SoundSceneryPalette",
+			// Scenario.SoundSceneryPalette); IteratePalette("DecalPalette",
+			// Scenario.DecalPalette); IteratePalette(
+			// 	"DetailObjectCollectionPalette",
+			// 	Scenario.DetailObjectCollectionPalette);
 
-			std::printf("Iterating Palette: %s\n", Name);
+			// Iterate BSP
+			std::printf("Iterating BSPs: %s\n", Name);
 			for( const auto& CurEntry :
 				 Scenario.StructureBSPs.GetSpan(MapFile.data(), MapMagic) )
 			{
@@ -173,6 +175,24 @@ int main(int argc, char* argv[])
 					"\t - %s: %08X | \"%s\"\n",
 					FormatTagClass(CurEntry.BSP.Class).c_str(),
 					CurEntry.BSP.TagID, CurEntry.BSP.PathOffset ? Name : "");
+
+				if( const auto CurTagIt = TagIndexLUT.find(CurEntry.BSP.TagID);
+					CurTagIt != TagIndexLUT.end() )
+				{
+					const auto& CurTag = *CurTagIt->second;
+
+					// BSPs are different have have an offset of "0" for some
+					// reason.
+					const std::span<const std::byte> TagData(
+						reinterpret_cast<const std::byte*>(
+							MapFile.data() + CurEntry.BSPStart),
+						CurEntry.BSPSize);
+					const auto& ScenarioBSP = *reinterpret_cast<
+						const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
+						TagData.data());
+
+					std::printf("VehicleFloor: %f\n", ScenarioBSP.VehicleFloor);
+				}
 			}
 		}
 	}

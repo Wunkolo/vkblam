@@ -416,6 +416,16 @@ static_assert(sizeof(Tag<TagClass::Scenario>) == 0x5B0);
 template<>
 struct Tag<TagClass::ScenarioStructureBsp>
 {
+	struct BSPHeader
+	{
+		std::uint32_t Offset;
+		// These are unused on PC
+		std::uint32_t LightmapMaterialCountA;
+		std::uint32_t RenderedVertexOffset;
+		std::uint32_t LightmapMaterialCountB;
+		std::uint32_t LightmapVerticesOffset;
+		TagClass      Class; // `sbsp`
+	};
 	TagDependency           LightmapTexture;
 	float                   VehicleFloor;
 	float                   VehicleCeiling;
