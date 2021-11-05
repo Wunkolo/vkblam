@@ -413,5 +413,48 @@ static_assert(offsetof(Tag<TagClass::Scenario>, StructureBSPs) == 0x5A4);
 
 static_assert(sizeof(Tag<TagClass::Scenario>) == 0x5B0);
 
+template<>
+struct Tag<TagClass::ScenarioStructureBsp>
+{
+	TagDependency           LightmapTexture;
+	float                   VehicleFloor;
+	float                   VehicleCeiling;
+	float                   DefaultAmbientColor[3];
+	float                   DefaultDistantLight0Color[3];
+	float                   DefaultDistantLight0Direction[3];
+	float                   DefaultDistantLight1Color[3];
+	float                   DefaultDistantLight1Direction[3];
+	float                   DefaultDistantShadowColor[3];
+	float                   DefaultDistantShadowDirection[3];
+	TagBlock<void> /*Todo*/ CollisionMaterials;
+	TagBlock<void> /*Todo*/ CollisionBSPs;
+	TagBlock<void> /*Todo*/ Nodes;
+	float                   WorldBoundsX[2];
+	float                   WorldBoundsY[2];
+	float                   WorldBoundsZ[2];
+	TagBlock<void> /*Todo*/ Leaves;
+	TagBlock<void> /*Todo*/ LeafSurfaces;
+	TagBlock<void> /*Todo*/ Surfaces;
+	TagBlock<void> /*Todo*/ Lightmaps;
+	TagBlock<void> /*Todo*/ LensFlares;
+	TagBlock<void> /*Todo*/ LensFlareMarkers;
+	TagDataReference        ClusterData;
+	TagBlock<void> /*Todo*/ ClusterPortals;
+	TagBlock<void> /*Todo*/ BreakableSurfaces;
+	TagBlock<void> /*Todo*/ FogPlanes;
+	TagBlock<void> /*Todo*/ FogRegions;
+	TagBlock<void> /*Todo*/ FogPalette;
+	TagBlock<void> /*Todo*/ WeatherPalette;
+	TagBlock<void> /*Todo*/ WeatherPolyhedra;
+	TagBlock<void> /*Todo*/ PathfindingSurfaces;
+	TagBlock<void> /*Todo*/ BackgroundSoundPalette;
+	TagBlock<void> /*Todo*/ SoundEnvironmentPalette;
+	TagDataReference        SoundPASData;
+	TagBlock<void> /*Todo*/ Markers;
+	TagBlock<void> /*Todo*/ DetailObjects;
+	TagBlock<void> /*Todo*/ LeafMapLeaves;
+	TagBlock<void> /*Todo*/ LeafMapPortals;
+};
+
 #pragma pack(pop)
 } // namespace Blam
