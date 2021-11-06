@@ -127,7 +127,7 @@ using Vector4f = std::array<float, 4>;
 struct TagDependency
 {
 	TagClass      Class;
-	std::uint32_t PathOffset;
+	std::uint32_t PathVirtualOffset;
 	std::uint32_t PathLength;
 	std::uint32_t TagID;
 };
@@ -138,7 +138,7 @@ struct TagDataReference
 	std::uint32_t Size;
 	std::uint32_t IsExternal;
 	std::uint32_t Offset;
-	std::uint64_t Pointer;
+	std::uint64_t VirtualOffset;
 };
 static_assert(sizeof(TagDataReference) == 20);
 
@@ -154,19 +154,18 @@ template<typename T = void>
 struct TagBlock
 {
 	std::uint32_t Count;
-	std::uint32_t Offset;
+	std::uint32_t VirtualOffset;
 	std::uint32_t Unknown8;
 
 	template<
 		typename U = T,
 		typename = typename std::enable_if_t<std::is_same_v<U, void> == false>>
-	std::span<const U>
-		GetSpan(const void* MapFile, std::uint32_t MapMagic) const
+	std::span<const U> GetSpan(const void* Data, std::uint32_t VitualBase) const
 	{
 		return std::span<const U>(
 			reinterpret_cast<const U*>(
-				reinterpret_cast<const std::byte*>(MapFile)
-				+ (Offset - MapMagic)),
+				reinterpret_cast<const std::byte*>(Data)
+				+ (VirtualOffset - VitualBase)),
 			Count);
 	}
 };
@@ -195,7 +194,7 @@ static_assert(sizeof(MapHeader) == 2048);
 
 struct TagIndexHeader
 {
-	std::uint32_t TagIndexOffset;
+	std::uint32_t TagIndexVirtualOffset;
 	std::uint32_t BaseTag;
 	std::uint32_t ScenarioTagID;
 	std::uint32_t TagCount;
@@ -214,8 +213,8 @@ struct TagIndexEntry
 	TagClass      ClassSecondary;
 	TagClass      ClassTertiary;
 	std::uint32_t TagID;
-	std::uint32_t TagPathOffset;
-	std::uint32_t TagDataOffset;
+	std::uint32_t TagPathVirtualOffset;
+	std::uint32_t TagDataVirtualOffset;
 	std::uint32_t IsExternal;
 	std::uint32_t Unused;
 };
@@ -372,13 +371,13 @@ struct Tag<TagClass::Scenario>
 	{
 		std::uint32_t BSPStart;
 		std::uint32_t BSPSize;
-		std::uint32_t BSPMagic;
+		std::uint32_t BSPVirtualBase;
 		std::uint32_t _PaddingC;
 		TagDependency BSP;
 
 		struct BSPHeader
 		{
-			std::uint32_t Offset;
+			std::uint32_t VirtualOffset;
 			// These are unused on PC
 			std::uint32_t LightmapMaterialCountA;
 			std::uint32_t RenderedVertexOffset;
@@ -400,7 +399,7 @@ struct Tag<TagClass::Scenario>
 			return *reinterpret_cast<
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
 				reinterpret_cast<const std::byte*>(MapFile)
-				+ ((BSPHeader.Offset - BSPMagic) + BSPStart));
+				+ ((BSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart));
 		}
 	};
 	static_assert(sizeof(StructureBSP) == 0x20);

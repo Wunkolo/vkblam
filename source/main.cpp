@@ -74,23 +74,23 @@ int main(int argc, char* argv[])
 
 	std::printf(
 		"Tag Index Header:\n"
-		" - TagArrayOffset:  0x%08X\n"
-		" - BaseTag:         0x%08X\n"
-		" - ScenarioTagID:   0x%08X\n"
-		" - TagCount:        0x%08X\n"
-		" - VertexCount:     0x%08X\n"
-		" - VertexOffset:    0x%08X\n"
-		" - IndexCount:      0x%08X\n"
-		" - IndexOffset:     0x%08X\n"
-		" - ModelDataSize:   0x%08X\n",
-		TagIndexHeader.TagIndexOffset, TagIndexHeader.BaseTag,
+		" - TagIndexVirtualOffset:  0x%08X\n"
+		" - BaseTag:                0x%08X\n"
+		" - ScenarioTagID:          0x%08X\n"
+		" - TagCount:               0x%08X\n"
+		" - VertexCount:            0x%08X\n"
+		" - VertexOffset:           0x%08X\n"
+		" - IndexCount:             0x%08X\n"
+		" - IndexOffset:            0x%08X\n"
+		" - ModelDataSize:          0x%08X\n",
+		TagIndexHeader.TagIndexVirtualOffset, TagIndexHeader.BaseTag,
 		TagIndexHeader.ScenarioTagID, TagIndexHeader.TagCount,
 		TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
 		TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
 		TagIndexHeader.ModelDataSize);
 
-	const std::uint32_t MapMagic
-		= (TagIndexHeader.TagIndexOffset - sizeof(Blam::TagIndexHeader))
+	const std::uint32_t TagHeapVirtualBase
+		= (TagIndexHeader.TagIndexVirtualOffset - sizeof(Blam::TagIndexHeader))
 		- MapHeader.TagIndexOffset;
 
 	const std::span<const Blam::TagIndexEntry> TagArray(
@@ -114,7 +114,8 @@ int main(int argc, char* argv[])
 	{
 		const auto& CurTag  = *CurTagIt->second;
 		const auto& NextTag = *std::next(CurTagIt)->second;
-		const char* Name = MapFile.data() + (CurTag.TagPathOffset - MapMagic);
+		const char* Name    = MapFile.data()
+						 + (CurTag.TagPathVirtualOffset - TagHeapVirtualBase);
 		std::printf(
 			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
 			FormatTagClass(CurTag.ClassPrimary).c_str(),
@@ -125,8 +126,9 @@ int main(int argc, char* argv[])
 		{
 			const std::span<const std::byte> TagData(
 				reinterpret_cast<const std::byte*>(
-					MapFile.data() + (CurTag.TagDataOffset - MapMagic)),
-				NextTag.TagDataOffset - CurTag.TagDataOffset);
+					MapFile.data()
+					+ (CurTag.TagDataVirtualOffset - TagHeapVirtualBase)),
+				NextTag.TagDataVirtualOffset - CurTag.TagDataVirtualOffset);
 			const auto& Scenario
 				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
 					TagData.data());
@@ -139,11 +141,11 @@ int main(int argc, char* argv[])
 			// 		  const Blam::TagBlock<T>& Palette) -> void {
 			// 	std::printf("Iterating Palette: %s\n", Name);
 			// 	for( const auto& CurEntry :
-			// 		 Palette.GetSpan(MapFile.data(), MapMagic) )
+			// 		 Palette.GetSpan(MapFile.data(), TagHeapVirtualBase) )
 			// 	{
 			// 		const char* Name
-			// 			= (MapFile.data() + (CurEntry.PathOffset - MapMagic));
-			// 		std::printf(
+			// 			= (MapFile.data() + (CurEntry.PathOffset -
+			// TagHeapVirtualBase)); 		std::printf(
 			// 			"\t - %s: %08X | \"%s\"\n",
 			// 			FormatTagClass(CurEntry.Class).c_str(), CurEntry.TagID,
 			// 			CurEntry.PathOffset ? Name : "");
@@ -166,8 +168,8 @@ int main(int argc, char* argv[])
 
 			// Iterate BSP
 			std::printf("Iterating BSPs: %s\n", Name);
-			for( const auto& CurBSPEntry :
-				 Scenario.StructureBSPs.GetSpan(MapFile.data(), MapMagic) )
+			for( const auto& CurBSPEntry : Scenario.StructureBSPs.GetSpan(
+					 MapFile.data(), TagHeapVirtualBase) )
 			{
 				const std::span<const std::byte> BSPData(
 					reinterpret_cast<const std::byte*>(
@@ -176,12 +178,13 @@ int main(int argc, char* argv[])
 
 				const char* Name
 					= (MapFile.data()
-					   + (CurBSPEntry.BSP.PathOffset - MapMagic));
+					   + (CurBSPEntry.BSP.PathVirtualOffset
+						  - TagHeapVirtualBase));
 				std::printf(
 					"%s: %08X | \"%s\"\n",
 					FormatTagClass(CurBSPEntry.BSP.Class).c_str(),
 					CurBSPEntry.BSP.TagID,
-					CurBSPEntry.BSP.PathOffset ? Name : "");
+					CurBSPEntry.BSP.PathVirtualOffset ? Name : "");
 
 				const auto& ScenarioBSP = CurBSPEntry.GetBSP(MapFile.data());
 
@@ -196,11 +199,11 @@ int main(int argc, char* argv[])
 
 				// Lightmap
 				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
-						 BSPData.data(), CurBSPEntry.BSPMagic) )
+						 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 				{
 					for( const auto& CurMaterial :
 						 CurLightmap.Materials.GetSpan(
-							 BSPData.data(), CurBSPEntry.BSPMagic) )
+							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 					{
 						struct Vertex
 						{
@@ -213,8 +216,9 @@ int main(int argc, char* argv[])
 						const std::span<const Vertex> VertexData(
 							reinterpret_cast<const Vertex*>(
 								BSPData.data()
-								+ (CurMaterial.UncompressedVertices.Pointer
-								   - CurBSPEntry.BSPMagic)),
+								+ (CurMaterial.UncompressedVertices
+									   .VirtualOffset
+								   - CurBSPEntry.BSPVirtualBase)),
 							CurMaterial.Geometry.VertexBufferCount);
 
 						for( const auto& Test : VertexData )
