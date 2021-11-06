@@ -149,7 +149,8 @@ template<typename T = void>
 struct TagBlock
 {
 	std::uint32_t Count;
-	std::uint64_t Offset;
+	std::uint32_t Offset;
+	std::uint32_t Unknown8;
 
 	template<
 		typename U = T,
