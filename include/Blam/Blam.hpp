@@ -476,7 +476,56 @@ struct Tag<TagClass::ScenarioStructureBsp>
 	TagBlock<void> /*Todo*/ Leaves;
 	TagBlock<void> /*Todo*/ LeafSurfaces;
 	TagBlock<void> /*Todo*/ Surfaces;
-	TagBlock<void> /*Todo*/ Lightmaps;
+
+	struct Lightmap
+	{
+		std::uint16_t LightmapIndex;
+		std::uint16_t Unknown;
+
+		std::byte _Padding4[0x10];
+
+		struct Material
+		{
+			TagDependency Shader;
+			std::uint16_t ShaderPermutation;
+			std::uint16_t Flags;
+
+			std::uint32_t SurfacesIndexStart;
+			std::uint32_t SurfacesCount;
+
+			float         Centroid[3];
+			float         AmbientColor[3];
+			std::uint16_t DistantLightCount;
+			std::uint16_t Unknown36;
+			float         DistantLight0Color[3];
+			float         DistantLight0Direction[3];
+			float         DistantLight1Color[3];
+			float         DistantLight1Direction[3];
+
+			std::byte _Padding68[0xC];
+
+			float         ReflectionTint[4];
+			float         ShadowDirection[3];
+			float         ShadowColor[3];
+			float         Plane[4];
+			std::uint16_t BreakableSurface;
+			std::uint16_t UnknownAE;
+
+			std::uint32_t UnknownB0;
+
+			std::uint32_t VertexCount;
+			std::uint32_t VertexOffset;
+
+			std::uint32_t UnknownBC;
+			std::uint32_t UnknownC0;
+
+			std::byte _PaddingC4[0x3C];
+		};
+		static_assert(sizeof(Material) == 0x100);
+		TagBlock<Material> Materials;
+	};
+	static_assert(sizeof(Lightmap) == 0x20);
+	TagBlock<Lightmap> Lightmaps;
 
 	std::byte _Padding110[0xC];
 

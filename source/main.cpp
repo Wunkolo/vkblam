@@ -194,13 +194,16 @@ int main(int argc, char* argv[])
 					ScenarioBSP.WorldBoundsY[0], ScenarioBSP.WorldBoundsY[1],
 					ScenarioBSP.WorldBoundsZ[0], ScenarioBSP.WorldBoundsZ[1]);
 
-				// Clusters
-				const auto& Clusters = ScenarioBSP.Clusters.GetSpan(
-					BSPData.data(), CurBSPEntry.BSPMagic);
-
-				for( const auto& CurCluster : Clusters )
+				// Lightmap
+				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
+						 BSPData.data(), CurBSPEntry.BSPMagic) )
 				{
-					HexDump(std::as_bytes(std::span(&CurCluster, 1)));
+					for( const auto& CurMaterial :
+						 CurLightmap.Materials.GetSpan(
+							 BSPData.data(), CurBSPEntry.BSPMagic) )
+					{
+						HexDump(std::as_bytes(std::span(&CurMaterial, 1)));
+					}
 				}
 			}
 		}
