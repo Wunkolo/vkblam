@@ -519,7 +519,8 @@ struct Tag<TagClass::ScenarioStructureBsp>
 				std::uint32_t UnknownC;
 				std::uint32_t Unknown10;
 			};
-			VertexBufferReference VertexBuffers[2];
+			VertexBufferReference Geometry;
+			VertexBufferReference LightmapGeometry;
 
 			TagDataReference UncompressedVertices;
 			TagDataReference CompressedVertices;

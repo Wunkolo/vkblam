@@ -202,7 +202,37 @@ int main(int argc, char* argv[])
 						 CurLightmap.Materials.GetSpan(
 							 BSPData.data(), CurBSPEntry.BSPMagic) )
 					{
-						HexDump(std::as_bytes(std::span(&CurMaterial, 1)));
+						struct Vertex
+						{
+							float Position[3];
+							float Normal[3];
+							float Binormal[3];
+							float Tangent[3];
+							float UV[2];
+						};
+						const std::span<const Vertex> VertexData(
+							reinterpret_cast<const Vertex*>(
+								BSPData.data()
+								+ (CurMaterial.UncompressedVertices.Pointer
+								   - CurBSPEntry.BSPMagic)),
+							CurMaterial.Geometry.VertexBufferCount);
+
+						for( const auto& Test : VertexData )
+						{
+							std::printf(
+								"Position: %f %f %f\n"
+								"Normal: %f %f %f\n"
+								"BiNormal: %f %f %f\n"
+								"Tangent: %f %f %f\n"
+								"UV: %f %f\n",
+								Test.Position[0], Test.Position[1],
+								Test.Position[2], Test.Normal[0],
+								Test.Normal[1], Test.Normal[2],
+								Test.Binormal[0], Test.Binormal[1],
+								Test.Binormal[2], Test.Tangent[0],
+								Test.Tangent[1], Test.Tangent[2], Test.UV[0],
+								Test.UV[1]);
+						}
 					}
 				}
 			}
