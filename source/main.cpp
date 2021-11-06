@@ -169,6 +169,11 @@ int main(int argc, char* argv[])
 			for( const auto& CurBSPEntry :
 				 Scenario.StructureBSPs.GetSpan(MapFile.data(), MapMagic) )
 			{
+				const std::span<const std::byte> BSPData(
+					reinterpret_cast<const std::byte*>(
+						MapFile.data() + CurBSPEntry.BSPStart),
+					CurBSPEntry.BSPSize);
+
 				const char* Name
 					= (MapFile.data()
 					   + (CurBSPEntry.BSP.PathOffset - MapMagic));
@@ -188,6 +193,15 @@ int main(int argc, char* argv[])
 					ScenarioBSP.WorldBoundsX[0], ScenarioBSP.WorldBoundsX[1],
 					ScenarioBSP.WorldBoundsY[0], ScenarioBSP.WorldBoundsY[1],
 					ScenarioBSP.WorldBoundsZ[0], ScenarioBSP.WorldBoundsZ[1]);
+
+				// Clusters
+				const auto& Clusters = ScenarioBSP.Clusters.GetSpan(
+					BSPData.data(), CurBSPEntry.BSPMagic);
+
+				for( const auto& CurCluster : Clusters )
+				{
+					HexDump(std::as_bytes(std::span(&CurCluster, 1)));
+				}
 			}
 		}
 	}

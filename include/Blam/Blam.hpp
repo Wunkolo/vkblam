@@ -482,7 +482,29 @@ struct Tag<TagClass::ScenarioStructureBsp>
 
 	TagBlock<void> /*Todo*/ LensFlares;
 	TagBlock<void> /*Todo*/ LensFlareMarkers;
-	TagBlock<void> /*Todo*/ Clusters;
+
+	struct Cluster
+	{
+		std::uint16_t SkyIndex;
+		std::uint16_t FogIndex;
+		std::uint16_t BackgroundSoundIndex;
+		std::uint16_t SoundEnvironmentIndex;
+		std::uint16_t WeatherIndex;
+		std::uint16_t TransitionStructureBSPIndex;
+
+		std::byte _PaddingC[0x1C];
+
+		TagBlock<void> /*Todo*/ PredictedResources;
+		TagBlock<void> /*Todo*/ SubClusters;
+		std::uint16_t           LensFlareMarkersStart;
+		std::uint16_t           LensFlareMarkersCount;
+		TagBlock<std::uint32_t> SurfaceIndices;
+		TagBlock<void> /*Todo*/ Mirrors;
+		TagBlock<std::uint16_t> Portals;
+	};
+	static_assert(sizeof(Cluster) == 0x68);
+	TagBlock<Cluster> Clusters;
+
 	TagDataReference        ClusterData;
 	TagBlock<void> /*Todo*/ ClusterPortals;
 
