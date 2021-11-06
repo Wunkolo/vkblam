@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -118,6 +119,10 @@ enum class TagClass : std::uint32_t
 };
 
 #pragma pack(push, 1)
+
+using Vector2f = std::array<float, 2>;
+using Vector3f = std::array<float, 3>;
+using Vector4f = std::array<float, 4>;
 
 struct TagDependency
 {
@@ -301,7 +306,7 @@ struct Tag<TagClass::Scenario>
 
 	struct PlayerStartingLocation
 	{
-		float         Position[3];
+		Vector3f      Position;
 		float         Facing;
 		std::uint16_t TeamIndex;
 		std::uint16_t _BSPIndex;
@@ -327,7 +332,7 @@ struct Tag<TagClass::Scenario>
 		std::uint16_t DecalIndex;
 		std::int8_t   Yaw;
 		std::int8_t   Pitch;
-		float         Position[3];
+		Vector3f      Position;
 	};
 	static_assert(sizeof(Decal) == 0x10);
 	TagBlock<Decal>         Decals;
@@ -450,20 +455,20 @@ struct Tag<TagClass::ScenarioStructureBsp>
 
 	std::byte _Padding18[0x14];
 
-	float DefaultAmbientColor[3];
+	Vector3f DefaultAmbientColor;
 
 	std::byte _Padding38[0x4];
 
-	float DefaultDistantLight0Color[3];
-	float DefaultDistantLight0Direction[3];
-	float DefaultDistantLight1Color[3];
-	float DefaultDistantLight1Direction[3];
+	Vector3f DefaultDistantLight0Color;
+	Vector3f DefaultDistantLight0Direction;
+	Vector3f DefaultDistantLight1Color;
+	Vector3f DefaultDistantLight1Direction;
 
 	std::byte _Padding6C[0xC];
 
-	float DefaultReflectionTint[4];
-	float DefaultShadowDirection[3];
-	float DefaultShadowColor[3];
+	Vector4f DefaultReflectionTint;
+	Vector3f DefaultShadowDirection;
+	Vector3f DefaultShadowColor;
 
 	std::byte _PaddingA0[0x4];
 
@@ -493,21 +498,21 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			std::uint32_t SurfacesIndexStart;
 			std::uint32_t SurfacesCount;
 
-			float         Centroid[3];
-			float         AmbientColor[3];
+			Vector3f      Centroid;
+			Vector3f      AmbientColor;
 			std::uint16_t DistantLightCount;
 			std::uint16_t Unknown36;
-			float         DistantLight0Color[3];
-			float         DistantLight0Direction[3];
-			float         DistantLight1Color[3];
-			float         DistantLight1Direction[3];
+			Vector3f      DistantLight0Color;
+			Vector3f      DistantLight0Direction;
+			Vector3f      DistantLight1Color;
+			Vector3f      DistantLight1Direction;
 
 			std::byte _Padding68[0xC];
 
-			float         ReflectionTint[4];
-			float         ShadowDirection[3];
-			float         ShadowColor[3];
-			float         Plane[4];
+			Vector4f      ReflectionTint;
+			Vector3f      ShadowDirection;
+			Vector3f      ShadowColor;
+			Vector4f      Plane;
 			std::uint16_t BreakableSurface;
 			std::uint16_t UnknownAE;
 
