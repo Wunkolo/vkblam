@@ -511,15 +511,18 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			std::uint16_t BreakableSurface;
 			std::uint16_t UnknownAE;
 
-			std::uint32_t UnknownB0;
+			struct VertexBufferReference
+			{
+				std::uint32_t Unknown0;
+				std::uint32_t VertexBufferCount;
+				std::uint32_t VertexBufferOffset;
+				std::uint32_t UnknownC;
+				std::uint32_t Unknown10;
+			};
+			VertexBufferReference VertexBuffers[2];
 
-			std::uint32_t VertexCount;
-			std::uint32_t VertexOffset;
-
-			std::uint32_t UnknownBC;
-			std::uint32_t UnknownC0;
-
-			std::byte _PaddingC4[0x3C];
+			TagDataReference UncompressedVertices;
+			TagDataReference CompressedVertices;
 		};
 		static_assert(sizeof(Material) == 0x100);
 		TagBlock<Material> Materials;
