@@ -124,14 +124,14 @@ using Vector2f = std::array<float, 2>;
 using Vector3f = std::array<float, 3>;
 using Vector4f = std::array<float, 4>;
 
-struct TagDependency
+struct TagReference
 {
 	TagClass      Class;
 	std::uint32_t PathVirtualOffset;
 	std::uint32_t PathLength;
 	std::uint32_t TagID;
 };
-static_assert(sizeof(TagDependency) == 0x10);
+static_assert(sizeof(TagReference) == 0x10);
 
 struct TagDataReference
 {
@@ -249,9 +249,9 @@ template<>
 struct Tag<TagClass::Scenario>
 {
 	// Depreciated fields, don't use
-	TagDependency                     _UnusedBSP0;
-	TagDependency                     _UnusedBSP1;
-	TagDependency                     _UnusedSky;
+	TagReference                      _UnusedBSP0;
+	TagReference                      _UnusedBSP1;
+	TagReference                      _UnusedSky;
 	TagBlock<Tag<TagClass::Sky>>      Skies;
 	ScenarioType                      Type;
 	std::uint16_t                     Flags;
@@ -270,10 +270,10 @@ struct Tag<TagClass::Scenario>
 	TagBlock<std::array<char, 32>> ObjectNames;
 	TagBlock<void> /*Todo*/        Scenery;
 
-	// A lot of the palettes are really just TagDependency aligned up to a size
-	// of 0x30. So this is just a utility-wrapper for TagDependency that adds
+	// A lot of the palettes are really just TagReference aligned up to a size
+	// of 0x30. So this is just a utility-wrapper for TagReference that adds
 	// the extra padding
-	struct PaletteEntry : public TagDependency
+	struct PaletteEntry : public TagReference
 	{
 	private:
 		std::byte _Padding10[0x20];
@@ -334,14 +334,14 @@ struct Tag<TagClass::Scenario>
 		Vector3f      Position;
 	};
 	static_assert(sizeof(Decal) == 0x10);
-	TagBlock<Decal>         Decals;
-	TagBlock<TagDependency> DecalPalette;
+	TagBlock<Decal>        Decals;
+	TagBlock<TagReference> DecalPalette;
 
 	TagBlock<PaletteEntry> DetailObjectCollectionPalette;
 
 	std::byte _Padding3CC[0x54];
 
-	TagBlock<TagDependency> ActorPalette;
+	TagBlock<TagReference>  ActorPalette;
 	TagBlock<void> /*Todo*/ Encounters;
 	TagBlock<void> /*Todo*/ CommandLists;
 	TagBlock<void> /*Todo*/ AIAnimationReferences;
@@ -363,9 +363,9 @@ struct Tag<TagClass::Scenario>
 
 	std::byte _Padding508[0x6C];
 
-	TagDependency CustomObjectNames;
-	TagDependency IngameHelpText;
-	TagDependency HudMessages;
+	TagReference CustomObjectNames;
+	TagReference IngameHelpText;
+	TagReference HudMessages;
 
 	struct StructureBSP
 	{
@@ -373,7 +373,7 @@ struct Tag<TagClass::Scenario>
 		std::uint32_t BSPSize;
 		std::uint32_t BSPVirtualBase;
 		std::uint32_t _PaddingC;
-		TagDependency BSP;
+		TagReference  BSP;
 
 		struct BSPHeader
 		{
@@ -448,9 +448,9 @@ static_assert(sizeof(Tag<TagClass::Scenario>) == 0x5B0);
 template<>
 struct Tag<TagClass::ScenarioStructureBsp>
 {
-	TagDependency LightmapTexture;
-	float         VehicleFloor;
-	float         VehicleCeiling;
+	TagReference LightmapTexture;
+	float        VehicleFloor;
+	float        VehicleCeiling;
 
 	std::byte _Padding18[0x14];
 
@@ -490,7 +490,7 @@ struct Tag<TagClass::ScenarioStructureBsp>
 
 		struct Material
 		{
-			TagDependency Shader;
+			TagReference  Shader;
 			std::uint16_t ShaderPermutation;
 			std::uint16_t Flags;
 
