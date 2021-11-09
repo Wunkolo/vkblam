@@ -54,40 +54,40 @@ int main(int argc, char* argv[])
 	const Blam::MapHeader& MapHeader
 		= *reinterpret_cast<const Blam::MapHeader*>(MapFile.data());
 
-	std::printf(
-		"Map Header:\n"
-		" - Version:         0x%08X\n"
-		" - FileSize:        0x%08X\n"
-		" - TagIndexOffset:  0x%08X\n"
-		" - TagIndexSize:    0x%08X\n"
-		" - ScenarioName:    \"%.32s\"\n"
-		" - BuildVersion:    \"%.32s\"\n"
-		" - Type:            0x%08X\n"
-		" - Checksum:        0x%08X\n",
-		MapHeader.Version, MapHeader.FileSize, MapHeader.TagIndexOffset,
-		MapHeader.TagIndexSize, MapHeader.ScenarioName, MapHeader.BuildVersion,
-		MapHeader.Type, MapHeader.Checksum);
+	// std::printf(
+	// 	"Map Header:\n"
+	// 	" - Version:         0x%08X\n"
+	// 	" - FileSize:        0x%08X\n"
+	// 	" - TagIndexOffset:  0x%08X\n"
+	// 	" - TagIndexSize:    0x%08X\n"
+	// 	" - ScenarioName:    \"%.32s\"\n"
+	// 	" - BuildVersion:    \"%.32s\"\n"
+	// 	" - Type:            0x%08X\n"
+	// 	" - Checksum:        0x%08X\n",
+	// 	MapHeader.Version, MapHeader.FileSize, MapHeader.TagIndexOffset,
+	// 	MapHeader.TagIndexSize, MapHeader.ScenarioName, MapHeader.BuildVersion,
+	// 	MapHeader.Type, MapHeader.Checksum);
 
 	const Blam::TagIndexHeader& TagIndexHeader
 		= *reinterpret_cast<const Blam::TagIndexHeader*>(
 			MapFile.data() + MapHeader.TagIndexOffset);
 
-	std::printf(
-		"Tag Index Header:\n"
-		" - TagIndexVirtualOffset:  0x%08X\n"
-		" - BaseTag:                0x%08X\n"
-		" - ScenarioTagID:          0x%08X\n"
-		" - TagCount:               0x%08X\n"
-		" - VertexCount:            0x%08X\n"
-		" - VertexOffset:           0x%08X\n"
-		" - IndexCount:             0x%08X\n"
-		" - IndexOffset:            0x%08X\n"
-		" - ModelDataSize:          0x%08X\n",
-		TagIndexHeader.TagIndexVirtualOffset, TagIndexHeader.BaseTag,
-		TagIndexHeader.ScenarioTagID, TagIndexHeader.TagCount,
-		TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
-		TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
-		TagIndexHeader.ModelDataSize);
+	// std::printf(
+	// 	"Tag Index Header:\n"
+	// 	" - TagIndexVirtualOffset:  0x%08X\n"
+	// 	" - BaseTag:                0x%08X\n"
+	// 	" - ScenarioTagID:          0x%08X\n"
+	// 	" - TagCount:               0x%08X\n"
+	// 	" - VertexCount:            0x%08X\n"
+	// 	" - VertexOffset:           0x%08X\n"
+	// 	" - IndexCount:             0x%08X\n"
+	// 	" - IndexOffset:            0x%08X\n"
+	// 	" - ModelDataSize:          0x%08X\n",
+	// 	TagIndexHeader.TagIndexVirtualOffset, TagIndexHeader.BaseTag,
+	// 	TagIndexHeader.ScenarioTagID, TagIndexHeader.TagCount,
+	// 	TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
+	// 	TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
+	// 	TagIndexHeader.ModelDataSize);
 
 	const std::uint32_t TagHeapVirtualBase
 		= (TagIndexHeader.TagIndexVirtualOffset - sizeof(Blam::TagIndexHeader))
@@ -114,13 +114,14 @@ int main(int argc, char* argv[])
 	{
 		const auto& CurTag  = *CurTagIt->second;
 		const auto& NextTag = *std::next(CurTagIt)->second;
-		const char* Name    = MapFile.data()
-						 + (CurTag.TagPathVirtualOffset - TagHeapVirtualBase);
-		std::printf(
-			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
-			FormatTagClass(CurTag.ClassPrimary).c_str(),
-			FormatTagClass(CurTag.ClassSecondary).c_str(),
-			FormatTagClass(CurTag.ClassTertiary).c_str(), Name);
+		const char* TagName
+			= MapFile.data()
+			+ (CurTag.TagPathVirtualOffset - TagHeapVirtualBase);
+		// std::printf(
+		// 	"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
+		// 	FormatTagClass(CurTag.ClassPrimary).c_str(),
+		// 	FormatTagClass(CurTag.ClassSecondary).c_str(),
+		// 	FormatTagClass(CurTag.ClassTertiary).c_str(), TagName);
 
 		if( !CurTag.IsExternal )
 		{
@@ -166,9 +167,8 @@ int main(int argc, char* argv[])
 			// 	"DetailObjectCollectionPalette",
 			// 	Scenario.DetailObjectCollectionPalette);
 
-			std::size_t VertCount = 0;
 			// Iterate BSP
-			std::printf("Iterating BSPs: %s\n", Name);
+			// std::printf("Iterating BSPs: %s\n", TagName);
 			for( const auto& CurBSPEntry : Scenario.StructureBSPs.GetSpan(
 					 MapFile.data(), TagHeapVirtualBase) )
 			{
@@ -177,15 +177,13 @@ int main(int argc, char* argv[])
 						MapFile.data() + CurBSPEntry.BSPStart),
 					CurBSPEntry.BSPSize);
 
-				const char* Name
+				const char* BSPName
 					= (MapFile.data()
 					   + (CurBSPEntry.BSP.PathVirtualOffset
 						  - TagHeapVirtualBase));
 				std::printf(
-					"%s: %08X | \"%s\"\n",
-					FormatTagClass(CurBSPEntry.BSP.Class).c_str(),
-					CurBSPEntry.BSP.TagID,
-					CurBSPEntry.BSP.PathVirtualOffset ? Name : "");
+					"g %s %s \n",
+					CurBSPEntry.BSP.PathVirtualOffset ? BSPName : "", TagName);
 
 				const auto& ScenarioBSP = CurBSPEntry.GetBSP(MapFile.data());
 
@@ -197,6 +195,9 @@ int main(int argc, char* argv[])
 				// 	ScenarioBSP.WorldBoundsX[0], ScenarioBSP.WorldBoundsX[1],
 				// 	ScenarioBSP.WorldBoundsY[0], ScenarioBSP.WorldBoundsY[1],
 				// 	ScenarioBSP.WorldBoundsZ[0], ScenarioBSP.WorldBoundsZ[1]);
+
+				const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
+					BSPData.data(), CurBSPEntry.BSPVirtualBase);
 
 				// Lightmap
 				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
@@ -226,28 +227,33 @@ int main(int argc, char* argv[])
 						{
 							std::printf(
 								"v %f %f %f\n", Test.Position[0],
-								Test.Position[2], Test.Position[1]);
-							++VertCount;
-							// std::printf(
-							// 	"Position: %f %f %f\n"
-							// 	"Normal: %f %f %f\n"
-							// 	"BiNormal: %f %f %f\n"
-							// 	"Tangent: %f %f %f\n"
-							// 	"UV: %f %f\n",
-							// 	Test.Position[0], Test.Position[1],
-							// 	Test.Position[2], Test.Normal[0],
-							// 	Test.Normal[1], Test.Normal[2],
-							// 	Test.Binormal[0], Test.Binormal[1],
-							// 	Test.Binormal[2], Test.Tangent[0],
-							// 	Test.Tangent[1], Test.Tangent[2], Test.UV[0],
-							// 	Test.UV[1]);
+								Test.Position[1], Test.Position[2]);
 						}
 					}
 				}
-			}
-			for( std::size_t i = 0; i < VertCount; ++i )
-			{
-				std::printf("p %zu\n", i);
+
+				std::size_t IndexStart = 1;
+				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
+						 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
+				{
+					for( const auto& CurMaterial :
+						 CurLightmap.Materials.GetSpan(
+							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
+					{
+						const auto CurSurfaces = Surfaces.subspan(
+							CurMaterial.SurfacesIndexStart,
+							CurMaterial.SurfacesCount);
+
+						for( const auto& CurSurface : CurSurfaces )
+						{
+							std::printf(
+								"f %u %u %u\n", IndexStart + CurSurface[0],
+								IndexStart + CurSurface[1],
+								IndexStart + CurSurface[2]);
+						}
+						IndexStart += CurMaterial.Geometry.VertexBufferCount;
+					}
+				}
 			}
 		}
 	}

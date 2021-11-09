@@ -479,7 +479,9 @@ struct Tag<TagClass::ScenarioStructureBsp>
 	float                   WorldBoundsZ[2];
 	TagBlock<void> /*Todo*/ Leaves;
 	TagBlock<void> /*Todo*/ LeafSurfaces;
-	TagBlock<void> /*Todo*/ Surfaces;
+
+	using Surface = std::array<std::uint16_t, 3>;
+	TagBlock<Surface> Surfaces;
 
 	struct Lightmap
 	{
