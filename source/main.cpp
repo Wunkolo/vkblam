@@ -166,6 +166,7 @@ int main(int argc, char* argv[])
 			// 	"DetailObjectCollectionPalette",
 			// 	Scenario.DetailObjectCollectionPalette);
 
+			std::size_t VertCount = 0;
 			// Iterate BSP
 			std::printf("Iterating BSPs: %s\n", Name);
 			for( const auto& CurBSPEntry : Scenario.StructureBSPs.GetSpan(
@@ -188,14 +189,14 @@ int main(int argc, char* argv[])
 
 				const auto& ScenarioBSP = CurBSPEntry.GetBSP(MapFile.data());
 
-				std::printf(
-					"Bounds:\n"
-					"\tX:[%12.4f, %12.4f]\n"
-					"\tY:[%12.4f, %12.4f]\n"
-					"\tZ:[%12.4f, %12.4f]\n",
-					ScenarioBSP.WorldBoundsX[0], ScenarioBSP.WorldBoundsX[1],
-					ScenarioBSP.WorldBoundsY[0], ScenarioBSP.WorldBoundsY[1],
-					ScenarioBSP.WorldBoundsZ[0], ScenarioBSP.WorldBoundsZ[1]);
+				// std::printf(
+				// 	"Bounds:\n"
+				// 	"\tX:[%12.4f, %12.4f]\n"
+				// 	"\tY:[%12.4f, %12.4f]\n"
+				// 	"\tZ:[%12.4f, %12.4f]\n",
+				// 	ScenarioBSP.WorldBoundsX[0], ScenarioBSP.WorldBoundsX[1],
+				// 	ScenarioBSP.WorldBoundsY[0], ScenarioBSP.WorldBoundsY[1],
+				// 	ScenarioBSP.WorldBoundsZ[0], ScenarioBSP.WorldBoundsZ[1]);
 
 				// Lightmap
 				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
@@ -224,21 +225,29 @@ int main(int argc, char* argv[])
 						for( const auto& Test : VertexData )
 						{
 							std::printf(
-								"Position: %f %f %f\n"
-								"Normal: %f %f %f\n"
-								"BiNormal: %f %f %f\n"
-								"Tangent: %f %f %f\n"
-								"UV: %f %f\n",
-								Test.Position[0], Test.Position[1],
-								Test.Position[2], Test.Normal[0],
-								Test.Normal[1], Test.Normal[2],
-								Test.Binormal[0], Test.Binormal[1],
-								Test.Binormal[2], Test.Tangent[0],
-								Test.Tangent[1], Test.Tangent[2], Test.UV[0],
-								Test.UV[1]);
+								"v %f %f %f\n", Test.Position[0],
+								Test.Position[2], Test.Position[1]);
+							++VertCount;
+							// std::printf(
+							// 	"Position: %f %f %f\n"
+							// 	"Normal: %f %f %f\n"
+							// 	"BiNormal: %f %f %f\n"
+							// 	"Tangent: %f %f %f\n"
+							// 	"UV: %f %f\n",
+							// 	Test.Position[0], Test.Position[1],
+							// 	Test.Position[2], Test.Normal[0],
+							// 	Test.Normal[1], Test.Normal[2],
+							// 	Test.Binormal[0], Test.Binormal[1],
+							// 	Test.Binormal[2], Test.Tangent[0],
+							// 	Test.Tangent[1], Test.Tangent[2], Test.UV[0],
+							// 	Test.UV[1]);
 						}
 					}
 				}
+			}
+			for( std::size_t i = 0; i < VertCount; ++i )
+			{
+				std::printf("p %zu\n", i);
 			}
 		}
 	}
