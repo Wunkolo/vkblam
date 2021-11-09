@@ -142,13 +142,6 @@ struct TagDataReference
 };
 static_assert(sizeof(TagDataReference) == 20);
 
-struct Reflexive
-{
-	std::uint32_t Count;
-	std::uint32_t Offset;
-	std::uint32_t UnknownC;
-};
-
 // Header for variable-sized array of data in a tag
 template<typename T = void>
 struct TagBlock
