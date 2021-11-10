@@ -226,8 +226,13 @@ int main(int argc, char* argv[])
 						for( const auto& Test : VertexData )
 						{
 							std::printf(
-								"v %f %f %f\n", Test.Position[0],
-								Test.Position[1], Test.Position[2]);
+								"v %f %f %f\n"
+								"vn %f %f %f\n"
+								"vt %f %f\n",
+								Test.Position[0], Test.Position[1],
+								Test.Position[2], Test.Normal[0],
+								Test.Normal[1], Test.Normal[2], Test.UV[0],
+								Test.UV[1]);
 						}
 					}
 				}
@@ -247,8 +252,15 @@ int main(int argc, char* argv[])
 						for( const auto& CurSurface : CurSurfaces )
 						{
 							std::printf(
-								"f %u %u %u\n", IndexStart + CurSurface[0],
+								"f %u/%u/%u %u/%u/%u %u/%u/%u\n",
+								IndexStart + CurSurface[0],
+								IndexStart + CurSurface[0],
+								IndexStart + CurSurface[0],
 								IndexStart + CurSurface[1],
+								IndexStart + CurSurface[1],
+								IndexStart + CurSurface[1],
+								IndexStart + CurSurface[2],
+								IndexStart + CurSurface[2],
 								IndexStart + CurSurface[2]);
 						}
 						IndexStart += CurMaterial.Geometry.VertexBufferCount;
