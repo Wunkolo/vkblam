@@ -5,7 +5,7 @@
 
 namespace Blam
 {
-
+#pragma pack(push, 1)
 template<TagClass Class>
 struct Tag
 {
@@ -413,5 +413,5 @@ static_assert(
 	offsetof(Tag<TagClass::ScenarioStructureBsp>, LeafMapLeaves) == 0x270);
 
 static_assert(sizeof(Tag<TagClass::ScenarioStructureBsp>) == (0x288));
-
+#pragma pack(pop)
 } // namespace Blam
