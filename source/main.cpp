@@ -51,21 +51,15 @@ int main(int argc, char* argv[])
 		= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
 		BaseTagPtr )
 	{
-		const auto& CurTag = *BaseTagPtr;
-		const char* TagName
-			= MapFile.data()
-			+ (CurTag.TagPathVirtualOffset - CurMap.TagHeapVirtualBase);
+		const auto&            CurTag = *BaseTagPtr;
+		const std::string_view TagName
+			= CurMap.GetTagName(CurMap.TagIndexHeader.BaseTag);
 
-		if( !CurTag.IsExternal )
+		if( const auto ScenarioPtr = CurMap.GetTag<Blam::TagClass::Scenario>(
+				CurMap.TagIndexHeader.BaseTag);
+			ScenarioPtr )
 		{
-			const std::byte* TagData(reinterpret_cast<const std::byte*>(
-				MapFile.data()
-				+ (CurTag.TagDataVirtualOffset - CurMap.TagHeapVirtualBase)));
-
-			const auto& Scenario
-				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
-					TagData);
-
+			const auto& Scenario = *ScenarioPtr;
 			// Iterate BSP
 			// std::printf("Iterating BSPs: %s\n", TagName);
 			for( const auto& CurBSPEntry : Scenario.StructureBSPs.GetSpan(

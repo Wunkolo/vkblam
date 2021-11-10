@@ -30,6 +30,33 @@ public:
 	std::span<const Blam::TagIndexEntry> GetTagIndexArray() const;
 
 	const TagIndexEntry* GetTagIndexEntry(std::uint32_t TagID) const;
+
+	template<TagClass TagClassT>
+	const Tag<TagClassT>* GetTag(std::uint32_t TagID) const
+	{
+		const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(TagID);
+		if( !TagIndexEntryPtr )
+		{
+			return nullptr;
+		}
+
+		return reinterpret_cast<const Blam::Tag<TagClassT>*>(
+			MapData.data()
+			+ (TagIndexEntryPtr->TagDataVirtualOffset - TagHeapVirtualBase));
+	}
+
+	std::string_view GetTagName(std::uint32_t TagID) const
+	{
+		const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(TagID);
+		if( !TagIndexEntryPtr )
+		{
+			return {};
+		}
+
+		return std::string_view(
+			reinterpret_cast<const char*>(MapData.data())
+			+ (TagIndexEntryPtr->TagPathVirtualOffset - TagHeapVirtualBase));
+	}
 };
 
 } // namespace Blam
