@@ -23,23 +23,23 @@ find_package( Vulkan REQUIRED )
 
 add_subdirectory( external/mio )
 
+### blam
 add_library(
 	blam
 	source/Blam/Blam.cpp
 	source/Blam/Util.cpp
 )
-
 target_include_directories(
 	blam
 	PRIVATE
 	include
 )
 
+### vkblam
 add_executable(
 	vkblam
 	source/main.cpp
 )
-
 target_include_directories(
 	vkblam
 	PRIVATE

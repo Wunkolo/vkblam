@@ -40,8 +40,8 @@ int main(int argc, char* argv[])
 
 	auto MapFile = mio::mmap_source(argv[1]);
 
-	const Blam::MapHeader& MapHeader
-		= *reinterpret_cast<const Blam::MapHeader*>(MapFile.data());
+	Blam::MapFile CurMap(std::span<const std::byte>(
+		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
 
 	// std::printf(
 	// 	"Map Header:\n"
@@ -56,10 +56,6 @@ int main(int argc, char* argv[])
 	// 	MapHeader.Version, MapHeader.FileSize, MapHeader.TagIndexOffset,
 	// 	MapHeader.TagIndexSize, MapHeader.ScenarioName, MapHeader.BuildVersion,
 	// 	MapHeader.Type, MapHeader.Checksum);
-
-	const Blam::TagIndexHeader& TagIndexHeader
-		= *reinterpret_cast<const Blam::TagIndexHeader*>(
-			MapFile.data() + MapHeader.TagIndexOffset);
 
 	// std::printf(
 	// 	"Tag Index Header:\n"
@@ -78,34 +74,24 @@ int main(int argc, char* argv[])
 	// 	TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
 	// 	TagIndexHeader.ModelDataSize);
 
-	const std::uint32_t TagHeapVirtualBase
-		= (TagIndexHeader.TagIndexVirtualOffset - sizeof(Blam::TagIndexHeader))
-		- MapHeader.TagIndexOffset;
-
-	const std::span<const Blam::TagIndexEntry> TagArray(
-		reinterpret_cast<const Blam::TagIndexEntry*>(
-			MapFile.data() + MapHeader.TagIndexOffset
-			+ sizeof(Blam::TagIndexHeader)),
-		TagIndexHeader.TagCount);
-
 	// Acceleration structure for fast tag lookups
 	// TagID -> TagIndexEntry
 	std::map<std::uint32_t, const Blam::TagIndexEntry*> TagIndexLUT;
 
-	for( const auto& CurTag : TagArray )
+	for( const auto& CurTag : CurMap.GetTagArray() )
 	{
 		TagIndexLUT[CurTag.TagID] = &CurTag;
 	}
 
 	// Find the base-tag
-	if( const auto CurTagIt = TagIndexLUT.find(TagIndexHeader.BaseTag);
+	if( const auto CurTagIt = TagIndexLUT.find(CurMap.TagIndexHeader.BaseTag);
 		CurTagIt != TagIndexLUT.end() )
 	{
 		const auto& CurTag  = *CurTagIt->second;
 		const auto& NextTag = *std::next(CurTagIt)->second;
 		const char* TagName
 			= MapFile.data()
-			+ (CurTag.TagPathVirtualOffset - TagHeapVirtualBase);
+			+ (CurTag.TagPathVirtualOffset - CurMap.TagHeapVirtualBase);
 		std::printf(
 			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
 			Blam::FormatTagClass(CurTag.ClassPrimary).c_str(),
@@ -117,7 +103,8 @@ int main(int argc, char* argv[])
 			const std::span<const std::byte> TagData(
 				reinterpret_cast<const std::byte*>(
 					MapFile.data()
-					+ (CurTag.TagDataVirtualOffset - TagHeapVirtualBase)),
+					+ (CurTag.TagDataVirtualOffset
+					   - CurMap.TagHeapVirtualBase)),
 				NextTag.TagDataVirtualOffset - CurTag.TagDataVirtualOffset);
 			const auto& Scenario
 				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
@@ -159,7 +146,7 @@ int main(int argc, char* argv[])
 			// Iterate BSP
 			// std::printf("Iterating BSPs: %s\n", TagName);
 			for( const auto& CurBSPEntry : Scenario.StructureBSPs.GetSpan(
-					 MapFile.data(), TagHeapVirtualBase) )
+					 MapFile.data(), CurMap.TagHeapVirtualBase) )
 			{
 				const std::span<const std::byte> BSPData(
 					reinterpret_cast<const std::byte*>(
@@ -169,7 +156,7 @@ int main(int argc, char* argv[])
 				const char* BSPName
 					= (MapFile.data()
 					   + (CurBSPEntry.BSP.PathVirtualOffset
-						  - TagHeapVirtualBase));
+						  - CurMap.TagHeapVirtualBase));
 				std::printf(
 					"g %s %s \n",
 					CurBSPEntry.BSP.PathVirtualOffset ? BSPName : "", TagName);
