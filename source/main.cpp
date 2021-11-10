@@ -43,6 +43,7 @@ int main(int argc, char* argv[])
 	Blam::MapFile CurMap(std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
 
+	std::puts(Blam::ToString(CurMap.MapHeader).c_str());
 	// std::printf(
 	// 	"Map Header:\n"
 	// 	" - Version:         0x%08X\n"
