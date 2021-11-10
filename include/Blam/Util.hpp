@@ -16,4 +16,5 @@ const char* ToString(const ScenarioType& Value);
 
 std::string ToString(const MapHeader& Value);
 std::string ToString(const TagIndexHeader& Value);
+std::string ToString(const TagIndexEntry& Value);
 } // namespace Blam

@@ -45,6 +45,12 @@ int main(int argc, char* argv[])
 	std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
 	std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
 
+	for( const auto& CurTag : CurMap.GetTagArray() )
+	{
+		std::fputs(Blam::ToString(CurTag).c_str(), stdout);
+	}
+	return EXIT_SUCCESS;
+
 	// Acceleration structure for fast tag lookups
 	// TagID -> TagIndexEntry
 	std::map<std::uint32_t, const Blam::TagIndexEntry*> TagIndexLUT;

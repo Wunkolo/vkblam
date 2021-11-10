@@ -67,14 +67,14 @@ std::string ToString(const MapHeader& Value)
 {
 	return FormatString(
 		"Version: %s\n"
-		"FileSize: %d\n"
-		"PaddingLength: %d\n"
-		"TagIndexOffset: %08x\n"
-		"TagIndexSize: %d\n"
-		"ScenarioName: %.32s\n"
-		"BuildVersion: %.32s\n"
+		"FileSize: 0x%08x\n"
+		"PaddingLength: 0x%08x\n"
+		"TagIndexOffset: 0x%08x\n"
+		"TagIndexSize: %u\n"
+		"ScenarioName: \"%.32s\"\n"
+		"BuildVersion: \"%.32s\"\n"
 		"Type: %s\n"
-		"Checksum: %08x\n",
+		"Checksum: 0x%08x\n",
 		ToString(Value.Version), Value.FileSize, Value.PaddingLength,
 		Value.TagIndexOffset, Value.TagIndexSize, Value.ScenarioName,
 		Value.BuildVersion, ToString(Value.Type), Value.Checksum);
@@ -83,17 +83,34 @@ std::string ToString(const MapHeader& Value)
 std::string ToString(const TagIndexHeader& Value)
 {
 	return FormatString(
-		"TagIndexVirtualOffset: %u\n"
-		"BaseTag: %u\n"
-		"ScenarioTagID: %u\n"
+		"TagIndexVirtualOffset: 0x%08x\n"
+		"BaseTag: 0x%08x\n"
+		"ScenarioTagID: 0x%08x\n"
 		"TagCount: %u\n"
 		"VertexCount: %u\n"
-		"VertexOffset: %u\n"
+		"VertexOffset: 0x%08x\n"
 		"IndexCount: %u\n"
-		"IndexOffset: %u\n"
+		"IndexOffset: 0x%08x\n"
 		"ModelDataSize: %u\n",
 		Value.TagIndexVirtualOffset, Value.BaseTag, Value.ScenarioTagID,
 		Value.TagCount, Value.VertexCount, Value.VertexOffset, Value.IndexCount,
 		Value.IndexOffset, Value.ModelDataSize);
+}
+
+std::string ToString(const TagIndexEntry& Value)
+{
+	return FormatString(
+		"ClassPrimary: %.4s\n"
+		"ClassSecondary: %.4s\n"
+		"ClassTertiary: %.4s\n"
+		"TagID: 0x%08x\n"
+		"TagPathVirtualOffset: 0x%08x\n"
+		"TagDataVirtualOffset: 0x%08x\n"
+		"IsExternal: %s\n",
+		FormatTagClass(Value.ClassPrimary).c_str(),
+		FormatTagClass(Value.ClassSecondary).c_str(),
+		FormatTagClass(Value.ClassTertiary).c_str(), Value.TagID,
+		Value.TagPathVirtualOffset, Value.TagDataVirtualOffset,
+		Value.IsExternal ? "true" : "false");
 }
 } // namespace Blam
