@@ -30,17 +30,6 @@ void HexDump(const std::span<const std::byte>& Data, std::uint8_t Columns = 16)
 	}
 }
 
-std::string FormatTagClass(Blam::TagClass Class)
-{
-	std::uint32_t TagStr = static_cast<std::uint32_t>(Class);
-	if( Class == Blam::TagClass::None )
-	{
-		TagStr = '-' * 0x01010101;
-	}
-	TagStr = __builtin_bswap32(TagStr);
-	return std::string(reinterpret_cast<const char*>(&TagStr), 4);
-}
-
 int main(int argc, char* argv[])
 {
 	if( argc < 2 )
@@ -117,11 +106,11 @@ int main(int argc, char* argv[])
 		const char* TagName
 			= MapFile.data()
 			+ (CurTag.TagPathVirtualOffset - TagHeapVirtualBase);
-		// std::printf(
-		// 	"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
-		// 	FormatTagClass(CurTag.ClassPrimary).c_str(),
-		// 	FormatTagClass(CurTag.ClassSecondary).c_str(),
-		// 	FormatTagClass(CurTag.ClassTertiary).c_str(), TagName);
+		std::printf(
+			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
+			Blam::FormatTagClass(CurTag.ClassPrimary).c_str(),
+			Blam::FormatTagClass(CurTag.ClassSecondary).c_str(),
+			Blam::FormatTagClass(CurTag.ClassTertiary).c_str(), TagName);
 
 		if( !CurTag.IsExternal )
 		{
