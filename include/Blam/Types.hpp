@@ -6,7 +6,6 @@
 #include <span>
 
 #include "Enums.hpp"
-#include "Tags.hpp"
 
 namespace Blam
 {
