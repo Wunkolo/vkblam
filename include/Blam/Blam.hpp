@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <type_traits>
 
@@ -26,7 +27,9 @@ public:
 	const Blam::TagIndexHeader& TagIndexHeader;
 	const std::uint32_t         TagHeapVirtualBase;
 
-	std::span<const Blam::TagIndexEntry> GetTagArray() const;
+	std::span<const Blam::TagIndexEntry> GetTagIndexArray() const;
+
+	const TagIndexEntry* GetTagIndexEntry(std::uint32_t TagID) const;
 };
 
 } // namespace Blam

@@ -1,3 +1,4 @@
+#include "Blam/Util.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -45,80 +46,25 @@ int main(int argc, char* argv[])
 	std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
 	std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
 
-	for( const auto& CurTag : CurMap.GetTagArray() )
-	{
-		std::fputs(Blam::ToString(CurTag).c_str(), stdout);
-	}
-	return EXIT_SUCCESS;
-
-	// Acceleration structure for fast tag lookups
-	// TagID -> TagIndexEntry
-	std::map<std::uint32_t, const Blam::TagIndexEntry*> TagIndexLUT;
-
-	for( const auto& CurTag : CurMap.GetTagArray() )
-	{
-		TagIndexLUT[CurTag.TagID] = &CurTag;
-	}
-
 	// Find the base-tag
-	if( const auto CurTagIt = TagIndexLUT.find(CurMap.TagIndexHeader.BaseTag);
-		CurTagIt != TagIndexLUT.end() )
+	if( const auto BaseTagPtr
+		= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
+		BaseTagPtr )
 	{
-		const auto& CurTag  = *CurTagIt->second;
-		const auto& NextTag = *std::next(CurTagIt)->second;
+		const auto& CurTag = *BaseTagPtr;
 		const char* TagName
 			= MapFile.data()
 			+ (CurTag.TagPathVirtualOffset - CurMap.TagHeapVirtualBase);
-		std::printf(
-			"%08X {%.4s %.4s %.4s} \"%s\"\n", CurTag.TagID,
-			Blam::FormatTagClass(CurTag.ClassPrimary).c_str(),
-			Blam::FormatTagClass(CurTag.ClassSecondary).c_str(),
-			Blam::FormatTagClass(CurTag.ClassTertiary).c_str(), TagName);
 
 		if( !CurTag.IsExternal )
 		{
-			const std::span<const std::byte> TagData(
-				reinterpret_cast<const std::byte*>(
-					MapFile.data()
-					+ (CurTag.TagDataVirtualOffset
-					   - CurMap.TagHeapVirtualBase)),
-				NextTag.TagDataVirtualOffset - CurTag.TagDataVirtualOffset);
+			const std::byte* TagData(reinterpret_cast<const std::byte*>(
+				MapFile.data()
+				+ (CurTag.TagDataVirtualOffset - CurMap.TagHeapVirtualBase)));
+
 			const auto& Scenario
 				= *reinterpret_cast<const Blam::Tag<Blam::TagClass::Scenario>*>(
-					TagData.data());
-			// HexDump(TagData);
-
-			// For iterating simple tag-ref palettes
-			// auto IteratePalette
-			// 	= [&]<typename T>(
-			// 		  const char*              Name,
-			// 		  const Blam::TagBlock<T>& Palette) -> void {
-			// 	std::printf("Iterating Palette: %s\n", Name);
-			// 	for( const auto& CurEntry :
-			// 		 Palette.GetSpan(MapFile.data(), TagHeapVirtualBase) )
-			// 	{
-			// 		const char* Name
-			// 			= (MapFile.data() + (CurEntry.PathOffset -
-			// TagHeapVirtualBase)); 		std::printf(
-			// 			"\t - %s: %08X | \"%s\"\n",
-			// 			FormatTagClass(CurEntry.Class).c_str(), CurEntry.TagID,
-			// 			CurEntry.PathOffset ? Name : "");
-			// 	}
-			// };
-			// IteratePalette("SceneryPalette", Scenario.SceneryPalette);
-			// IteratePalette("BipedPalette", Scenario.BipedPalette);
-			// IteratePalette("VehiclePalette", Scenario.VehiclePalette);
-			// IteratePalette("EquipmentPalette", Scenario.EquipmentPalette);
-			// IteratePalette("WeaponPalette", Scenario.WeaponPalette);
-			// IteratePalette("MachinePalette", Scenario.MachinePalette);
-			// IteratePalette("ControlPalette", Scenario.ControlPalette);
-			// IteratePalette("LightFixturePalette",
-			// Scenario.LightFixturePalette);
-			// IteratePalette("SoundSceneryPalette",
-			// Scenario.SoundSceneryPalette); IteratePalette("DecalPalette",
-			// Scenario.DecalPalette); IteratePalette(
-			// 	"DetailObjectCollectionPalette",
-			// 	Scenario.DetailObjectCollectionPalette);
+					TagData);
 
 			// Iterate BSP
 			// std::printf("Iterating BSPs: %s\n", TagName);
