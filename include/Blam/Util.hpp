@@ -8,6 +8,7 @@
 
 namespace Blam
 {
+
 std::string FormatTagClass(Blam::TagClass Class);
 
 // Enums

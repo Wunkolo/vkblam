@@ -54,90 +54,115 @@ enum class BitmapFormat : std::uint16_t
 	P8       = 0x11,
 };
 
+
+template<std::size_t N>
+struct FourCC{
+	std::uint32_t Value;
+
+	constexpr FourCC(	const char (&Identifier)[N])
+		: Value(0)
+	{
+		static_assert(N == 5, "Tag must be 4 characters");
+		Value = (
+			  (Identifier[3] <<  0)
+			| (Identifier[2] <<  8)
+			| (Identifier[1] << 16)
+			| (Identifier[0] << 24)
+		);
+	}
+
+};
+
+template<FourCC Code>
+constexpr std::uint32_t operator""_u32()
+{
+	return Code.Value;
+}
+
 enum class TagClass : std::uint32_t
 {
-	None                             = 4294967295,
-	Null                             = 0000000000,
-	Actor                            = 1633907826,
-	ActorVariant                     = 1633907830,
-	Antenna                          = 1634628641,
-	Biped                            = 1651077220,
-	Bitmap                           = 1651078253,
-	ContinuousDamageEffect           = 1667525991,
-	ModelCollisionGeometry           = 1668246636,
-	ColorTable                       = 1668246639,
-	Contrail                         = 1668247156,
-	DeviceControl                    = 1668575852,
-	Decal                            = 1684366177,
-	UiWidgetDefinition               = 1147489377,
-	InputDeviceDefaults              = 1684371043,
-	Device                           = 1684371049,
-	DetailObjectCollection           = 1685021283,
-	Effect                           = 1701209701,
-	Equipment                        = 1701931376,
-	Flag                             = 1718378855,
-	Fog                              = 1718576928,
-	Font                             = 1718578804,
-	MaterialEffects                  = 1718579060,
-	Garbage                          = 1734439522,
-	Glow                             = 1735161633,
-	GrenadeHudInterface              = 1735551081,
-	HudMessageText                   = 1752003616,
-	HudNumber                        = 1752523811,
-	HudGlobals                       = 1752523879,
-	Item                             = 1769235821,
-	ItemCollection                   = 1769237859,
-	DamageEffect                     = 1785754657,
-	LensFlare                        = 1818586739,
-	Lightning                        = 1701602659,
-	DeviceLightFixture               = 1818846825,
-	Light                            = 1818847080,
-	SoundLooping                     = 1819504228,
-	DeviceMachine                    = 1835098984,
-	Globals                          = 1835103335,
-	Meter                            = 1835365490,
-	LightVolume                      = 1835496242,
-	Gbxmodel                         = 1836016690,
-	Model                            = 1836016741,
-	MultiplayerScenarioDescription   = 1836084345,
-	PreferencesNetworkGame           = 1852272754,
-	Object                           = 1868720741,
-	Particle                         = 1885434484,
-	ParticleSystem                   = 1885566060,
-	Physics                          = 1885895027,
-	Placeholder                      = 1886151011,
-	PointPhysics                     = 1886414969,
-	Projectile                       = 1886547818,
-	WeatherParticleSystem            = 1918986606,
-	ScenarioStructureBsp             = 1935831920,
-	Scenery                          = 1935893870,
-	ShaderTransparentChicagoExtended = 1935893880,
-	ShaderTransparentChicago         = 1935894633,
-	Scenario                         = 1935896178,
-	ShaderEnvironment                = 1936027254,
-	ShaderTransparentGlass           = 1936157793,
-	Shader                           = 1936221298,
-	Sky                              = 1936423200,
-	ShaderTransparentMeter           = 1936549236,
-	Sound                            = 1936614433,
-	SoundEnvironment                 = 1936614501,
-	ShaderModel                      = 1936683887,
-	ShaderTransparentGeneric         = 1936684146,
-	UiWidgetCollection               = 1399813484,
-	ShaderTransparentPlasma          = 1936747617,
-	SoundScenery                     = 1936941925,
-	StringList                       = 1937011235,
-	ShaderTransparentWater           = 1937203572,
-	TagCollection                    = 1952540515,
-	CameraTrack                      = 1953653099,
-	Dialogue                         = 1969515623,
-	UnitHudInterface                 = 1970169961,
-	Unit                             = 1970170228,
-	UnicodeStringList                = 1970500722,
-	VirtualKeyboard                  = 1986227065,
-	Vehicle                          = 1986357353,
-	Weapon                           = 2003132784,
-	Wind                             = 2003398244,
-	WeaponHudInterface               = 2003855465,
+	None                             = 0xFFFFFFFF, // 4294967295
+	Null                             = 0x00000000, // 0000000000
+	Actor                            = "actr"_u32, // 1633907826
+	ActorVariant                     = "actv"_u32, // 1633907830
+	Antenna                          = "ant!"_u32, // 1634628641
+	Biped                            = "bipd"_u32, // 1651077220
+	Bitmap                           = "bitm"_u32, // 1651078253
+	ContinuousDamageEffect           = "cdmg"_u32, // 1667525991
+	ModelCollisionGeometry           = "coll"_u32, // 1668246636
+	ColorTable                       = "colo"_u32, // 1668246639
+	Contrail                         = "cont"_u32, // 1668247156
+	DeviceControl                    = "ctrl"_u32, // 1668575852
+	Decal                            = "deca"_u32, // 1684366177
+	UiWidgetDefinition               = "DeLa"_u32, // 1147489377
+	InputDeviceDefaults              = "devc"_u32, // 1684371043
+	Device                           = "devi"_u32, // 1684371049
+	DetailObjectCollection           = "dobc"_u32, // 1685021283
+	Effect                           = "effe"_u32, // 1701209701
+	Equipment                        = "eqip"_u32, // 1701931376
+	Flag                             = "flag"_u32, // 1718378855
+	Fog                              = "fog "_u32, // 1718576928
+	Font                             = "font"_u32, // 1718578804
+	MaterialEffects                  = "foot"_u32, // 1718579060
+	Garbage                          = "garb"_u32, // 1734439522
+	Glow                             = "glw!"_u32, // 1735161633
+	GrenadeHudInterface              = "grhi"_u32, // 1735551081
+	HudMessageText                   = "hmt "_u32, // 1752003616
+	HudNumber                        = "hud#"_u32, // 1752523811
+	HudGlobals                       = "hudg"_u32, // 1752523879
+	Item                             = "item"_u32, // 1769235821
+	ItemCollection                   = "itmc"_u32, // 1769237859
+	DamageEffect                     = "jpt!"_u32, // 1785754657
+	LensFlare                        = "lens"_u32, // 1818586739
+	Lightning                        = "elec"_u32, // 1701602659
+	DeviceLightFixture               = "lifi"_u32, // 1818846825
+	Light                            = "ligh"_u32, // 1818847080
+	SoundLooping                     = "lsnd"_u32, // 1819504228
+	DeviceMachine                    = "mach"_u32, // 1835098984
+	Globals                          = "matg"_u32, // 1835103335
+	Meter                            = "metr"_u32, // 1835365490
+	LightVolume                      = "mgs2"_u32, // 1835496242
+	Gbxmodel                         = "mod2"_u32, // 1836016690
+	Model                            = "mode"_u32, // 1836016741
+	MultiplayerScenarioDescription   = "mply"_u32, // 1836084345
+	PreferencesNetworkGame           = "ngpr"_u32, // 1852272754
+	Object                           = "obje"_u32, // 1868720741
+	Particle                         = "part"_u32, // 1885434484
+	ParticleSystem                   = "pctl"_u32, // 1885566060
+	Physics                          = "phys"_u32, // 1885895027
+	Placeholder                      = "plac"_u32, // 1886151011
+	PointPhysics                     = "pphy"_u32, // 1886414969
+	Projectile                       = "proj"_u32, // 1886547818
+	WeatherParticleSystem            = "rain"_u32, // 1918986606
+	ScenarioStructureBsp             = "sbsp"_u32, // 1935831920
+	Scenery                          = "scen"_u32, // 1935893870
+	ShaderTransparentChicagoExtended = "scex"_u32, // 1935893880
+	ShaderTransparentChicago         = "schi"_u32, // 1935894633
+	Scenario                         = "scnr"_u32, // 1935896178
+	ShaderEnvironment                = "senv"_u32, // 1936027254
+	ShaderTransparentGlass           = "sgla"_u32, // 1936157793
+	Shader                           = "shdr"_u32, // 1936221298
+	Sky                              = "sky "_u32, // 1936423200
+	ShaderTransparentMeter           = "smet"_u32, // 1936549236
+	Sound                            = "snd!"_u32, // 1936614433
+	SoundEnvironment                 = "snde"_u32, // 1936614501
+	ShaderModel                      = "soso"_u32, // 1936683887
+	ShaderTransparentGeneric         = "sotr"_u32, // 1936684146
+	UiWidgetCollection               = "Soul"_u32, // 1399813484
+	ShaderTransparentPlasma          = "spla"_u32, // 1936747617
+	SoundScenery                     = "ssce"_u32, // 1936941925
+	StringList                       = "str#"_u32, // 1937011235
+	ShaderTransparentWater           = "swat"_u32, // 1937203572
+	TagCollection                    = "tagc"_u32, // 1952540515
+	CameraTrack                      = "trak"_u32, // 1953653099
+	Dialogue                         = "udlg"_u32, // 1969515623
+	UnitHudInterface                 = "unhi"_u32, // 1970169961
+	Unit                             = "unit"_u32, // 1970170228
+	UnicodeStringList                = "ustr"_u32, // 1970500722
+	VirtualKeyboard                  = "vcky"_u32, // 1986227065
+	Vehicle                          = "vehi"_u32, // 1986357353
+	Weapon                           = "weap"_u32, // 2003132784
+	Wind                             = "wind"_u32, // 2003398244
+	WeaponHudInterface               = "wphi"_u32, // 2003855465
 };
 } // namespace Blam

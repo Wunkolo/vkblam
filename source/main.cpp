@@ -102,11 +102,11 @@ int main(int argc, char* argv[])
 					{
 						struct Vertex
 						{
-							float Position[3];
-							float Normal[3];
-							float Binormal[3];
-							float Tangent[3];
-							float UV[2];
+							Blam::Vector3f Position;
+							Blam::Vector3f Normal;
+							Blam::Vector3f Binormal;
+							Blam::Vector3f Tangent;
+							Blam::Vector2f UV;
 						};
 						const std::span<const Vertex> VertexData(
 							reinterpret_cast<const Vertex*>(
@@ -116,16 +116,16 @@ int main(int argc, char* argv[])
 								   - CurBSPEntry.BSPVirtualBase)),
 							CurMaterial.Geometry.VertexBufferCount);
 
-						for( const auto& Test : VertexData )
+						for( const auto& CurVert : VertexData )
 						{
 							std::printf(
 								"v %f %f %f\n"
 								"vn %f %f %f\n"
 								"vt %f %f\n",
-								Test.Position[0], Test.Position[1],
-								Test.Position[2], Test.Normal[0],
-								Test.Normal[1], Test.Normal[2], Test.UV[0],
-								Test.UV[1]);
+								CurVert.Position[0], CurVert.Position[1],
+								CurVert.Position[2], CurVert.Normal[0],
+								CurVert.Normal[1], CurVert.Normal[2],
+								CurVert.UV[0], CurVert.UV[1]);
 						}
 					}
 				}
