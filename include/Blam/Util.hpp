@@ -15,4 +15,5 @@ const char* ToString(const CacheVersion& Value);
 const char* ToString(const ScenarioType& Value);
 
 std::string ToString(const MapHeader& Value);
+std::string ToString(const TagIndexHeader& Value);
 } // namespace Blam

@@ -19,12 +19,12 @@ void HexDump(const std::span<const std::byte>& Data, std::uint8_t Columns = 16)
 	for( std::size_t CurOffset = 0; CurOffset < Data.size();
 		 CurOffset += Columns )
 	{
-		std::printf("0x%08X:", CurOffset);
+		std::printf("0x%08lX:", CurOffset);
 		for( const auto& Byte : Data.subspan(
 				 CurOffset,
 				 std::min<std::size_t>(Data.size() - CurOffset, Columns)) )
 		{
-			std::printf(" %02X", Byte);
+			std::printf(" %02hhX", Byte);
 		}
 		std::printf("\n");
 	}
@@ -37,43 +37,13 @@ int main(int argc, char* argv[])
 		// Not enough arguments
 		return EXIT_FAILURE;
 	}
-
 	auto MapFile = mio::mmap_source(argv[1]);
 
 	Blam::MapFile CurMap(std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
 
-	std::puts(Blam::ToString(CurMap.MapHeader).c_str());
-	// std::printf(
-	// 	"Map Header:\n"
-	// 	" - Version:         0x%08X\n"
-	// 	" - FileSize:        0x%08X\n"
-	// 	" - TagIndexOffset:  0x%08X\n"
-	// 	" - TagIndexSize:    0x%08X\n"
-	// 	" - ScenarioName:    \"%.32s\"\n"
-	// 	" - BuildVersion:    \"%.32s\"\n"
-	// 	" - Type:            0x%08X\n"
-	// 	" - Checksum:        0x%08X\n",
-	// 	MapHeader.Version, MapHeader.FileSize, MapHeader.TagIndexOffset,
-	// 	MapHeader.TagIndexSize, MapHeader.ScenarioName, MapHeader.BuildVersion,
-	// 	MapHeader.Type, MapHeader.Checksum);
-
-	// std::printf(
-	// 	"Tag Index Header:\n"
-	// 	" - TagIndexVirtualOffset:  0x%08X\n"
-	// 	" - BaseTag:                0x%08X\n"
-	// 	" - ScenarioTagID:          0x%08X\n"
-	// 	" - TagCount:               0x%08X\n"
-	// 	" - VertexCount:            0x%08X\n"
-	// 	" - VertexOffset:           0x%08X\n"
-	// 	" - IndexCount:             0x%08X\n"
-	// 	" - IndexOffset:            0x%08X\n"
-	// 	" - ModelDataSize:          0x%08X\n",
-	// 	TagIndexHeader.TagIndexVirtualOffset, TagIndexHeader.BaseTag,
-	// 	TagIndexHeader.ScenarioTagID, TagIndexHeader.TagCount,
-	// 	TagIndexHeader.VertexCount, TagIndexHeader.VertexOffset,
-	// 	TagIndexHeader.IndexCount, TagIndexHeader.IndexOffset,
-	// 	TagIndexHeader.ModelDataSize);
+	std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
+	std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
 
 	// Acceleration structure for fast tag lookups
 	// TagID -> TagIndexEntry
@@ -214,7 +184,7 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				std::size_t IndexStart = 1;
+				std::uint16_t IndexStart = 1;
 				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
 						 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 				{
@@ -229,7 +199,7 @@ int main(int argc, char* argv[])
 						for( const auto& CurSurface : CurSurfaces )
 						{
 							std::printf(
-								"f %u/%u/%u %u/%u/%u %u/%u/%u\n",
+								"f %d/%d/%d %d/%d/%d %d/%d/%d\n",
 								IndexStart + CurSurface[0],
 								IndexStart + CurSurface[0],
 								IndexStart + CurSurface[0],

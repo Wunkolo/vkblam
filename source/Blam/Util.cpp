@@ -79,4 +79,21 @@ std::string ToString(const MapHeader& Value)
 		Value.TagIndexOffset, Value.TagIndexSize, Value.ScenarioName,
 		Value.BuildVersion, ToString(Value.Type), Value.Checksum);
 }
+
+std::string ToString(const TagIndexHeader& Value)
+{
+	return FormatString(
+		"TagIndexVirtualOffset: %u\n"
+		"BaseTag: %u\n"
+		"ScenarioTagID: %u\n"
+		"TagCount: %u\n"
+		"VertexCount: %u\n"
+		"VertexOffset: %u\n"
+		"IndexCount: %u\n"
+		"IndexOffset: %u\n"
+		"ModelDataSize: %u\n",
+		Value.TagIndexVirtualOffset, Value.BaseTag, Value.ScenarioTagID,
+		Value.TagCount, Value.VertexCount, Value.VertexOffset, Value.IndexCount,
+		Value.IndexOffset, Value.ModelDataSize);
+}
 } // namespace Blam
