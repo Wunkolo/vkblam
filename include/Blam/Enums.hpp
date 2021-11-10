@@ -28,6 +28,32 @@ enum class ResourceMapType : std::uint32_t
 	Loc     = 0x2,
 };
 
+enum class BitmapType : std::uint16_t
+{
+	Texture2D = 0x0,
+	Texture3D = 0x1,
+	CubeMap   = 0x2,
+	Sprite    = 0x3,
+	Interface = 0x4,
+};
+
+enum class BitmapFormat : std::uint16_t
+{
+	A8       = 0x00,
+	Y8       = 0x01,
+	AY8      = 0x02,
+	A8Y8     = 0x03,
+	R5G6B5   = 0x06,
+	A1R5G5B5 = 0x08,
+	A4R4G4B4 = 0x09,
+	X8R8G8B8 = 0x0A,
+	A8R8G8B8 = 0x0B,
+	DXT1     = 0x0E,
+	DXT2AND3 = 0x0F,
+	DXT4AND5 = 0x10,
+	P8       = 0x11,
+};
+
 enum class TagClass : std::uint32_t
 {
 	None                             = 4294967295,
@@ -114,4 +140,4 @@ enum class TagClass : std::uint32_t
 	Wind                             = 2003398244,
 	WeaponHudInterface               = 2003855465,
 };
-}
+} // namespace Blam
