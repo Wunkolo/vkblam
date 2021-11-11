@@ -303,11 +303,22 @@ struct Tag<TagClass::ScenarioStructureBsp>
 				std::uint32_t UnknownC;
 				std::uint32_t Unknown10;
 			};
+
 			VertexBufferReference Geometry;
 			VertexBufferReference LightmapGeometry;
 
 			TagDataReference UncompressedVertices;
 			TagDataReference CompressedVertices;
+
+			std::span<const Vertex>
+				GetVertices(const void* Data, std::uint32_t VirtualBase) const
+			{
+				return std::span<const Vertex>(
+					reinterpret_cast<const Vertex*>(
+						reinterpret_cast<const std::byte*>(Data)
+						+ (UncompressedVertices.VirtualOffset - VirtualBase)),
+					Geometry.VertexBufferCount);
+			}
 		};
 		static_assert(sizeof(Material) == 0x100);
 		TagBlock<Material> Materials;

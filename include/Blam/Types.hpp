@@ -16,6 +16,16 @@ using Vector2f = std::array<float, 2>;
 using Vector3f = std::array<float, 3>;
 using Vector4f = std::array<float, 4>;
 
+struct Vertex
+{
+	Blam::Vector3f Position;
+	Blam::Vector3f Normal;
+	Blam::Vector3f Binormal;
+	Blam::Vector3f Tangent;
+	Blam::Vector2f UV;
+};
+static_assert(sizeof(Vertex) == 56);
+
 struct TagReference
 {
 	TagClass      Class;

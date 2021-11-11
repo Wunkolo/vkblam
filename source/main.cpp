@@ -43,8 +43,8 @@ int main(int argc, char* argv[])
 	Blam::MapFile CurMap(std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
 
-	std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
-	std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
+	// std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
+	// std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
 
 	// Find the base-tag
 	if( const auto BaseTagPtr
@@ -62,6 +62,7 @@ int main(int argc, char* argv[])
 			const auto& Scenario = *ScenarioPtr;
 			// Iterate BSP
 			// std::printf("Iterating BSPs: %s\n", TagName);
+			std::uint16_t IndexStart = 1;
 			for( const auto& CurBSPEntry : Scenario.StructureBSPs.GetSpan(
 					 MapFile.data(), CurMap.TagHeapVirtualBase) )
 			{
@@ -75,8 +76,9 @@ int main(int argc, char* argv[])
 					   + (CurBSPEntry.BSP.PathVirtualOffset
 						  - CurMap.TagHeapVirtualBase));
 				std::printf(
-					"g %s %s \n",
-					CurBSPEntry.BSP.PathVirtualOffset ? BSPName : "", TagName);
+					"g %s %s\n",
+					CurBSPEntry.BSP.PathVirtualOffset ? BSPName : "",
+					TagName.data());
 
 				const auto& ScenarioBSP = CurBSPEntry.GetBSP(MapFile.data());
 
@@ -100,23 +102,8 @@ int main(int argc, char* argv[])
 						 CurLightmap.Materials.GetSpan(
 							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 					{
-						struct Vertex
-						{
-							Blam::Vector3f Position;
-							Blam::Vector3f Normal;
-							Blam::Vector3f Binormal;
-							Blam::Vector3f Tangent;
-							Blam::Vector2f UV;
-						};
-						const std::span<const Vertex> VertexData(
-							reinterpret_cast<const Vertex*>(
-								BSPData.data()
-								+ (CurMaterial.UncompressedVertices
-									   .VirtualOffset
-								   - CurBSPEntry.BSPVirtualBase)),
-							CurMaterial.Geometry.VertexBufferCount);
-
-						for( const auto& CurVert : VertexData )
+						for( const auto& CurVert : CurMaterial.GetVertices(
+								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 						{
 							std::printf(
 								"v %f %f %f\n"
@@ -130,7 +117,6 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				std::uint16_t IndexStart = 1;
 				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
 						 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 				{
