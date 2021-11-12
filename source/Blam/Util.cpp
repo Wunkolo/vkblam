@@ -1,4 +1,5 @@
 #include <Blam/Util.hpp>
+#include <Common/Endian.hpp>
 #include <memory>
 
 namespace Blam
@@ -10,7 +11,7 @@ std::string FormatTagClass(Blam::TagClass Class)
 	{
 		TagStr = '-' * 0x01010101;
 	}
-	TagStr = __builtin_bswap32(TagStr);
+	TagStr = Common::Swap32(TagStr);
 	return std::string(reinterpret_cast<const char*>(&TagStr), 4);
 }
 
