@@ -153,7 +153,15 @@ struct Tag<TagClass::Scenario>
 		std::uint32_t _PaddingC;
 		TagReference  BSP;
 
-		struct BSPHeader
+		// Gets the entire SBSP data
+		std::span<const std::byte> GetSBSPData(const void* MapFile) const
+		{
+			return std::span<const std::byte>(
+				reinterpret_cast<const std::byte*>(MapFile) + BSPStart,
+				BSPSize);
+		}
+
+		struct SBSPHeader
 		{
 			std::uint32_t VirtualOffset;
 			// These are unused on PC
@@ -164,20 +172,20 @@ struct Tag<TagClass::Scenario>
 			TagClass      Class; // `sbsp`
 		};
 
-		const BSPHeader& GetBSPHeader(const void* MapFile) const
+		const SBSPHeader& GetSBSPHeader(const void* MapFile) const
 		{
-			return *reinterpret_cast<const BSPHeader*>(
+			return *reinterpret_cast<const SBSPHeader*>(
 				reinterpret_cast<const std::byte*>(MapFile) + BSPStart);
 		}
 
 		const Tag<TagClass::ScenarioStructureBsp>&
-			GetBSP(const void* MapFile) const
+			GetSBSP(const void* MapFile) const
 		{
-			const auto& BSPHeader = GetBSPHeader(MapFile);
+			const auto& SBSPHeader = GetSBSPHeader(MapFile);
 			return *reinterpret_cast<
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
 				reinterpret_cast<const std::byte*>(MapFile)
-				+ ((BSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart));
+				+ ((SBSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart));
 		}
 	};
 	static_assert(sizeof(StructureBSP) == 0x20);
@@ -292,7 +300,7 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			Vector3f      ShadowDirection;
 			Vector3f      ShadowColor;
 			Vector4f      Plane;
-			std::uint16_t BreakableSurface;
+			std::int16_t  BreakableSurface;
 			std::uint16_t UnknownAE;
 
 			struct VertexBufferReference
