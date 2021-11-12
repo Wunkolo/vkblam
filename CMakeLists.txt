@@ -23,6 +23,17 @@ find_package( Vulkan REQUIRED )
 
 add_subdirectory( external/mio )
 
+### common
+add_library(
+	common
+	source/Common/Format.cpp
+)
+target_include_directories(
+	common
+	PRIVATE
+	include
+)
+
 ### blam
 add_library(
 	blam
@@ -34,7 +45,11 @@ target_include_directories(
 	PRIVATE
 	include
 )
-
+target_link_libraries(
+	blam
+	PRIVATE
+	common
+)
 
 ### dump-bsp
 add_executable(
@@ -50,7 +65,6 @@ target_link_libraries(
 	dump-bsp
 	PRIVATE
 	blam
-	Vulkan::Vulkan
 	mio::mio
 )
 
