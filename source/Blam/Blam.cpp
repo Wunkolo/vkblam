@@ -23,10 +23,8 @@ std::span<const TagIndexEntry> MapFile::GetTagIndexArray() const
 		TagIndexHeader.TagCount);
 }
 
-const TagIndexEntry* MapFile::GetTagIndexEntry(std::uint32_t TagID) const
+const TagIndexEntry* MapFile::GetTagIndexEntry(std::uint16_t TagIndex) const
 {
-	const std::uint16_t TagIndex
-		= static_cast<std::uint16_t>(TagID - TagIndexHeader.BaseTag);
 	if( TagIndex >= TagIndexHeader.TagCount )
 	{
 		return nullptr;

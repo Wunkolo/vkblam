@@ -29,14 +29,20 @@ public:
 
 	std::span<const Blam::TagIndexEntry> GetTagIndexArray() const;
 
-	const TagIndexEntry* GetTagIndexEntry(std::uint32_t TagID) const;
+	const TagIndexEntry* GetTagIndexEntry(std::uint16_t TagIndex) const;
 
 	template<TagClass TagClassT>
 	const Tag<TagClassT>* GetTag(std::uint32_t TagID) const
 	{
-		const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(TagID);
+		const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(std::uint16_t(TagID));
 		if( !TagIndexEntryPtr )
 		{
+			return nullptr;
+		}
+
+		if(TagIndexEntryPtr->TagID != TagID)
+		{
+			// Salts don't match
 			return nullptr;
 		}
 
