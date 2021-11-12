@@ -21,6 +21,8 @@ endif()
 
 find_package( Vulkan REQUIRED )
 
+find_package( glm REQUIRED )
+
 add_subdirectory( external/mio )
 
 ### common
@@ -85,4 +87,5 @@ target_link_libraries(
 	blam
 	Vulkan::Vulkan
 	mio::mio
+	glm
 )
