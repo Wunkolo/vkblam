@@ -35,6 +35,26 @@ target_include_directories(
 	include
 )
 
+
+### dump-bsp
+add_executable(
+	dump-bsp
+	source/dump-bsp.cpp
+)
+target_include_directories(
+	dump-bsp
+	PRIVATE
+	include
+)
+target_link_libraries(
+	dump-bsp
+	PRIVATE
+	blam
+	Vulkan::Vulkan
+	mio::mio
+)
+
+
 ### vkblam
 add_executable(
 	vkblam
