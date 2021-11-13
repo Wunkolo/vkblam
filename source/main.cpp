@@ -14,6 +14,7 @@
 #include <mio/mmap.hpp>
 
 #include <Blam/Blam.hpp>
+#include <vulkan/vulkan_core.h>
 
 #define VULKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
@@ -138,6 +139,11 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	// We're putting images/buffers right after each other, so we need to
+	// ensure they are far apart enough to not be considered aliasing
+	const std::size_t BufferImageGranularity
+		= PhysicalDevice.getProperties().limits.bufferImageGranularity;
+
 	//// Create Device
 	vk::DeviceCreateInfo DeviceInfo = {};
 
@@ -254,6 +260,159 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	std::vector<vk::UniqueBuffer> VertexBuffers;
+	std::vector<vk::BufferCopy>   VertexBufferCopies;
+	vk::UniqueDeviceMemory        VertexBufferHeapMemory = {};
+
+	{
+		std::size_t                           VertexHeapMemorySize = 0;
+		std::uint32_t                         VertexHeapMemoryMask = 0xFFFFFFFF;
+		std::vector<vk::BindBufferMemoryInfo> VertexHeapBinds;
+
+		if( const auto BaseTagPtr
+			= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
+			BaseTagPtr )
+		{
+			const auto&            CurTag = *BaseTagPtr;
+			const std::string_view TagName
+				= CurMap.GetTagName(CurMap.TagIndexHeader.BaseTag);
+
+			if( const auto ScenarioPtr
+				= CurMap.GetTag<Blam::TagClass::Scenario>(
+					CurMap.TagIndexHeader.BaseTag);
+				ScenarioPtr )
+			{
+				const Blam::Tag<Blam::TagClass::Scenario>& Scenario
+					= *ScenarioPtr;
+
+				for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
+						 CurBSPEntry : Scenario.StructureBSPs.GetSpan(
+							 MapFile.data(), CurMap.TagHeapVirtualBase) )
+				{
+					const std::span<const std::byte> BSPData
+						= CurBSPEntry.GetSBSPData(MapFile.data());
+					const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
+						ScenarioBSP
+						= CurBSPEntry.GetSBSP(MapFile.data());
+					// Lightmap
+					for( const auto& CurLightmap :
+						 ScenarioBSP.Lightmaps.GetSpan(
+							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
+					{
+						for( const auto& CurMaterial :
+							 CurLightmap.Materials.GetSpan(
+								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
+						{
+							const auto CurVertexData = CurMaterial.GetVertices(
+								BSPData.data(), CurBSPEntry.BSPVirtualBase);
+
+							vk::BufferCreateInfo VertexBufferInfo = {};
+							VertexBufferInfo.size = CurVertexData.size_bytes();
+							VertexBufferInfo.usage
+								= vk::BufferUsageFlagBits::eVertexBuffer
+								| vk::BufferUsageFlagBits::eTransferDst;
+
+							// Copy into the staging buffer
+							std::memcpy(
+								StagingBufferData.data() + VertexHeapMemorySize,
+								CurVertexData.data(),
+								CurVertexData.size_bytes());
+
+							// Queue up staging buffer copy
+							// It's copying from the staging buffer into target
+							// buffer so the destination offset is 0
+							VertexBufferCopies.emplace_back(vk::BufferCopy(
+								VertexHeapMemorySize, 0,
+								CurVertexData.size_bytes()));
+
+							// Create buffer
+							vk::UniqueBuffer CurVertexBuffer = {};
+							if( auto CreateResult
+								= Device->createBufferUnique(VertexBufferInfo);
+								CreateResult.result == vk::Result::eSuccess )
+							{
+								CurVertexBuffer = std::move(CreateResult.value);
+							}
+							else
+							{
+								std::fprintf(
+									stderr,
+									"Error creating vertex buffer: %s\n",
+									vk::to_string(CreateResult.result).c_str());
+								return EXIT_FAILURE;
+							}
+
+							vk::MemoryRequirements
+								VertexBufferMemoryRequirements
+								= Device->getBufferMemoryRequirements(
+									CurVertexBuffer.get());
+
+							VertexBufferMemoryRequirements.size
+								= Common::AlignUp(
+									VertexBufferMemoryRequirements.size,
+									BufferImageGranularity);
+
+							// Queue up vertex buffer memory bind
+							VertexHeapBinds.emplace_back(
+								vk::BindBufferMemoryInfo{
+									CurVertexBuffer.get(), nullptr,
+									VertexBufferMemoryRequirements.size});
+
+							// Add vertex buffer toend of array
+							VertexBuffers.emplace_back(
+								std::move(CurVertexBuffer));
+
+							// Update vertex heap state
+							VertexHeapMemoryMask
+								&= VertexBufferMemoryRequirements
+									   .memoryTypeBits;
+							VertexHeapMemorySize += CurVertexData.size_bytes();
+						}
+					}
+				}
+			}
+		}
+
+		// Allocate the vertex buffer heap
+		vk::MemoryAllocateInfo VertexHeapAllocInfo;
+		VertexHeapAllocInfo.allocationSize  = VertexHeapMemorySize;
+		VertexHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+			PhysicalDevice, VertexHeapMemoryMask,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		if( auto AllocResult
+			= Device->allocateMemoryUnique(VertexHeapAllocInfo);
+			AllocResult.result == vk::Result::eSuccess )
+		{
+			VertexBufferHeapMemory = std::move(AllocResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating vertex buffer memory: %s\n",
+				vk::to_string(AllocResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		// Bind buffers
+		for( vk::BindBufferMemoryInfo& CurBind : VertexHeapBinds )
+		{
+			CurBind.memory = VertexBufferHeapMemory.get();
+		}
+		if( auto BindResult = Device->bindBufferMemory2(VertexHeapBinds);
+			BindResult == vk::Result::eSuccess )
+		{
+			// Successfully binded all buffers
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error binding vertex buffer: %s\n",
+				vk::to_string(BindResult).c_str());
+			return EXIT_FAILURE;
+		}
+	}
+
 	// Render Target images
 	vk::UniqueImage RenderImage;
 
@@ -350,11 +509,6 @@ int main(int argc, char* argv[])
 		std::size_t                          ImageHeapMemorySize = 0;
 		std::uint32_t                        ImageHeapMemoryMask = 0xFFFFFFFF;
 		std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
-
-		// We're putting these images right after each other, so we need to
-		// ensure they are far apart enough to not be considered aliasing
-		const std::size_t BufferImageGranularity
-			= PhysicalDevice.getProperties().limits.bufferImageGranularity;
 
 		for( const vk::Image& CurImage : Images )
 		{
@@ -544,6 +698,14 @@ int main(int argc, char* argv[])
 	}
 
 	{
+		// Flush all vertex buffer uploads
+		for( std::size_t i = 0; i < VertexBuffers.size(); ++i )
+		{
+			CommandBuffer->copyBuffer(
+				StagingBuffer.get(), VertexBuffers[i].get(),
+				VertexBufferCopies[i]);
+		}
+
 		vk::RenderPassBeginInfo RenderBeginInfo   = {};
 		RenderBeginInfo.renderPass                = MainRenderPass.get();
 		static const vk::ClearValue ClearColors[] = {
