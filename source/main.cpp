@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <map>
 #include <span>
 
 #include <Common/Alignment.hpp>
+#include <Common/Literals.hpp>
 
 #include <mio/mmap.hpp>
 
@@ -17,6 +19,8 @@
 #include <vulkan/vulkan.hpp>
 
 #include <glm/glm.hpp>
+
+#include "stb_image_write.h"
 
 static constexpr glm::uvec2              RenderSize = {2048, 2048};
 static constexpr vk::SampleCountFlagBits RenderSamples
@@ -63,12 +67,16 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 
 int main(int argc, char* argv[])
 {
+	using namespace Common::Literals;
+
 	if( argc < 2 )
 	{
 		// Not enough arguments
 		return EXIT_FAILURE;
 	}
-	auto MapFile = mio::mmap_source(argv[1]);
+
+	std::filesystem::path CurPath(argv[1]);
+	auto                  MapFile = mio::mmap_source(CurPath.c_str());
 
 	Blam::MapFile CurMap(std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
@@ -163,6 +171,88 @@ int main(int argc, char* argv[])
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), RenderSamples);
+
+	// Buffers
+	vk::UniqueBuffer       StagingBuffer       = {};
+	vk::UniqueDeviceMemory StagingBufferMemory = {};
+
+	vk::BufferCreateInfo StagingBufferInfo = {};
+	StagingBufferInfo.size
+		= std::max(8_MiB, RenderSize.x * RenderSize.y * sizeof(std::uint32_t));
+	StagingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferDst
+							| vk::BufferUsageFlagBits::eTransferSrc;
+
+	if( auto CreateResult = Device->createBufferUnique(StagingBufferInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		StagingBuffer = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating staging buffer: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	// Allocate memory for staging buffer
+	{
+		const vk::MemoryRequirements StagingBufferMemoryRequirements
+			= Device->getBufferMemoryRequirements(StagingBuffer.get());
+
+		vk::MemoryAllocateInfo StagingBufferAllocInfo = {};
+		StagingBufferAllocInfo.allocationSize
+			= StagingBufferMemoryRequirements.size;
+		StagingBufferAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+			PhysicalDevice, StagingBufferMemoryRequirements.memoryTypeBits,
+			vk::MemoryPropertyFlagBits::eHostVisible
+				| vk::MemoryPropertyFlagBits::eHostCoherent);
+
+		if( auto AllocResult
+			= Device->allocateMemoryUnique(StagingBufferAllocInfo);
+			AllocResult.result == vk::Result::eSuccess )
+		{
+			StagingBufferMemory = std::move(AllocResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating memory for staging buffer: %s\n",
+				vk::to_string(AllocResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		if( auto BindResult = Device->bindBufferMemory(
+				StagingBuffer.get(), StagingBufferMemory.get(), 0);
+			BindResult == vk::Result::eSuccess )
+		{
+			// Successfully binded memory to buffer
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error binding memory to staging buffer: %s\n",
+				vk::to_string(BindResult).c_str());
+			return EXIT_FAILURE;
+		}
+	}
+
+	std::span<std::byte> StagingBufferData;
+	if( auto MapResult = Device->mapMemory(
+			StagingBufferMemory.get(), 0, StagingBufferInfo.size);
+		MapResult.result == vk::Result::eSuccess )
+	{
+		StagingBufferData = std::span<std::byte>(
+			reinterpret_cast<std::byte*>(MapResult.value),
+			StagingBufferInfo.size);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error mapping staging buffer memory: %s\n",
+			vk::to_string(MapResult.result).c_str());
+		return EXIT_FAILURE;
+	}
 
 	// Render Target images
 	vk::UniqueImage RenderImage;
@@ -457,9 +547,9 @@ int main(int argc, char* argv[])
 		vk::RenderPassBeginInfo RenderBeginInfo   = {};
 		RenderBeginInfo.renderPass                = MainRenderPass.get();
 		static const vk::ClearValue ClearColors[] = {
-			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.5f}),
 			vk::ClearDepthStencilValue(1.0f, 0),
-			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.5f}),
 		};
 		RenderBeginInfo.pClearValues    = ClearColors;
 		RenderBeginInfo.clearValueCount = std::extent_v<decltype(ClearColors)>;
@@ -470,6 +560,28 @@ int main(int argc, char* argv[])
 			RenderBeginInfo, vk::SubpassContents::eInline);
 
 		CommandBuffer->endRenderPass();
+
+		// Wait for image data to be ready
+		CommandBuffer->pipelineBarrier(
+			vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {}, {},
+			{// Source Image
+			 vk::ImageMemoryBarrier(
+				 vk::AccessFlagBits::eColorAttachmentWrite,
+				 vk::AccessFlagBits::eTransferRead,
+				 vk::ImageLayout::eTransferSrcOptimal,
+				 vk::ImageLayout::eTransferSrcOptimal, VK_QUEUE_FAMILY_IGNORED,
+				 VK_QUEUE_FAMILY_IGNORED, RenderImage.get(),
+				 vk::ImageSubresourceRange(
+					 vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
+		CommandBuffer->copyImageToBuffer(
+			RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
+			StagingBuffer.get(),
+			{vk::BufferImageCopy(
+				0, RenderSize.x, RenderSize.y,
+				vk::ImageSubresourceLayers(
+					vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+				vk::Offset3D(), vk::Extent3D(RenderSize.x, RenderSize.y, 1))});
 	}
 
 	if( auto EndResult = CommandBuffer->end();
@@ -518,6 +630,10 @@ int main(int argc, char* argv[])
 			vk::to_string(WaitResult).c_str());
 		return EXIT_FAILURE;
 	}
+
+	stbi_write_png(
+		("./" + CurPath.stem().string() + ".png").c_str(), RenderSize.x,
+		RenderSize.y, 4, StagingBufferData.data(), 0);
 
 	return EXIT_SUCCESS;
 }
