@@ -20,6 +20,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "DebugShader.hpp"
 #include "stb_image_write.h"
@@ -300,6 +301,7 @@ int main(int argc, char* argv[])
 	vk::UniqueDeviceMemory        VertexBufferHeapMemory = {};
 
 	std::vector<vk::UniqueBuffer> IndexBuffers;
+	std::vector<std::uint16_t>    IndexCounts;
 	std::vector<vk::BufferCopy>   IndexBufferCopies;
 	vk::UniqueDeviceMemory        IndexBufferHeapMemory = {};
 
@@ -425,6 +427,9 @@ int main(int argc, char* argv[])
 								= std::as_bytes(Surfaces.subspan(
 									CurMaterial.SurfacesIndexStart,
 									CurMaterial.SurfacesCount));
+
+							IndexCounts.emplace_back(
+								CurMaterial.SurfacesCount * 3);
 
 							vk::BufferCreateInfo IndexBufferInfo = {};
 							IndexBufferInfo.size = CurIndexData.size_bytes();
@@ -812,6 +817,17 @@ int main(int argc, char* argv[])
 	vk::UniqueShaderModule MainFragmentShaderModule
 		= CreateShaderModule(Device.get(), DebugFragData);
 
+	auto
+		[DebugDrawPipeline, DebugDrawPipelineLayout, DebugDrawDescriptorLayout,
+		 DebugDrawSet]
+		= CreateMainDrawPipeline(
+			Device.get(), MainDescriptorPool.get(),
+			{vk::PushConstantRange(
+				vk::ShaderStageFlagBits::eAllGraphics, 0,
+				sizeof(glm::f32mat4))},
+			{}, MainVertexShaderModule.get(), MainFragmentShaderModule.get(),
+			MainRenderPass.get());
+
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
 	CommandPoolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
@@ -892,6 +908,41 @@ int main(int argc, char* argv[])
 		RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
 		CommandBuffer->beginRenderPass(
 			RenderBeginInfo, vk::SubpassContents::eInline);
+
+		vk::Viewport Viewport = {};
+		Viewport.width        = RenderSize.x;
+		Viewport.height       = glm::i32(RenderSize.y);
+		Viewport.y            = RenderSize.y;
+		Viewport.minDepth     = 0.0f;
+		Viewport.maxDepth     = 1.0f;
+		CommandBuffer->setViewport(0, {Viewport});
+		// Scissor
+		vk::Rect2D Scissor    = {};
+		Scissor.extent.width  = RenderSize.x;
+		Scissor.extent.height = RenderSize.y;
+		CommandBuffer->setScissor(0, {Scissor});
+		// Draw
+		CommandBuffer->bindPipeline(
+			vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
+
+		const glm::mat4 ViewMatrix = glm::lookAtRH<glm::f32>(
+			glm::vec3(30, 30, 30), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
+		const glm::mat4 ProjectionMatrix
+			= glm::orthoRH_ZO<glm::f32>(-20, 20, 20, 20, 0, glm::abs(100));
+
+		const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
+
+		CommandBuffer->pushConstants<glm::mat4>(
+			DebugDrawPipelineLayout.get(),
+			vk::ShaderStageFlagBits::eAllGraphics, 0, {ViewProjMatrix});
+
+		for( std::size_t i = 0; i < VertexBuffers.size(); ++i )
+		{
+			CommandBuffer->bindVertexBuffers(0, {VertexBuffers[i].get()}, {0});
+			CommandBuffer->bindIndexBuffer(
+				IndexBuffers[i].get(), 0, vk::IndexType::eUint16);
+			CommandBuffer->drawIndexed(IndexCounts[i], 1, 0, 0, 0);
+		}
 
 		CommandBuffer->endRenderPass();
 
@@ -1207,7 +1258,7 @@ std::tuple<
 	VertexInputState.vertexBindingDescriptionCount = 1;
 	VertexInputState.pVertexBindingDescriptions    = &VertexBindingDescription;
 
-	static std::array<vk::VertexInputAttributeDescription, 4>
+	static std::array<vk::VertexInputAttributeDescription, 5>
 		AttributeDescriptions = {};
 	// Position
 	AttributeDescriptions[0].binding  = 0;
@@ -1266,7 +1317,7 @@ std::tuple<
 
 	vk::PipelineMultisampleStateCreateInfo MultisampleState = {};
 	MultisampleState.rasterizationSamples                   = RenderSamples;
-	MultisampleState.sampleShadingEnable                    = true;
+	MultisampleState.sampleShadingEnable                    = false;
 	MultisampleState.minSampleShading                       = 1.0f;
 	MultisampleState.pSampleMask                            = nullptr;
 	MultisampleState.alphaToCoverageEnable                  = false;
