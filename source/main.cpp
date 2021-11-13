@@ -19,6 +19,9 @@
 #define VULKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -32,7 +35,7 @@
 RENDERDOC_API_1_4_1* rdoc_api = NULL;
 #endif
 
-static constexpr glm::uvec2              RenderSize = {2048, 2048};
+static constexpr glm::uvec2              RenderSize = {1024, 1024};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
 
@@ -929,9 +932,9 @@ int main(int argc, char* argv[])
 		vk::RenderPassBeginInfo RenderBeginInfo   = {};
 		RenderBeginInfo.renderPass                = MainRenderPass.get();
 		static const vk::ClearValue ClearColors[] = {
-			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.5f}),
+			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
 			vk::ClearDepthStencilValue(1.0f, 0),
-			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.5f}),
+			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
 		};
 		RenderBeginInfo.pClearValues    = ClearColors;
 		RenderBeginInfo.clearValueCount = std::extent_v<decltype(ClearColors)>;
@@ -943,7 +946,8 @@ int main(int argc, char* argv[])
 
 		vk::Viewport Viewport = {};
 		Viewport.width        = RenderSize.x;
-		Viewport.height       = glm::i32(RenderSize.y);
+		Viewport.height       = -float(RenderSize.y);
+		Viewport.x            = 0;
 		Viewport.y            = RenderSize.y;
 		Viewport.minDepth     = 0.0f;
 		Viewport.maxDepth     = 1.0f;
@@ -957,10 +961,13 @@ int main(int argc, char* argv[])
 		CommandBuffer->bindPipeline(
 			vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
-		const glm::mat4 ViewMatrix = glm::lookAtLH<glm::f32>(
-			glm::vec3(100, 100, 100), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
+		const glm::mat4 ViewMatrix = glm::lookAt<glm::f32>(
+			glm::vec3(250, 250, 250), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
 		const glm::mat4 ProjectionMatrix
-			= glm::orthoLH_ZO<glm::f32>(-100, 100, -100, 100, 0.1f, 100);
+			//= glm::ortho<glm::f32>(-250, 250, -250, 250, 0.0f, 1000);
+			= glm::perspective<glm::f32>(
+				glm::radians(60.0f),
+				static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
 
 		const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
 
@@ -1054,6 +1061,7 @@ int main(int argc, char* argv[])
 			*(void**)(VkInstance)(*Instance.operator->()), NULL);
 #endif
 
+	stbi_write_png_compression_level = 0;
 	stbi_write_png(
 		("./" + CurPath.stem().string() + ".png").c_str(), RenderSize.x,
 		RenderSize.y, 4, StagingBufferData.data(), 0);
