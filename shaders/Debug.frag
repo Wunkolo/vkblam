@@ -16,7 +16,7 @@ layout( location = 0 ) out f32vec4 Attachment0;
 void main()
 {
 	Attachment0 = f32vec4(
-		dot(f32vec3(InNormal), vec3(0.0, 1.0, 0.0)).xxx,
+		dot(f32vec3(InNormal), vec3(0.0, 0.0, 1.0)).xxx,
 		1.0
 	);
 }	
