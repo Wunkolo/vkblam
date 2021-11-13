@@ -25,6 +25,13 @@
 #include "DebugShader.hpp"
 #include "stb_image_write.h"
 
+#define CAPTURE
+#ifdef CAPTURE
+#include <dlfcn.h>
+#include <renderdoc_app.h>
+RENDERDOC_API_1_4_1* rdoc_api = NULL;
+#endif
+
 static constexpr glm::uvec2              RenderSize = {2048, 2048};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
@@ -110,6 +117,25 @@ int main(int argc, char* argv[])
 		// Not enough arguments
 		return EXIT_FAILURE;
 	}
+
+#ifdef CAPTURE
+	void* mod = dlopen("librenderdoc.so", RTLD_NOW);
+	char* msg = dlerror();
+	if( msg )
+		std::puts(msg);
+	if( mod )
+	{
+		pRENDERDOC_GetAPI RENDERDOC_GetAPI
+			= (pRENDERDOC_GetAPI)dlsym(mod, "RENDERDOC_GetAPI");
+		int ret
+			= RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_4_1, (void**)&rdoc_api);
+		rdoc_api->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
+		rdoc_api->SetCaptureOptionU32(eRENDERDOC_Option_CaptureCallstacks, 1);
+		rdoc_api->SetCaptureOptionU32(eRENDERDOC_Option_SaveAllInitials, 1);
+		rdoc_api->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
+		assert(ret == 1);
+	}
+#endif
 
 	std::filesystem::path CurPath(argv[1]);
 	auto                  MapFile = mio::mmap_source(CurPath.c_str());
@@ -205,6 +231,12 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+
+#ifdef CAPTURE
+	if( rdoc_api )
+		rdoc_api->StartFrameCapture(
+			*(void**)(VkInstance)(*Instance.operator->()), NULL);
+#endif
 
 	// Main Rendering queue
 	vk::Queue RenderQueue = Device->getQueue(0, 0);
@@ -1015,6 +1047,12 @@ int main(int argc, char* argv[])
 			vk::to_string(WaitResult).c_str());
 		return EXIT_FAILURE;
 	}
+
+#ifdef CAPTURE
+	if( rdoc_api )
+		rdoc_api->EndFrameCapture(
+			*(void**)(VkInstance)(*Instance.operator->()), NULL);
+#endif
 
 	stbi_write_png(
 		("./" + CurPath.stem().string() + ".png").c_str(), RenderSize.x,

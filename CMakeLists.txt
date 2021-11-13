@@ -89,4 +89,5 @@ target_link_libraries(
 	Vulkan::Vulkan
 	mio::mio
 	glm
+	${CMAKE_DL_LIBS}
 )
