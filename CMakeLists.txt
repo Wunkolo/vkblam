@@ -75,6 +75,7 @@ target_link_libraries(
 add_executable(
 	vkblam
 	source/main.cpp
+	source/stb_image_write.cpp
 )
 target_include_directories(
 	vkblam
