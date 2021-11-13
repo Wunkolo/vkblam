@@ -158,52 +158,7 @@ int main(int argc, char* argv[])
 	}
 
 	// Main Rendering queue
-	vk::Queue GraphicsQueue = Device->getQueue(0, 0);
-
-	//// Create Command Pool
-	vk::CommandPoolCreateInfo CommandPoolInfo = {};
-	CommandPoolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	CommandPoolInfo.queueFamilyIndex = 0;
-
-	vk::UniqueCommandPool CommandPool = {};
-	if( auto CreateResult = Device->createCommandPoolUnique(CommandPoolInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		CommandPool = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating command pool: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-
-	//// Create Command Buffer
-	vk::CommandBufferAllocateInfo CommandBufferInfo = {};
-	CommandBufferInfo.commandPool                   = CommandPool.get();
-	CommandBufferInfo.level              = vk::CommandBufferLevel::ePrimary;
-	CommandBufferInfo.commandBufferCount = 1;
-
-	vk::UniqueCommandBuffer CommandBuffer = {};
-
-	if( auto AllocateResult
-		= Device->allocateCommandBuffersUnique(CommandBufferInfo);
-		AllocateResult.result == vk::Result::eSuccess )
-	{
-		CommandBuffer = std::move(AllocateResult.value[0]);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error allocating command buffer: %s\n",
-			vk::to_string(AllocateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-
-	//// Create Descriptor Pool
-	vk::UniqueDescriptorPool MainDescriptorPool
-		= CreateMainDescriptorPool(Device.get());
+	vk::Queue RenderQueue = Device->getQueue(0, 0);
 
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
@@ -302,7 +257,7 @@ int main(int argc, char* argv[])
 	{
 		const static vk::Image Images[]
 			= {RenderImage.get(), RenderImageAA.get(), RenderImageDepth.get()};
-		std::size_t                          ImageHeapMemorySize;
+		std::size_t                          ImageHeapMemorySize = 0;
 		std::uint32_t                        ImageHeapMemoryMask = 0xFFFFFFFF;
 		std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
 
@@ -443,6 +398,126 @@ int main(int argc, char* argv[])
 	vk::UniqueFramebuffer RenderFramebuffer = CreateMainFrameBuffer(
 		Device.get(), RenderImageView.get(), RenderImageDepthView.get(),
 		RenderImageAAView.get(), RenderSize, MainRenderPass.get());
+
+	//// Create Descriptor Pool
+	vk::UniqueDescriptorPool MainDescriptorPool
+		= CreateMainDescriptorPool(Device.get());
+
+	//// Create Command Pool
+	vk::CommandPoolCreateInfo CommandPoolInfo = {};
+	CommandPoolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+	CommandPoolInfo.queueFamilyIndex = 0;
+
+	vk::UniqueCommandPool CommandPool = {};
+	if( auto CreateResult = Device->createCommandPoolUnique(CommandPoolInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		CommandPool = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating command pool: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	//// Create Command Buffer
+	vk::CommandBufferAllocateInfo CommandBufferInfo = {};
+	CommandBufferInfo.commandPool                   = CommandPool.get();
+	CommandBufferInfo.level              = vk::CommandBufferLevel::ePrimary;
+	CommandBufferInfo.commandBufferCount = 1;
+
+	vk::UniqueCommandBuffer CommandBuffer = {};
+
+	if( auto AllocateResult
+		= Device->allocateCommandBuffersUnique(CommandBufferInfo);
+		AllocateResult.result == vk::Result::eSuccess )
+	{
+		CommandBuffer = std::move(AllocateResult.value[0]);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error allocating command buffer: %s\n",
+			vk::to_string(AllocateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	if( auto BeginResult = CommandBuffer->begin(vk::CommandBufferBeginInfo{});
+		BeginResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error beginning command buffer: %s\n",
+			vk::to_string(BeginResult).c_str());
+		return EXIT_FAILURE;
+	}
+
+	{
+		vk::RenderPassBeginInfo RenderBeginInfo   = {};
+		RenderBeginInfo.renderPass                = MainRenderPass.get();
+		static const vk::ClearValue ClearColors[] = {
+			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+			vk::ClearDepthStencilValue(1.0f, 0),
+			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+		};
+		RenderBeginInfo.pClearValues    = ClearColors;
+		RenderBeginInfo.clearValueCount = std::extent_v<decltype(ClearColors)>;
+		RenderBeginInfo.renderArea.extent.width  = RenderSize.x;
+		RenderBeginInfo.renderArea.extent.height = RenderSize.y;
+		RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
+		CommandBuffer->beginRenderPass(
+			RenderBeginInfo, vk::SubpassContents::eInline);
+
+		CommandBuffer->endRenderPass();
+	}
+
+	if( auto EndResult = CommandBuffer->end();
+		EndResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error ending command buffer: %s\n",
+			vk::to_string(EndResult).c_str());
+		return EXIT_FAILURE;
+	}
+
+	// Submit work
+	vk::UniqueFence Fence = {};
+	if( auto CreateResult = Device->createFenceUnique({});
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		Fence = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating fence: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	vk::SubmitInfo SubmitInfo     = {};
+	SubmitInfo.commandBufferCount = 1;
+	SubmitInfo.pCommandBuffers    = &CommandBuffer.get();
+
+	if( auto SubmitResult = RenderQueue.submit(SubmitInfo, Fence.get());
+		SubmitResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error submitting command buffer: %s\n",
+			vk::to_string(SubmitResult).c_str());
+		return EXIT_FAILURE;
+	}
+
+	// Wait for it
+	if( auto WaitResult = Device->waitForFences(Fence.get(), true, ~0ULL);
+		WaitResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error waiting for fence: %s\n",
+			vk::to_string(WaitResult).c_str());
+		return EXIT_FAILURE;
+	}
 
 	return EXIT_SUCCESS;
 }
