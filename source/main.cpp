@@ -403,7 +403,7 @@ int main(int argc, char* argv[])
 							// It's copying from the staging buffer into target
 							// buffer so the destination offset is 0
 							VertexBufferCopies.emplace_back(vk::BufferCopy(
-								VertexHeapMemorySize, 0,
+								StagingBufferWritePosition, 0,
 								CurVertexData.size_bytes()));
 
 							// Create buffer
@@ -479,7 +479,7 @@ int main(int argc, char* argv[])
 							// It's copying from the staging buffer into target
 							// buffer so the destination offset is 0
 							IndexBufferCopies.emplace_back(vk::BufferCopy(
-								IndexHeapMemorySize, 0,
+								StagingBufferWritePosition, 0,
 								CurIndexData.size_bytes()));
 
 							// Create buffer
