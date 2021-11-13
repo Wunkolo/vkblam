@@ -21,6 +21,7 @@
 
 #include <glm/glm.hpp>
 
+#include "DebugShader.hpp"
 #include "stb_image_write.h"
 
 static constexpr glm::uvec2              RenderSize = {2048, 2048};
@@ -61,7 +62,7 @@ vk::UniqueShaderModule CreateShaderModule(
 {
 	vk::ShaderModuleCreateInfo ShaderInfo{};
 	ShaderInfo.pCode    = ShaderCode.data();
-	ShaderInfo.codeSize = ShaderCode.size();
+	ShaderInfo.codeSize = ShaderCode.size_bytes();
 
 	vk::UniqueShaderModule ShaderModule{};
 	if( auto CreateResult = Device.createShaderModuleUnique(ShaderInfo);
@@ -804,6 +805,12 @@ int main(int argc, char* argv[])
 	//// Create Descriptor Pool
 	vk::UniqueDescriptorPool MainDescriptorPool
 		= CreateMainDescriptorPool(Device.get());
+
+	// Main Shader modules
+	vk::UniqueShaderModule MainVertexShaderModule
+		= CreateShaderModule(Device.get(), DebugVertData);
+	vk::UniqueShaderModule MainFragmentShaderModule
+		= CreateShaderModule(Device.get(), DebugFragData);
 
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
