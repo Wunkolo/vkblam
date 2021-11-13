@@ -437,7 +437,7 @@ int main(int argc, char* argv[])
 							VertexHeapBinds.emplace_back(
 								vk::BindBufferMemoryInfo{
 									CurVertexBuffer.get(), nullptr,
-									VertexBufferMemoryRequirements.size});
+									VertexHeapMemorySize});
 
 							// Add vertex buffer toend of array
 							VertexBuffers.emplace_back(
@@ -511,7 +511,7 @@ int main(int argc, char* argv[])
 							IndexHeapBinds.emplace_back(
 								vk::BindBufferMemoryInfo{
 									CurIndexBuffer.get(), nullptr,
-									IndexBufferMemoryRequirements.size});
+									IndexHeapMemorySize});
 
 							// Add Index buffer toend of array
 							IndexBuffers.emplace_back(
@@ -957,10 +957,10 @@ int main(int argc, char* argv[])
 		CommandBuffer->bindPipeline(
 			vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
-		const glm::mat4 ViewMatrix = glm::lookAtRH<glm::f32>(
-			glm::vec3(30, 30, 30), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
+		const glm::mat4 ViewMatrix = glm::lookAtLH<glm::f32>(
+			glm::vec3(100, 100, 100), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
 		const glm::mat4 ProjectionMatrix
-			= glm::orthoRH_ZO<glm::f32>(-20, 20, 20, 20, 0, glm::abs(100));
+			= glm::orthoLH_ZO<glm::f32>(-100, 100, -100, 100, 0.1f, 100);
 
 		const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
 
