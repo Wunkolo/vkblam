@@ -1,3 +1,4 @@
+#include "Blam/Types.hpp"
 #include "Blam/Util.hpp"
 #include <algorithm>
 #include <cstddef>
@@ -14,7 +15,6 @@
 #include <mio/mmap.hpp>
 
 #include <Blam/Blam.hpp>
-#include <vulkan/vulkan_core.h>
 
 #define VULKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
@@ -56,15 +56,48 @@ std::int32_t FindMemoryTypeIndex(
 	return -1;
 }
 
-vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device LogicalDevice);
+vk::UniqueShaderModule CreateShaderModule(
+	vk::Device Device, std::span<const std::uint32_t> ShaderCode)
+{
+	vk::ShaderModuleCreateInfo ShaderInfo{};
+	ShaderInfo.pCode    = ShaderCode.data();
+	ShaderInfo.codeSize = ShaderCode.size();
+
+	vk::UniqueShaderModule ShaderModule{};
+	if( auto CreateResult = Device.createShaderModuleUnique(ShaderInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		ShaderModule = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Failed to create shader module: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return {};
+	}
+	return ShaderModule;
+}
+
+vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device);
 
 vk::UniqueRenderPass CreateMainRenderPass(
-	vk::Device              LogicalDevice,
+	vk::Device              Device,
 	vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1);
 
 vk::UniqueFramebuffer CreateMainFrameBuffer(
-	vk::Device LogicalDevice, vk::ImageView Color, vk::ImageView DepthAA,
+	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
+
+std::tuple<
+	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout,
+	vk::UniqueDescriptorSet>
+	CreateMainDrawPipeline(
+		vk::Device Device, vk::DescriptorPool DescriptorPool,
+		const std::vector<vk::PushConstantRange>&          PushConstants,
+		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
+		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+		vk::RenderPass RenderPass);
 
 int main(int argc, char* argv[])
 {
@@ -932,7 +965,7 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device LogicalDevice)
+vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device)
 {
 	const vk::DescriptorPoolSize PoolSizes[] = {
 		{vk::DescriptorType::eStorageBuffer, 32},
@@ -948,7 +981,7 @@ vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device LogicalDevice)
 	DescriptorPoolInfo.maxSets       = 0xFF;
 
 	if( auto CreateResult
-		= LogicalDevice.createDescriptorPoolUnique(DescriptorPoolInfo);
+		= Device.createDescriptorPoolUnique(DescriptorPoolInfo);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		return std::move(CreateResult.value);
@@ -962,8 +995,8 @@ vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device LogicalDevice)
 	}
 }
 
-vk::UniqueRenderPass CreateMainRenderPass(
-	vk::Device LogicalDevice, vk::SampleCountFlagBits SampleCount)
+vk::UniqueRenderPass
+	CreateMainRenderPass(vk::Device Device, vk::SampleCountFlagBits SampleCount)
 {
 	vk::RenderPassCreateInfo RenderPassInfo = {};
 
@@ -1024,8 +1057,7 @@ vk::UniqueRenderPass CreateMainRenderPass(
 		= std::extent_v<decltype(SubpassDependencies)>;
 	RenderPassInfo.pDependencies = SubpassDependencies;
 
-	if( auto CreateResult
-		= LogicalDevice.createRenderPassUnique(RenderPassInfo);
+	if( auto CreateResult = Device.createRenderPassUnique(RenderPassInfo);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		return std::move(CreateResult.value);
@@ -1040,7 +1072,7 @@ vk::UniqueRenderPass CreateMainRenderPass(
 }
 
 vk::UniqueFramebuffer CreateMainFrameBuffer(
-	vk::Device LogicalDevice, vk::ImageView Color, vk::ImageView DepthAA,
+	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass)
 {
 	vk::FramebufferCreateInfo FramebufferInfo = {};
@@ -1054,8 +1086,7 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	FramebufferInfo.attachmentCount   = std::extent_v<decltype(Attachments)>;
 	FramebufferInfo.pAttachments      = Attachments;
 
-	if( auto CreateResult
-		= LogicalDevice.createFramebufferUnique(FramebufferInfo);
+	if( auto CreateResult = Device.createFramebufferUnique(FramebufferInfo);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		return std::move(CreateResult.value);
@@ -1067,4 +1098,231 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 			vk::to_string(CreateResult.result).c_str());
 		return {};
 	}
+}
+
+std::tuple<
+	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout,
+	vk::UniqueDescriptorSet>
+	CreateMainDrawPipeline(
+		vk::Device Device, vk::DescriptorPool DescriptorPool,
+		const std::vector<vk::PushConstantRange>&          PushConstants,
+		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
+		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+		vk::RenderPass RenderPass)
+{
+	// Create Descriptor layout
+	vk::DescriptorSetLayoutCreateInfo GraphicsDescriptorLayoutInfo{};
+	GraphicsDescriptorLayoutInfo.bindingCount = Bindings.size();
+	GraphicsDescriptorLayoutInfo.pBindings    = Bindings.data();
+
+	vk::UniqueDescriptorSetLayout GraphicsDescriptorLayout = {};
+	if( auto CreateResult
+		= Device.createDescriptorSetLayoutUnique(GraphicsDescriptorLayoutInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		GraphicsDescriptorLayout = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating descriptor set layout: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return {};
+	}
+
+	// Create Pipeline Layout
+	vk::PipelineLayoutCreateInfo GraphicsPipelineLayoutInfo{};
+	GraphicsPipelineLayoutInfo.setLayoutCount = 1;
+	GraphicsPipelineLayoutInfo.pSetLayouts    = &GraphicsDescriptorLayout.get();
+	GraphicsPipelineLayoutInfo.pushConstantRangeCount = PushConstants.size();
+	GraphicsPipelineLayoutInfo.pPushConstantRanges    = PushConstants.data();
+
+	vk::UniquePipelineLayout GraphicsPipelineLayout = {};
+	if( auto CreateResult
+		= Device.createPipelineLayoutUnique(GraphicsPipelineLayoutInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		GraphicsPipelineLayout = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating pipeline layout: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return {};
+	}
+
+	// Allocate a descriptor set
+	vk::DescriptorSetAllocateInfo DescriptorSetInfo{};
+	DescriptorSetInfo.descriptorPool     = DescriptorPool;
+	DescriptorSetInfo.descriptorSetCount = 1;
+	DescriptorSetInfo.pSetLayouts        = &GraphicsDescriptorLayout.get();
+
+	vk::UniqueDescriptorSet GraphicsDescriptorSet = {};
+	if( auto AllocateResult
+		= Device.allocateDescriptorSetsUnique(DescriptorSetInfo);
+		AllocateResult.result == vk::Result::eSuccess )
+	{
+		GraphicsDescriptorSet = std::move(AllocateResult.value[0]);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error allocating descriptor set: %s\n",
+			vk::to_string(AllocateResult.result).c_str());
+		return {};
+	}
+
+	// Describe the stage and entry point of each shader
+	const vk::PipelineShaderStageCreateInfo ShaderStagesInfo[2] = {
+		vk::PipelineShaderStageCreateInfo(
+			{},                               // Flags
+			vk::ShaderStageFlagBits::eVertex, // Shader Stage
+			VertModule,                       // Shader Module
+			"main", // Shader entry point function name
+			{}      // Shader specialization info
+			),
+		vk::PipelineShaderStageCreateInfo(
+			{},                                 // Flags
+			vk::ShaderStageFlagBits::eFragment, // Shader Stage
+			FragModule,                         // Shader Module
+			"main", // Shader entry point function name
+			{}      // Shader specialization info
+			),
+	};
+
+	vk::PipelineVertexInputStateCreateInfo VertexInputState = {};
+
+	static vk::VertexInputBindingDescription VertexBindingDescription = {};
+	VertexBindingDescription.binding                                  = 0;
+	VertexBindingDescription.stride    = sizeof(Blam::Vertex);
+	VertexBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+	VertexInputState.vertexBindingDescriptionCount = 1;
+	VertexInputState.pVertexBindingDescriptions    = &VertexBindingDescription;
+
+	static std::array<vk::VertexInputAttributeDescription, 4>
+		AttributeDescriptions = {};
+	// Position
+	AttributeDescriptions[0].binding  = 0;
+	AttributeDescriptions[0].location = 0;
+	AttributeDescriptions[0].format   = vk::Format::eR32G32B32Sfloat;
+	AttributeDescriptions[0].offset   = offsetof(Blam::Vertex, Position);
+	// Position
+	AttributeDescriptions[1].binding  = 0;
+	AttributeDescriptions[1].location = 1;
+	AttributeDescriptions[1].format   = vk::Format::eR32G32B32Sfloat;
+	AttributeDescriptions[1].offset   = offsetof(Blam::Vertex, Normal);
+	// Position
+	AttributeDescriptions[2].binding  = 0;
+	AttributeDescriptions[2].location = 2;
+	AttributeDescriptions[2].format   = vk::Format::eR32G32B32Sfloat;
+	AttributeDescriptions[2].offset   = offsetof(Blam::Vertex, Binormal);
+	// Position
+	AttributeDescriptions[3].binding  = 0;
+	AttributeDescriptions[3].location = 3;
+	AttributeDescriptions[3].format   = vk::Format::eR32G32B32Sfloat;
+	AttributeDescriptions[3].offset   = offsetof(Blam::Vertex, Tangent);
+	// Position
+	AttributeDescriptions[4].binding  = 0;
+	AttributeDescriptions[4].location = 4;
+	AttributeDescriptions[4].format   = vk::Format::eR32G32Sfloat;
+	AttributeDescriptions[4].offset   = offsetof(Blam::Vertex, UV);
+
+	VertexInputState.vertexAttributeDescriptionCount
+		= AttributeDescriptions.size();
+	VertexInputState.pVertexAttributeDescriptions
+		= AttributeDescriptions.data();
+
+	vk::PipelineInputAssemblyStateCreateInfo InputAssemblyState = {};
+	InputAssemblyState.topology = vk::PrimitiveTopology::eTriangleList;
+	InputAssemblyState.primitiveRestartEnable = false;
+
+	vk::PipelineViewportStateCreateInfo ViewportState = {};
+	static const vk::Viewport DefaultViewport = {0, 0, 16, 16, 0.0f, 1.0f};
+	static const vk::Rect2D   DefaultScissor  = {{0, 0}, {16, 16}};
+	ViewportState.viewportCount               = 1;
+	ViewportState.pViewports                  = &DefaultViewport;
+	ViewportState.scissorCount                = 1;
+	ViewportState.pScissors                   = &DefaultScissor;
+
+	vk::PipelineRasterizationStateCreateInfo RasterizationState = {};
+	RasterizationState.depthClampEnable                         = false;
+	RasterizationState.rasterizerDiscardEnable                  = false;
+	RasterizationState.polygonMode     = vk::PolygonMode::eFill;
+	RasterizationState.cullMode        = vk::CullModeFlagBits::eBack;
+	RasterizationState.frontFace       = vk::FrontFace::eCounterClockwise;
+	RasterizationState.depthBiasEnable = false;
+	RasterizationState.depthBiasConstantFactor = 0.0f;
+	RasterizationState.depthBiasClamp          = 0.0f;
+	RasterizationState.depthBiasSlopeFactor    = 0.0;
+	RasterizationState.lineWidth               = 1.0f;
+
+	vk::PipelineMultisampleStateCreateInfo MultisampleState = {};
+	MultisampleState.rasterizationSamples                   = RenderSamples;
+	MultisampleState.sampleShadingEnable                    = true;
+	MultisampleState.minSampleShading                       = 1.0f;
+	MultisampleState.pSampleMask                            = nullptr;
+	MultisampleState.alphaToCoverageEnable                  = false;
+	MultisampleState.alphaToOneEnable                       = false;
+
+	vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {};
+	DepthStencilState.depthTestEnable                         = true;
+	DepthStencilState.depthWriteEnable                        = true;
+	DepthStencilState.depthCompareOp        = vk::CompareOp::eLess;
+	DepthStencilState.depthBoundsTestEnable = false;
+	DepthStencilState.stencilTestEnable     = false;
+	DepthStencilState.front                 = vk::StencilOp::eKeep;
+	DepthStencilState.back                  = vk::StencilOp::eKeep;
+	DepthStencilState.minDepthBounds        = 0.0f;
+	DepthStencilState.maxDepthBounds        = 1.0f;
+
+	vk::PipelineColorBlendStateCreateInfo ColorBlendState = {};
+	ColorBlendState.logicOpEnable                         = false;
+	ColorBlendState.logicOp                               = vk::LogicOp::eClear;
+	ColorBlendState.attachmentCount                       = 1;
+
+	vk::PipelineColorBlendAttachmentState BlendAttachmentState = {};
+	BlendAttachmentState.blendEnable                           = false;
+	BlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eZero;
+	BlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
+	BlendAttachmentState.colorBlendOp        = vk::BlendOp::eAdd;
+	BlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eZero;
+	BlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+	BlendAttachmentState.alphaBlendOp        = vk::BlendOp::eAdd;
+	BlendAttachmentState.colorWriteMask
+		= vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+		| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+
+	ColorBlendState.pAttachments = &BlendAttachmentState;
+
+	vk::PipelineDynamicStateCreateInfo DynamicState = {};
+	vk::DynamicState                   DynamicStates[]
+		= {// The viewport and scissor of the framebuffer will be dynamic at
+		   // run-time
+		   // so we definately add these
+		   vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+	DynamicState.dynamicStateCount = std::uint32_t(glm::countof(DynamicStates));
+	DynamicState.pDynamicStates    = DynamicStates;
+
+	vk::GraphicsPipelineCreateInfo RenderPipelineInfo = {};
+	RenderPipelineInfo.stageCount                     = 2; // Vert + Frag stages
+	RenderPipelineInfo.pStages                        = ShaderStagesInfo;
+	RenderPipelineInfo.pVertexInputState              = &VertexInputState;
+	RenderPipelineInfo.pInputAssemblyState            = &InputAssemblyState;
+	RenderPipelineInfo.pViewportState                 = &ViewportState;
+	RenderPipelineInfo.pRasterizationState            = &RasterizationState;
+	RenderPipelineInfo.pMultisampleState              = &MultisampleState;
+	RenderPipelineInfo.pDepthStencilState             = &DepthStencilState;
+	RenderPipelineInfo.pColorBlendState               = &ColorBlendState;
+	RenderPipelineInfo.pDynamicState                  = &DynamicState;
+	RenderPipelineInfo.subpass                        = 0;
+	RenderPipelineInfo.renderPass                     = RenderPass;
+	RenderPipelineInfo.layout = GraphicsPipelineLayout.get();
+
+	// Create Pipeline
+	vk::UniquePipeline Pipeline
+		= Device.createGraphicsPipelineUnique({}, RenderPipelineInfo).value;
+	return std::make_tuple(
+		std::move(Pipeline), std::move(GraphicsPipelineLayout),
+		std::move(GraphicsDescriptorLayout), std::move(GraphicsDescriptorSet));
 }
