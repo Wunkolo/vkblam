@@ -179,8 +179,9 @@ int main(int argc, char* argv[])
 		= CreateMainRenderPass(Device.get(), RenderSamples);
 
 	// Buffers
-	vk::UniqueBuffer       StagingBuffer       = {};
-	vk::UniqueDeviceMemory StagingBufferMemory = {};
+	vk::UniqueBuffer       StagingBuffer              = {};
+	vk::UniqueDeviceMemory StagingBufferMemory        = {};
+	std::size_t            StagingBufferWritePosition = 0;
 
 	vk::BufferCreateInfo StagingBufferInfo = {};
 	StagingBufferInfo.size
@@ -264,10 +265,18 @@ int main(int argc, char* argv[])
 	std::vector<vk::BufferCopy>   VertexBufferCopies;
 	vk::UniqueDeviceMemory        VertexBufferHeapMemory = {};
 
+	std::vector<vk::UniqueBuffer> IndexBuffers;
+	std::vector<vk::BufferCopy>   IndexBufferCopies;
+	vk::UniqueDeviceMemory        IndexBufferHeapMemory = {};
+
 	{
 		std::size_t                           VertexHeapMemorySize = 0;
 		std::uint32_t                         VertexHeapMemoryMask = 0xFFFFFFFF;
 		std::vector<vk::BindBufferMemoryInfo> VertexHeapBinds;
+
+		std::size_t                           IndexHeapMemorySize = 0;
+		std::uint32_t                         IndexHeapMemoryMask = 0xFFFFFFFF;
+		std::vector<vk::BindBufferMemoryInfo> IndexHeapBinds;
 
 		if( const auto BaseTagPtr
 			= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
@@ -299,10 +308,13 @@ int main(int argc, char* argv[])
 						 ScenarioBSP.Lightmaps.GetSpan(
 							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 					{
+						const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
+							BSPData.data(), CurBSPEntry.BSPVirtualBase);
 						for( const auto& CurMaterial :
 							 CurLightmap.Materials.GetSpan(
 								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 						{
+							// Vertex Buffer data
 							const auto CurVertexData = CurMaterial.GetVertices(
 								BSPData.data(), CurBSPEntry.BSPVirtualBase);
 
@@ -314,7 +326,8 @@ int main(int argc, char* argv[])
 
 							// Copy into the staging buffer
 							std::memcpy(
-								StagingBufferData.data() + VertexHeapMemorySize,
+								StagingBufferData.data()
+									+ StagingBufferWritePosition,
 								CurVertexData.data(),
 								CurVertexData.size_bytes());
 
@@ -366,7 +379,82 @@ int main(int argc, char* argv[])
 							VertexHeapMemoryMask
 								&= VertexBufferMemoryRequirements
 									   .memoryTypeBits;
-							VertexHeapMemorySize += CurVertexData.size_bytes();
+
+							// Increment offsets
+							VertexHeapMemorySize
+								+= VertexBufferMemoryRequirements.size;
+							StagingBufferWritePosition
+								+= CurVertexData.size_bytes();
+
+							// Index Buffer data
+							const auto CurIndexData
+								= std::as_bytes(Surfaces.subspan(
+									CurMaterial.SurfacesIndexStart,
+									CurMaterial.SurfacesCount));
+
+							vk::BufferCreateInfo IndexBufferInfo = {};
+							IndexBufferInfo.size = CurIndexData.size_bytes();
+							IndexBufferInfo.usage
+								= vk::BufferUsageFlagBits::eIndexBuffer
+								| vk::BufferUsageFlagBits::eTransferDst;
+
+							// Copy into the staging buffer
+							std::memcpy(
+								StagingBufferData.data()
+									+ StagingBufferWritePosition,
+								CurIndexData.data(), CurIndexData.size_bytes());
+
+							// Queue up staging buffer copy
+							// It's copying from the staging buffer into target
+							// buffer so the destination offset is 0
+							IndexBufferCopies.emplace_back(vk::BufferCopy(
+								IndexHeapMemorySize, 0,
+								CurIndexData.size_bytes()));
+
+							// Create buffer
+							vk::UniqueBuffer CurIndexBuffer = {};
+							if( auto CreateResult
+								= Device->createBufferUnique(IndexBufferInfo);
+								CreateResult.result == vk::Result::eSuccess )
+							{
+								CurIndexBuffer = std::move(CreateResult.value);
+							}
+							else
+							{
+								std::fprintf(
+									stderr, "Error creating Index buffer: %s\n",
+									vk::to_string(CreateResult.result).c_str());
+								return EXIT_FAILURE;
+							}
+
+							vk::MemoryRequirements IndexBufferMemoryRequirements
+								= Device->getBufferMemoryRequirements(
+									CurIndexBuffer.get());
+
+							IndexBufferMemoryRequirements.size
+								= Common::AlignUp(
+									IndexBufferMemoryRequirements.size,
+									BufferImageGranularity);
+
+							// Queue up Index buffer memory bind
+							IndexHeapBinds.emplace_back(
+								vk::BindBufferMemoryInfo{
+									CurIndexBuffer.get(), nullptr,
+									IndexBufferMemoryRequirements.size});
+
+							// Add Index buffer toend of array
+							IndexBuffers.emplace_back(
+								std::move(CurIndexBuffer));
+
+							// Update Index heap state
+							IndexHeapMemoryMask
+								&= IndexBufferMemoryRequirements.memoryTypeBits;
+
+							// Increment offsets
+							IndexHeapMemorySize
+								+= IndexBufferMemoryRequirements.size;
+							StagingBufferWritePosition
+								+= CurIndexData.size_bytes();
 						}
 					}
 				}
@@ -394,7 +482,27 @@ int main(int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 
-		// Bind buffers
+		// Allocate the index buffer heap
+		vk::MemoryAllocateInfo IndexHeapAllocInfo;
+		IndexHeapAllocInfo.allocationSize  = IndexHeapMemorySize;
+		IndexHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+			PhysicalDevice, IndexHeapMemoryMask,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		if( auto AllocResult = Device->allocateMemoryUnique(IndexHeapAllocInfo);
+			AllocResult.result == vk::Result::eSuccess )
+		{
+			IndexBufferHeapMemory = std::move(AllocResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating index buffer memory: %s\n",
+				vk::to_string(AllocResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		// Bind vertex buffers
 		for( vk::BindBufferMemoryInfo& CurBind : VertexHeapBinds )
 		{
 			CurBind.memory = VertexBufferHeapMemory.get();
@@ -407,7 +515,24 @@ int main(int argc, char* argv[])
 		else
 		{
 			std::fprintf(
-				stderr, "Error binding vertex buffer: %s\n",
+				stderr, "Error binding vertex buffer:s %s\n",
+				vk::to_string(BindResult).c_str());
+			return EXIT_FAILURE;
+		}
+		// Bind Index buffers
+		for( vk::BindBufferMemoryInfo& CurBind : IndexHeapBinds )
+		{
+			CurBind.memory = IndexBufferHeapMemory.get();
+		}
+		if( auto BindResult = Device->bindBufferMemory2(IndexHeapBinds);
+			BindResult == vk::Result::eSuccess )
+		{
+			// Successfully binded all buffers
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error binding index buffers: %s\n",
 				vk::to_string(BindResult).c_str());
 			return EXIT_FAILURE;
 		}
@@ -704,6 +829,13 @@ int main(int argc, char* argv[])
 			CommandBuffer->copyBuffer(
 				StagingBuffer.get(), VertexBuffers[i].get(),
 				VertexBufferCopies[i]);
+		}
+		// Flush all vertex buffer uploads
+		for( std::size_t i = 0; i < IndexBuffers.size(); ++i )
+		{
+			CommandBuffer->copyBuffer(
+				StagingBuffer.get(), IndexBuffers[i].get(),
+				IndexBufferCopies[i]);
 		}
 
 		vk::RenderPassBeginInfo RenderBeginInfo   = {};
