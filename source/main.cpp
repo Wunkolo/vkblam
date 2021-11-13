@@ -7,6 +7,8 @@
 #include <map>
 #include <span>
 
+#include <Common/Alignment.hpp>
+
 #include <mio/mmap.hpp>
 
 #include <Blam/Blam.hpp>
@@ -19,6 +21,35 @@
 static constexpr glm::uvec2              RenderSize = {2048, 2048};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
+
+std::int32_t FindMemoryTypeIndex(
+	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
+	vk::MemoryPropertyFlags Properties,
+	vk::MemoryPropertyFlags ExcludeProperties
+	= vk::MemoryPropertyFlagBits::eProtected)
+{
+	const vk::PhysicalDeviceMemoryProperties DeviceMemoryProperties
+		= PhysicalDevice.getMemoryProperties();
+	// Iterate the physical device's memory types until we find a match
+	for( std::size_t i = 0; i < DeviceMemoryProperties.memoryTypeCount; i++ )
+	{
+		if(
+			// Is within memory type mask
+			(((MemoryTypeMask >> i) & 0b1) == 0b1) &&
+			// Has property flags
+			(DeviceMemoryProperties.memoryTypes[i].propertyFlags & Properties)
+				== Properties
+			&&
+			// None of the excluded properties are enabled
+			!(DeviceMemoryProperties.memoryTypes[i].propertyFlags
+			  & ExcludeProperties) )
+		{
+			return static_cast<std::uint32_t>(i);
+		}
+	}
+
+	return -1;
+}
 
 vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device LogicalDevice);
 
@@ -178,14 +209,12 @@ int main(int argc, char* argv[])
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), RenderSamples);
 
-	vk::UniqueImage        RenderImage;
-	vk::UniqueDeviceMemory RenderImageMemory;
+	// Render Target images
+	vk::UniqueImage RenderImage;
 
-	vk::UniqueImage        RenderImageAA;
-	vk::UniqueDeviceMemory RenderImageAAMemory;
+	vk::UniqueImage RenderImageAA;
 
-	vk::UniqueImage        RenderImageDepth;
-	vk::UniqueDeviceMemory RenderImageDepthMemory;
+	vk::UniqueImage RenderImageDepth;
 
 	// Render-image, R8G8B8A8_SRGB
 	vk::ImageCreateInfo RenderImageInfo = {};
@@ -254,7 +283,7 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	if( auto CreateResult = Device->createImageUnique(RenderImageInfo);
+	if( auto CreateResult = Device->createImageUnique(RenderImageDepthInfo);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		RenderImageDepth = std::move(CreateResult.value);
@@ -267,7 +296,153 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	// Allocate all the memory we need for these images up-front into a single
+	// heap.
+	vk::UniqueDeviceMemory ImageHeapMemory;
+	{
+		const static vk::Image Images[]
+			= {RenderImage.get(), RenderImageAA.get(), RenderImageDepth.get()};
+		std::size_t                          ImageHeapMemorySize;
+		std::uint32_t                        ImageHeapMemoryMask = 0xFFFFFFFF;
+		std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
+
+		// We're putting these images right after each other, so we need to
+		// ensure they are far apart enough to not be considered aliasing
+		const std::size_t BufferImageGranularity
+			= PhysicalDevice.getProperties().limits.bufferImageGranularity;
+
+		for( const vk::Image& CurImage : Images )
+		{
+			const vk::MemoryRequirements MemReqs
+				= Device->getImageMemoryRequirements(CurImage);
+
+			// Accumulate a mask of all the memory types we can use for these
+			// images
+			ImageHeapMemoryMask &= MemReqs.memoryTypeBits;
+
+			// Padd up the image-size so they are not padding
+			const std::size_t ImageSize
+				= Common::AlignUp(MemReqs.size, BufferImageGranularity);
+
+			// Put nullptr for the device memory for now
+			ImageHeapBinds.emplace_back(vk::BindImageMemoryInfo{
+				CurImage, nullptr, ImageHeapMemorySize});
+			ImageHeapMemorySize += ImageSize;
+		}
+
+		vk::MemoryAllocateInfo ImageHeapAllocInfo;
+		ImageHeapAllocInfo.allocationSize  = ImageHeapMemorySize;
+		ImageHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+			PhysicalDevice, ImageHeapMemoryMask,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		if( auto AllocResult = Device->allocateMemoryUnique(ImageHeapAllocInfo);
+			AllocResult.result == vk::Result::eSuccess )
+		{
+			ImageHeapMemory = std::move(AllocResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating image memory: %s\n",
+				vk::to_string(AllocResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		// Now we can assign the device memory to the images
+		for( vk::BindImageMemoryInfo& CurBind : ImageHeapBinds )
+		{
+			CurBind.memory = ImageHeapMemory.get();
+		}
+
+		// Now bind them all in one go
+		if( auto BindResult = Device->bindImageMemory2(ImageHeapBinds);
+			BindResult == vk::Result::eSuccess )
+		{
+			// Binding memory succeeded
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating binding image memory: %s\n",
+				vk::to_string(BindResult).c_str());
+			return EXIT_FAILURE;
+		}
+	}
+
+	//// Image Views
+	// Create the image views for the render-targets
+	vk::ImageViewCreateInfo ImageViewInfoTemplate{};
+	ImageViewInfoTemplate.viewType     = vk::ImageViewType::e2D;
+	ImageViewInfoTemplate.components.r = vk::ComponentSwizzle::eR;
+	ImageViewInfoTemplate.components.g = vk::ComponentSwizzle::eG;
+	ImageViewInfoTemplate.components.b = vk::ComponentSwizzle::eB;
+	ImageViewInfoTemplate.components.a = vk::ComponentSwizzle::eA;
+	ImageViewInfoTemplate.subresourceRange.aspectMask
+		= vk::ImageAspectFlagBits::eColor;
+	ImageViewInfoTemplate.subresourceRange.baseMipLevel   = 0;
+	ImageViewInfoTemplate.subresourceRange.levelCount     = 1;
+	ImageViewInfoTemplate.subresourceRange.baseArrayLayer = 0;
+	ImageViewInfoTemplate.subresourceRange.layerCount     = 1;
+
+	ImageViewInfoTemplate.image  = RenderImage.get();
+	ImageViewInfoTemplate.format = RenderImageInfo.format;
+
+	vk::UniqueImageView RenderImageView = {};
+	if( auto CreateResult
+		= Device->createImageViewUnique(ImageViewInfoTemplate);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		RenderImageView = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating render target view: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	ImageViewInfoTemplate.image           = RenderImageAA.get();
+	ImageViewInfoTemplate.format          = RenderImageAAInfo.format;
+	vk::UniqueImageView RenderImageAAView = {};
+	if( auto CreateResult
+		= Device->createImageViewUnique(ImageViewInfoTemplate);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		RenderImageAAView = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating render target view: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	ImageViewInfoTemplate.image  = RenderImageDepth.get();
+	ImageViewInfoTemplate.format = RenderImageDepthInfo.format;
+	ImageViewInfoTemplate.subresourceRange.aspectMask
+		= vk::ImageAspectFlagBits::eDepth;
+	vk::UniqueImageView RenderImageDepthView = {};
+	if( auto CreateResult
+		= Device->createImageViewUnique(ImageViewInfoTemplate);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		RenderImageDepthView = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating render target view: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
 	//// MainFrameBuffer
+	vk::UniqueFramebuffer RenderFramebuffer = CreateMainFrameBuffer(
+		Device.get(), RenderImageView.get(), RenderImageDepthView.get(),
+		RenderImageAAView.get(), RenderSize, MainRenderPass.get());
 
 	return EXIT_SUCCESS;
 }
