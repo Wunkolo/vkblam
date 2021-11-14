@@ -24,6 +24,7 @@
 #define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/component_wise.hpp>
 
 #include "DebugShader.hpp"
 #include "stb_image_write.h"
@@ -35,7 +36,7 @@
 RENDERDOC_API_1_4_1* rdoc_api = NULL;
 #endif
 
-static constexpr glm::uvec2              RenderSize = {1024, 1024};
+static constexpr glm::uvec2              RenderSize = {512, 512};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
 
@@ -149,6 +150,9 @@ int main(int argc, char* argv[])
 	std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
 	std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
 
+	glm::f32vec3 WorldBoundMax(std::numeric_limits<float>::min());
+	glm::f32vec3 WorldBoundMin(std::numeric_limits<float>::max());
+
 	//// Create Instance
 	vk::InstanceCreateInfo InstanceInfo = {};
 
@@ -254,8 +258,8 @@ int main(int argc, char* argv[])
 	std::size_t            StagingBufferWritePosition = 0;
 
 	vk::BufferCreateInfo StagingBufferInfo = {};
-	StagingBufferInfo.size
-		= std::max(8_MiB, RenderSize.x * RenderSize.y * sizeof(std::uint32_t));
+	StagingBufferInfo.size                 = std::max(
+        128_MiB, RenderSize.x * RenderSize.y * sizeof(std::uint32_t));
 	StagingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferDst
 							| vk::BufferUsageFlagBits::eTransferSrc;
 
@@ -374,6 +378,20 @@ int main(int argc, char* argv[])
 					const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
 						ScenarioBSP
 						= CurBSPEntry.GetSBSP(MapFile.data());
+
+					WorldBoundMin.x = glm::min(
+						WorldBoundMin.x, ScenarioBSP.WorldBoundsX[0]);
+					WorldBoundMin.y = glm::min(
+						WorldBoundMin.y, ScenarioBSP.WorldBoundsY[0]);
+					WorldBoundMin.z = glm::min(
+						WorldBoundMin.z, ScenarioBSP.WorldBoundsZ[0]);
+
+					WorldBoundMax.x = glm::max(
+						WorldBoundMax.x, ScenarioBSP.WorldBoundsX[1]);
+					WorldBoundMax.y = glm::max(
+						WorldBoundMax.y, ScenarioBSP.WorldBoundsY[1]);
+					WorldBoundMax.z = glm::max(
+						WorldBoundMax.z, ScenarioBSP.WorldBoundsZ[1]);
 					// Lightmap
 					for( const auto& CurLightmap :
 						 ScenarioBSP.Lightmaps.GetSpan(
@@ -961,13 +979,21 @@ int main(int argc, char* argv[])
 		CommandBuffer->bindPipeline(
 			vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
+		const glm::vec3 WorldCenter
+			= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
 		const glm::mat4 ViewMatrix = glm::lookAt<glm::f32>(
-			glm::vec3(250, 250, 250), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
-		const glm::mat4 ProjectionMatrix
-			//= glm::ortho<glm::f32>(-250, 250, -250, 250, 0.0f, 1000);
-			= glm::perspective<glm::f32>(
-				glm::radians(60.0f),
-				static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
+			glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
+			glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
+			glm::vec3(0, 1, 0));
+
+		const glm::f32 MaxExtent
+			= glm::compMax(WorldBoundMax - WorldBoundMin) / 2.0f;
+		const glm::mat4 ProjectionMatrix = glm::ortho<glm::f32>(
+			-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
+			WorldBoundMax.z - WorldBoundMin.z);
+		// = glm::perspective<glm::f32>(
+		// 	glm::radians(60.0f),
+		// 	static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
 
 		const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
 
