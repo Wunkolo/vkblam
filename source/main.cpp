@@ -36,7 +36,7 @@
 RENDERDOC_API_1_4_1* rdoc_api = NULL;
 #endif
 
-static constexpr glm::uvec2              RenderSize = {512, 512};
+static constexpr glm::uvec2              RenderSize = {1024, 1024};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
 
@@ -514,20 +514,6 @@ int main(int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 
-		if( auto BindResult = Device->bindBufferMemory(
-				VertexBuffer.get(), VertexBufferHeapMemory.get(), 0);
-			BindResult == vk::Result::eSuccess )
-		{
-			// Successfully binded
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error binding vertex buffer memory: %s\n",
-				vk::to_string(BindResult).c_str());
-			return EXIT_FAILURE;
-		}
-
 		//// Create Index buffer heap
 		vk::BufferCreateInfo IndexBufferInfo = {};
 		IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
@@ -570,8 +556,12 @@ int main(int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 
-		if( auto BindResult = Device->bindBufferMemory(
-				IndexBuffer.get(), IndexBufferHeapMemory.get(), 0);
+		//// Bind Vertex and Index buffer
+		if( auto BindResult = Device->bindBufferMemory2(
+				{vk::BindBufferMemoryInfo(
+					 VertexBuffer.get(), VertexBufferHeapMemory.get(), 0),
+				 vk::BindBufferMemoryInfo(
+					 IndexBuffer.get(), IndexBufferHeapMemory.get(), 0)});
 			BindResult == vk::Result::eSuccess )
 		{
 			// Successfully binded
@@ -579,7 +569,7 @@ int main(int argc, char* argv[])
 		else
 		{
 			std::fprintf(
-				stderr, "Error binding index buffer memory: %s\n",
+				stderr, "Error binding vertex/index buffer memory: %s\n",
 				vk::to_string(BindResult).c_str());
 			return EXIT_FAILURE;
 		}
