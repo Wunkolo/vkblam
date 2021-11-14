@@ -215,6 +215,10 @@ int main(int argc, char* argv[])
 	//// Create Device
 	vk::DeviceCreateInfo DeviceInfo = {};
 
+	vk::PhysicalDeviceFeatures DeviceFeatures = {};
+	DeviceFeatures.sampleRateShading          = true;
+	DeviceInfo.pEnabledFeatures               = &DeviceFeatures;
+
 	static const float QueuePriority = 1.0f;
 
 	vk::DeviceQueueCreateInfo QueueInfo = {};
@@ -1335,7 +1339,7 @@ std::tuple<
 
 	vk::PipelineMultisampleStateCreateInfo MultisampleState = {};
 	MultisampleState.rasterizationSamples                   = RenderSamples;
-	MultisampleState.sampleShadingEnable                    = false;
+	MultisampleState.sampleShadingEnable                    = true;
 	MultisampleState.minSampleShading                       = 1.0f;
 	MultisampleState.pSampleMask                            = nullptr;
 	MultisampleState.alphaToCoverageEnable                  = false;
