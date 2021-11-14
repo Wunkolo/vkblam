@@ -336,22 +336,23 @@ int main(int argc, char* argv[])
 	}
 
 	vk::UniqueBuffer            VertexBuffer;
-	std::vector<std::uint16_t>  VertexIndexOffsets;
 	std::vector<vk::BufferCopy> VertexBufferCopies;
 	vk::UniqueDeviceMemory      VertexBufferHeapMemory = {};
 
-	std::vector<vk::UniqueBuffer> IndexBuffers;
-	std::vector<std::uint16_t>    IndexCounts;
-	std::vector<vk::BufferCopy>   IndexBufferCopies;
-	vk::UniqueDeviceMemory        IndexBufferHeapMemory = {};
+	vk::UniqueBuffer            IndexBuffer;
+	std::vector<vk::BufferCopy> IndexBufferCopies;
+	vk::UniqueDeviceMemory      IndexBufferHeapMemory = {};
+
+	// Parameters used for drawing
+	std::vector<std::uint16_t> VertexIndexOffsets;
+	std::vector<std::uint16_t> IndexCounts;
+	std::vector<std::uint16_t> IndexOffsets;
 
 	{
 
 		std::size_t VertexHeapIndexOffset = 0;
 
-		std::size_t                           IndexHeapMemorySize = 0;
-		std::uint32_t                         IndexHeapMemoryMask = 0xFFFFFFFF;
-		std::vector<vk::BindBufferMemoryInfo> IndexHeapBinds;
+		std::size_t IndexHeapIndexOffset = 0;
 
 		if( const auto BaseTagPtr
 			= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
@@ -442,6 +443,8 @@ int main(int argc, char* argv[])
 							IndexCounts.emplace_back(
 								CurMaterial.SurfacesCount * 3);
 
+							IndexOffsets.emplace_back(IndexHeapIndexOffset);
+
 							vk::BufferCreateInfo IndexBufferInfo = {};
 							IndexBufferInfo.size = CurIndexData.size_bytes();
 							IndexBufferInfo.usage
@@ -455,54 +458,16 @@ int main(int argc, char* argv[])
 								CurIndexData.data(), CurIndexData.size_bytes());
 
 							// Queue up staging buffer copy
-							// It's copying from the staging buffer into target
-							// buffer so the destination offset is 0
 							IndexBufferCopies.emplace_back(vk::BufferCopy(
-								StagingBufferWritePosition, 0,
+								StagingBufferWritePosition,
+								IndexHeapIndexOffset * sizeof(std::uint16_t),
 								CurIndexData.size_bytes()));
 
-							// Create buffer
-							vk::UniqueBuffer CurIndexBuffer = {};
-							if( auto CreateResult
-								= Device->createBufferUnique(IndexBufferInfo);
-								CreateResult.result == vk::Result::eSuccess )
-							{
-								CurIndexBuffer = std::move(CreateResult.value);
-							}
-							else
-							{
-								std::fprintf(
-									stderr, "Error creating Index buffer: %s\n",
-									vk::to_string(CreateResult.result).c_str());
-								return EXIT_FAILURE;
-							}
-
-							vk::MemoryRequirements IndexBufferMemoryRequirements
-								= Device->getBufferMemoryRequirements(
-									CurIndexBuffer.get());
-
-							IndexBufferMemoryRequirements.size
-								= Common::AlignUp(
-									IndexBufferMemoryRequirements.size,
-									BufferImageGranularity);
-
 							// Queue up Index buffer memory bind
-							IndexHeapBinds.emplace_back(
-								vk::BindBufferMemoryInfo{
-									CurIndexBuffer.get(), nullptr,
-									IndexHeapMemorySize});
-
-							// Add Index buffer toend of array
-							IndexBuffers.emplace_back(
-								std::move(CurIndexBuffer));
-
-							// Update Index heap state
-							IndexHeapMemoryMask
-								&= IndexBufferMemoryRequirements.memoryTypeBits;
 
 							// Increment offsets
-							IndexHeapMemorySize
-								+= IndexBufferMemoryRequirements.size;
+							IndexHeapIndexOffset
+								+= CurMaterial.SurfacesCount * 3;
 							StagingBufferWritePosition
 								+= CurIndexData.size_bytes();
 						}
@@ -511,6 +476,7 @@ int main(int argc, char* argv[])
 			}
 		}
 
+		//// Create Vertex buffer heap
 		vk::BufferCreateInfo VertexBufferInfo = {};
 		VertexBufferInfo.size  = VertexHeapIndexOffset * sizeof(Blam::Vertex);
 		VertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
@@ -554,27 +520,6 @@ int main(int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 
-		// Allocate the index buffer heap
-		vk::MemoryAllocateInfo IndexHeapAllocInfo;
-		IndexHeapAllocInfo.allocationSize  = IndexHeapMemorySize;
-		IndexHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
-			PhysicalDevice, IndexHeapMemoryMask,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		if( auto AllocResult = Device->allocateMemoryUnique(IndexHeapAllocInfo);
-			AllocResult.result == vk::Result::eSuccess )
-		{
-			IndexBufferHeapMemory = std::move(AllocResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error allocating index buffer memory: %s\n",
-				vk::to_string(AllocResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-
-		// Bind vertex buffer
 		if( auto BindResult = Device->bindBufferMemory(
 				VertexBuffer.get(), VertexBufferHeapMemory.get(), 0);
 			BindResult == vk::Result::eSuccess )
@@ -588,20 +533,59 @@ int main(int argc, char* argv[])
 				vk::to_string(BindResult).c_str());
 			return EXIT_FAILURE;
 		}
-		// Bind Index buffers
-		for( vk::BindBufferMemoryInfo& CurBind : IndexHeapBinds )
+
+		//// Create Index buffer heap
+		vk::BufferCreateInfo IndexBufferInfo = {};
+		IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
+		IndexBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer
+							  | vk::BufferUsageFlagBits::eTransferDst;
+
+		if( auto CreateResult = Device->createBufferUnique(IndexBufferInfo);
+			CreateResult.result == vk::Result::eSuccess )
 		{
-			CurBind.memory = IndexBufferHeapMemory.get();
-		}
-		if( auto BindResult = Device->bindBufferMemory2(IndexHeapBinds);
-			BindResult == vk::Result::eSuccess )
-		{
-			// Successfully binded all buffers
+			IndexBuffer = std::move(CreateResult.value);
 		}
 		else
 		{
 			std::fprintf(
-				stderr, "Error binding index buffers: %s\n",
+				stderr, "Error creating Index buffer: %s\n",
+				vk::to_string(CreateResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		const vk::MemoryRequirements IndexBufferMemoryRequirements
+			= Device->getBufferMemoryRequirements(IndexBuffer.get());
+
+		// Allocate the Index buffer heap
+		vk::MemoryAllocateInfo IndexHeapAllocInfo;
+		IndexHeapAllocInfo.allocationSize  = IndexBufferMemoryRequirements.size;
+		IndexHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+			PhysicalDevice, IndexBufferMemoryRequirements.memoryTypeBits,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		if( auto AllocResult = Device->allocateMemoryUnique(IndexHeapAllocInfo);
+			AllocResult.result == vk::Result::eSuccess )
+		{
+			IndexBufferHeapMemory = std::move(AllocResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating Index buffer memory: %s\n",
+				vk::to_string(AllocResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		if( auto BindResult = Device->bindBufferMemory(
+				IndexBuffer.get(), IndexBufferHeapMemory.get(), 0);
+			BindResult == vk::Result::eSuccess )
+		{
+			// Successfully binded
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error binding index buffer memory: %s\n",
 				vk::to_string(BindResult).c_str());
 			return EXIT_FAILURE;
 		}
@@ -914,12 +898,8 @@ int main(int argc, char* argv[])
 			StagingBuffer.get(), VertexBuffer.get(), VertexBufferCopies);
 
 		// Flush all vertex buffer uploads
-		for( std::size_t i = 0; i < IndexBuffers.size(); ++i )
-		{
-			CommandBuffer->copyBuffer(
-				StagingBuffer.get(), IndexBuffers[i].get(),
-				IndexBufferCopies[i]);
-		}
+		CommandBuffer->copyBuffer(
+			StagingBuffer.get(), IndexBuffer.get(), IndexBufferCopies);
 
 		vk::RenderPassBeginInfo RenderBeginInfo   = {};
 		RenderBeginInfo.renderPass                = MainRenderPass.get();
@@ -976,12 +956,13 @@ int main(int argc, char* argv[])
 			vk::ShaderStageFlagBits::eAllGraphics, 0, {ViewProjMatrix});
 
 		CommandBuffer->bindVertexBuffers(0, {VertexBuffer.get()}, {0});
-		for( std::size_t i = 0; i < IndexBuffers.size(); ++i )
+		CommandBuffer->bindIndexBuffer(
+			IndexBuffer.get(), 0, vk::IndexType::eUint16);
+
+		for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
 		{
-			CommandBuffer->bindIndexBuffer(
-				IndexBuffers[i].get(), 0, vk::IndexType::eUint16);
 			CommandBuffer->drawIndexed(
-				IndexCounts[i], 1, 0, VertexIndexOffsets[i], 0);
+				IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i], 0);
 		}
 
 		CommandBuffer->endRenderPass();
