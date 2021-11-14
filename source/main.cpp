@@ -344,15 +344,14 @@ int main(int argc, char* argv[])
 	vk::UniqueDeviceMemory      IndexBufferHeapMemory = {};
 
 	// Parameters used for drawing
-	std::vector<std::uint16_t> VertexIndexOffsets;
-	std::vector<std::uint16_t> IndexCounts;
-	std::vector<std::uint16_t> IndexOffsets;
+	std::vector<std::uint32_t> VertexIndexOffsets;
+	std::vector<std::uint32_t> IndexCounts;
+	std::vector<std::uint32_t> IndexOffsets;
 
 	{
-
-		std::size_t VertexHeapIndexOffset = 0;
-
-		std::size_t IndexHeapIndexOffset = 0;
+		// Offset is in elements, not bytes
+		std::uint32_t VertexHeapIndexOffset = 0;
+		std::uint32_t IndexHeapIndexOffset  = 0;
 
 		if( const auto BaseTagPtr
 			= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
@@ -405,8 +404,9 @@ int main(int argc, char* argv[])
 								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 						{
 							//// Vertex Buffer data
-							const auto CurVertexData = CurMaterial.GetVertices(
-								BSPData.data(), CurBSPEntry.BSPVirtualBase);
+							const std::span<const Blam::Vertex> CurVertexData
+								= CurMaterial.GetVertices(
+									BSPData.data(), CurBSPEntry.BSPVirtualBase);
 
 							// Copy into the staging buffer
 							std::memcpy(
@@ -416,8 +416,6 @@ int main(int argc, char* argv[])
 								CurVertexData.size_bytes());
 
 							// Queue up staging buffer copy
-							// It's copying from the staging buffer into target
-							// buffer so the destination offset is 0
 							VertexBufferCopies.emplace_back(vk::BufferCopy(
 								StagingBufferWritePosition,
 								VertexHeapIndexOffset * sizeof(Blam::Vertex),
@@ -435,7 +433,7 @@ int main(int argc, char* argv[])
 							VertexHeapIndexOffset += CurVertexData.size();
 
 							//// Index Buffer data
-							const auto CurIndexData
+							const std::span<const std::byte> CurIndexData
 								= std::as_bytes(Surfaces.subspan(
 									CurMaterial.SurfacesIndexStart,
 									CurMaterial.SurfacesCount));
@@ -444,12 +442,6 @@ int main(int argc, char* argv[])
 								CurMaterial.SurfacesCount * 3);
 
 							IndexOffsets.emplace_back(IndexHeapIndexOffset);
-
-							vk::BufferCreateInfo IndexBufferInfo = {};
-							IndexBufferInfo.size = CurIndexData.size_bytes();
-							IndexBufferInfo.usage
-								= vk::BufferUsageFlagBits::eIndexBuffer
-								| vk::BufferUsageFlagBits::eTransferDst;
 
 							// Copy into the staging buffer
 							std::memcpy(
@@ -462,8 +454,6 @@ int main(int argc, char* argv[])
 								StagingBufferWritePosition,
 								IndexHeapIndexOffset * sizeof(std::uint16_t),
 								CurIndexData.size_bytes()));
-
-							// Queue up Index buffer memory bind
 
 							// Increment offsets
 							IndexHeapIndexOffset
