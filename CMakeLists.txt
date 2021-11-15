@@ -76,8 +76,9 @@ add_executable(
 	vkblam
 	source/main.cpp
 	source/stb_image_write.cpp
-	source/Vulkan/VulkanAPI.cpp
+	source/Vulkan/Debug.cpp
 	source/Vulkan/Memory.cpp
+	source/Vulkan/VulkanAPI.cpp
 )
 target_include_directories(
 	vkblam

@@ -12,6 +12,7 @@
 #include <Common/Alignment.hpp>
 #include <Common/Literals.hpp>
 
+#include <Vulkan/Debug.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
@@ -500,6 +501,10 @@ int main(int argc, char* argv[])
 				vk::to_string(Result).c_str());
 			return EXIT_FAILURE;
 		}
+
+		Vulkan::SetObjectName(
+			Device.get(), GeometryBufferHeapMemory.get(),
+			"Geometry Buffer Memory");
 	}
 
 	// Render Target images
