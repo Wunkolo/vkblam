@@ -315,11 +315,12 @@ int main(int argc, char* argv[])
 
 	vk::UniqueBuffer            VertexBuffer;
 	std::vector<vk::BufferCopy> VertexBufferCopies;
-	vk::UniqueDeviceMemory      VertexBufferHeapMemory = {};
 
 	vk::UniqueBuffer            IndexBuffer;
 	std::vector<vk::BufferCopy> IndexBufferCopies;
-	vk::UniqueDeviceMemory      IndexBufferHeapMemory = {};
+
+	// Contains _both_ the vertex buffer and the index buffer
+	vk::UniqueDeviceMemory GeometryBufferHeapMemory = {};
 
 	// Parameters used for drawing
 	std::vector<std::uint32_t> VertexIndexOffsets;
@@ -463,31 +464,6 @@ int main(int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 
-		const vk::MemoryRequirements VertexBufferMemoryRequirements
-			= Device->getBufferMemoryRequirements(VertexBuffer.get());
-
-		// Allocate the vertex buffer heap
-		vk::MemoryAllocateInfo VertexHeapAllocInfo;
-		VertexHeapAllocInfo.allocationSize
-			= VertexBufferMemoryRequirements.size;
-		VertexHeapAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
-			PhysicalDevice, VertexBufferMemoryRequirements.memoryTypeBits,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		if( auto AllocResult
-			= Device->allocateMemoryUnique(VertexHeapAllocInfo);
-			AllocResult.result == vk::Result::eSuccess )
-		{
-			VertexBufferHeapMemory = std::move(AllocResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error allocating vertex buffer memory: %s\n",
-				vk::to_string(AllocResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-
 		//// Create Index buffer heap
 		vk::BufferCreateInfo IndexBufferInfo = {};
 		IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
@@ -510,41 +486,18 @@ int main(int argc, char* argv[])
 		const vk::MemoryRequirements IndexBufferMemoryRequirements
 			= Device->getBufferMemoryRequirements(IndexBuffer.get());
 
-		// Allocate the Index buffer heap
-		vk::MemoryAllocateInfo IndexHeapAllocInfo;
-		IndexHeapAllocInfo.allocationSize  = IndexBufferMemoryRequirements.size;
-		IndexHeapAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
-			PhysicalDevice, IndexBufferMemoryRequirements.memoryTypeBits,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		if( auto AllocResult = Device->allocateMemoryUnique(IndexHeapAllocInfo);
-			AllocResult.result == vk::Result::eSuccess )
+		if( auto [Result, Value] = Vulkan::CommitBufferHeap(
+				Device.get(), PhysicalDevice,
+				std::array{VertexBuffer.get(), IndexBuffer.get()});
+			Result == vk::Result::eSuccess )
 		{
-			IndexBufferHeapMemory = std::move(AllocResult.value);
+			GeometryBufferHeapMemory = std::move(Value);
 		}
 		else
 		{
 			std::fprintf(
-				stderr, "Error allocating Index buffer memory: %s\n",
-				vk::to_string(AllocResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-
-		//// Bind Vertex and Index buffer
-		if( auto BindResult = Device->bindBufferMemory2(
-				{vk::BindBufferMemoryInfo(
-					 VertexBuffer.get(), VertexBufferHeapMemory.get(), 0),
-				 vk::BindBufferMemoryInfo(
-					 IndexBuffer.get(), IndexBufferHeapMemory.get(), 0)});
-			BindResult == vk::Result::eSuccess )
-		{
-			// Successfully binded
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error binding vertex/index buffer memory: %s\n",
-				vk::to_string(BindResult).c_str());
+				stderr, "Error committing vertex/index memory: %s\n",
+				vk::to_string(Result).c_str());
 			return EXIT_FAILURE;
 		}
 	}
@@ -638,71 +591,23 @@ int main(int argc, char* argv[])
 
 	// Allocate all the memory we need for these images up-front into a single
 	// heap.
-	vk::UniqueDeviceMemory ImageHeapMemory;
+	vk::UniqueDeviceMemory ImageHeapMemory = {};
+
+	if( auto [Result, Value] = Vulkan::CommitImageHeap(
+			Device.get(), PhysicalDevice,
+			std::array{
+				RenderImage.get(), RenderImageAA.get(),
+				RenderImageDepth.get()});
+		Result == vk::Result::eSuccess )
 	{
-		const static vk::Image Images[]
-			= {RenderImage.get(), RenderImageAA.get(), RenderImageDepth.get()};
-		std::size_t                          ImageHeapMemorySize = 0;
-		std::uint32_t                        ImageHeapMemoryMask = 0xFFFFFFFF;
-		std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
-
-		for( const vk::Image& CurImage : Images )
-		{
-			const vk::MemoryRequirements MemReqs
-				= Device->getImageMemoryRequirements(CurImage);
-
-			// Accumulate a mask of all the memory types we can use for these
-			// images
-			ImageHeapMemoryMask &= MemReqs.memoryTypeBits;
-
-			// Padd up the image-size so they are not padding
-			const std::size_t ImageSize
-				= Common::AlignUp(MemReqs.size, BufferImageGranularity);
-
-			// Put nullptr for the device memory for now
-			ImageHeapBinds.emplace_back(vk::BindImageMemoryInfo{
-				CurImage, nullptr, ImageHeapMemorySize});
-			ImageHeapMemorySize += ImageSize;
-		}
-
-		vk::MemoryAllocateInfo ImageHeapAllocInfo;
-		ImageHeapAllocInfo.allocationSize  = ImageHeapMemorySize;
-		ImageHeapAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
-			PhysicalDevice, ImageHeapMemoryMask,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		if( auto AllocResult = Device->allocateMemoryUnique(ImageHeapAllocInfo);
-			AllocResult.result == vk::Result::eSuccess )
-		{
-			ImageHeapMemory = std::move(AllocResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error allocating image memory: %s\n",
-				vk::to_string(AllocResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-
-		// Now we can assign the device memory to the images
-		for( vk::BindImageMemoryInfo& CurBind : ImageHeapBinds )
-		{
-			CurBind.memory = ImageHeapMemory.get();
-		}
-
-		// Now bind them all in one go
-		if( auto BindResult = Device->bindImageMemory2(ImageHeapBinds);
-			BindResult == vk::Result::eSuccess )
-		{
-			// Binding memory succeeded
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error allocating binding image memory: %s\n",
-				vk::to_string(BindResult).c_str());
-			return EXIT_FAILURE;
-		}
+		ImageHeapMemory = std::move(Value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error committing image memory: %s\n",
+			vk::to_string(Result).c_str());
+		return EXIT_FAILURE;
 	}
 
 	//// Image Views
