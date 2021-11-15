@@ -12,12 +12,12 @@
 #include <Common/Alignment.hpp>
 #include <Common/Literals.hpp>
 
+#include <Vulkan/Memory.hpp>
+#include <Vulkan/VulkanAPI.hpp>
+
 #include <mio/mmap.hpp>
 
 #include <Blam/Blam.hpp>
-
-#define VULKAN_HPP_NO_EXCEPTIONS
-#include <vulkan/vulkan.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -40,34 +40,25 @@ static constexpr glm::uvec2              RenderSize = {1024, 1024};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
 
-std::int32_t FindMemoryTypeIndex(
-	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
-	vk::MemoryPropertyFlags Properties,
-	vk::MemoryPropertyFlags ExcludeProperties
-	= vk::MemoryPropertyFlagBits::eProtected)
-{
-	const vk::PhysicalDeviceMemoryProperties DeviceMemoryProperties
-		= PhysicalDevice.getMemoryProperties();
-	// Iterate the physical device's memory types until we find a match
-	for( std::size_t i = 0; i < DeviceMemoryProperties.memoryTypeCount; i++ )
-	{
-		if(
-			// Is within memory type mask
-			(((MemoryTypeMask >> i) & 0b1) == 0b1) &&
-			// Has property flags
-			(DeviceMemoryProperties.memoryTypes[i].propertyFlags & Properties)
-				== Properties
-			&&
-			// None of the excluded properties are enabled
-			!(DeviceMemoryProperties.memoryTypes[i].propertyFlags
-			  & ExcludeProperties) )
-		{
-			return static_cast<std::uint32_t>(i);
-		}
-	}
+vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device);
 
-	return -1;
-}
+vk::UniqueRenderPass CreateMainRenderPass(
+	vk::Device              Device,
+	vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1);
+
+vk::UniqueFramebuffer CreateMainFrameBuffer(
+	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
+	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
+
+std::tuple<
+	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout,
+	vk::UniqueDescriptorSet>
+	CreateMainDrawPipeline(
+		vk::Device Device, vk::DescriptorPool DescriptorPool,
+		const std::vector<vk::PushConstantRange>&          PushConstants,
+		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
+		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+		vk::RenderPass RenderPass);
 
 vk::UniqueShaderModule CreateShaderModule(
 	vk::Device Device, std::span<const std::uint32_t> ShaderCode)
@@ -91,26 +82,6 @@ vk::UniqueShaderModule CreateShaderModule(
 	}
 	return ShaderModule;
 }
-
-vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device);
-
-vk::UniqueRenderPass CreateMainRenderPass(
-	vk::Device              Device,
-	vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1);
-
-vk::UniqueFramebuffer CreateMainFrameBuffer(
-	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
-	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
-
-std::tuple<
-	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout,
-	vk::UniqueDescriptorSet>
-	CreateMainDrawPipeline(
-		vk::Device Device, vk::DescriptorPool DescriptorPool,
-		const std::vector<vk::PushConstantRange>&          PushConstants,
-		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
-		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-		vk::RenderPass RenderPass);
 
 int main(int argc, char* argv[])
 {
@@ -288,7 +259,7 @@ int main(int argc, char* argv[])
 		vk::MemoryAllocateInfo StagingBufferAllocInfo = {};
 		StagingBufferAllocInfo.allocationSize
 			= StagingBufferMemoryRequirements.size;
-		StagingBufferAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+		StagingBufferAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
 			PhysicalDevice, StagingBufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eHostVisible
 				| vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -496,7 +467,7 @@ int main(int argc, char* argv[])
 		vk::MemoryAllocateInfo VertexHeapAllocInfo;
 		VertexHeapAllocInfo.allocationSize
 			= VertexBufferMemoryRequirements.size;
-		VertexHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+		VertexHeapAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
 			PhysicalDevice, VertexBufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
@@ -539,7 +510,7 @@ int main(int argc, char* argv[])
 		// Allocate the Index buffer heap
 		vk::MemoryAllocateInfo IndexHeapAllocInfo;
 		IndexHeapAllocInfo.allocationSize  = IndexBufferMemoryRequirements.size;
-		IndexHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+		IndexHeapAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
 			PhysicalDevice, IndexBufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
@@ -693,7 +664,7 @@ int main(int argc, char* argv[])
 
 		vk::MemoryAllocateInfo ImageHeapAllocInfo;
 		ImageHeapAllocInfo.allocationSize  = ImageHeapMemorySize;
-		ImageHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
+		ImageHeapAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
 			PhysicalDevice, ImageHeapMemoryMask,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
