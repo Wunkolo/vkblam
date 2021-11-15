@@ -152,6 +152,7 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(Instance.get());
 
 	//// Pick physical device
 	vk::PhysicalDevice PhysicalDevice = {};
@@ -213,6 +214,8 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(Device.get());
 
 #ifdef CAPTURE
 	if( rdoc_api )
