@@ -239,7 +239,7 @@ int main(int argc, char* argv[])
 
 	vk::BufferCreateInfo StagingBufferInfo = {};
 	StagingBufferInfo.size                 = std::max(
-        128_MiB, RenderSize.x * RenderSize.y * sizeof(std::uint32_t));
+						128_MiB, RenderSize.x * RenderSize.y * sizeof(std::uint32_t));
 	StagingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferDst
 							| vk::BufferUsageFlagBits::eTransferSrc;
 
@@ -779,10 +779,13 @@ int main(int argc, char* argv[])
 	}
 
 	{
+		Vulkan::DebugLabelScope DebugCopyScope(
+			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame");
+
 		// Flush all vertex buffer uploads
 		{
 			Vulkan::DebugLabelScope DebugCopyScope(
-				CommandBuffer.get(), {1.0, 1.0, 1.0, 1.0},
+				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
 				"Copy Vertex/Index Buffers");
 			CommandBuffer->copyBuffer(
 				StagingBuffer.get(), VertexBuffer.get(), VertexBufferCopies);
@@ -792,96 +795,113 @@ int main(int argc, char* argv[])
 				StagingBuffer.get(), IndexBuffer.get(), IndexBufferCopies);
 		}
 
-		Vulkan::DebugLabelScope DebugCopyScope(
-			CommandBuffer.get(), {1.0, 1.0, 1.0, 1.0}, "Main Render Pass");
-
-		vk::RenderPassBeginInfo RenderBeginInfo   = {};
-		RenderBeginInfo.renderPass                = MainRenderPass.get();
-		static const vk::ClearValue ClearColors[] = {
-			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
-			vk::ClearDepthStencilValue(1.0f, 0),
-			vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
-		};
-		RenderBeginInfo.pClearValues    = ClearColors;
-		RenderBeginInfo.clearValueCount = std::extent_v<decltype(ClearColors)>;
-		RenderBeginInfo.renderArea.extent.width  = RenderSize.x;
-		RenderBeginInfo.renderArea.extent.height = RenderSize.y;
-		RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
-		CommandBuffer->beginRenderPass(
-			RenderBeginInfo, vk::SubpassContents::eInline);
-
-		vk::Viewport Viewport = {};
-		Viewport.width        = RenderSize.x;
-		Viewport.height       = -float(RenderSize.y);
-		Viewport.x            = 0;
-		Viewport.y            = RenderSize.y;
-		Viewport.minDepth     = 0.0f;
-		Viewport.maxDepth     = 1.0f;
-		CommandBuffer->setViewport(0, {Viewport});
-		// Scissor
-		vk::Rect2D Scissor    = {};
-		Scissor.extent.width  = RenderSize.x;
-		Scissor.extent.height = RenderSize.y;
-		CommandBuffer->setScissor(0, {Scissor});
-		// Draw
-		CommandBuffer->bindPipeline(
-			vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
-
-		const glm::vec3 WorldCenter
-			= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
-		const glm::mat4 ViewMatrix = glm::lookAt<glm::f32>(
-			glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
-			glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
-			glm::vec3(0, 1, 0));
-
-		const glm::f32 MaxExtent
-			= glm::compMax(WorldBoundMax - WorldBoundMin) / 2.0f;
-		const glm::mat4 ProjectionMatrix = glm::ortho<glm::f32>(
-			-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
-			WorldBoundMax.z - WorldBoundMin.z);
-		// = glm::perspective<glm::f32>(
-		// 	glm::radians(60.0f),
-		// 	static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
-
-		const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
-
-		CommandBuffer->pushConstants<glm::mat4>(
-			DebugDrawPipelineLayout.get(),
-			vk::ShaderStageFlagBits::eAllGraphics, 0, {ViewProjMatrix});
-
-		CommandBuffer->bindVertexBuffers(0, {VertexBuffer.get()}, {0});
-		CommandBuffer->bindIndexBuffer(
-			IndexBuffer.get(), 0, vk::IndexType::eUint16);
-
-		for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
 		{
-			CommandBuffer->drawIndexed(
-				IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i], 0);
+			Vulkan::DebugLabelScope DebugCopyScope(
+				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Main Render Pass");
+
+			vk::RenderPassBeginInfo RenderBeginInfo   = {};
+			RenderBeginInfo.renderPass                = MainRenderPass.get();
+			static const vk::ClearValue ClearColors[] = {
+				vk::ClearColorValue(
+					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+				vk::ClearDepthStencilValue(1.0f, 0),
+				vk::ClearColorValue(
+					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+			};
+			RenderBeginInfo.pClearValues = ClearColors;
+			RenderBeginInfo.clearValueCount
+				= std::extent_v<decltype(ClearColors)>;
+			RenderBeginInfo.renderArea.extent.width  = RenderSize.x;
+			RenderBeginInfo.renderArea.extent.height = RenderSize.y;
+			RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
+			CommandBuffer->beginRenderPass(
+				RenderBeginInfo, vk::SubpassContents::eInline);
+
+			vk::Viewport Viewport = {};
+			Viewport.width        = RenderSize.x;
+			Viewport.height       = -float(RenderSize.y);
+			Viewport.x            = 0;
+			Viewport.y            = RenderSize.y;
+			Viewport.minDepth     = 0.0f;
+			Viewport.maxDepth     = 1.0f;
+			CommandBuffer->setViewport(0, {Viewport});
+			// Scissor
+			vk::Rect2D Scissor    = {};
+			Scissor.extent.width  = RenderSize.x;
+			Scissor.extent.height = RenderSize.y;
+			CommandBuffer->setScissor(0, {Scissor});
+			// Draw
+			CommandBuffer->bindPipeline(
+				vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
+
+			const glm::vec3 WorldCenter
+				= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
+			const glm::mat4 ViewMatrix = glm::lookAt<glm::f32>(
+				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
+				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
+				glm::vec3(0, 1, 0));
+
+			const glm::f32 MaxExtent
+				= glm::compMax(WorldBoundMax - WorldBoundMin) / 2.0f;
+			const glm::mat4 ProjectionMatrix = glm::ortho<glm::f32>(
+				-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
+				WorldBoundMax.z - WorldBoundMin.z);
+			// = glm::perspective<glm::f32>(
+			// 	glm::radians(60.0f),
+			// 	static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
+
+			const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
+
+			CommandBuffer->pushConstants<glm::mat4>(
+				DebugDrawPipelineLayout.get(),
+				vk::ShaderStageFlagBits::eAllGraphics, 0, {ViewProjMatrix});
+
+			CommandBuffer->bindVertexBuffers(0, {VertexBuffer.get()}, {0});
+			CommandBuffer->bindIndexBuffer(
+				IndexBuffer.get(), 0, vk::IndexType::eUint16);
+
+			for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
+			{
+				Vulkan::InsertDebugLabel(
+					CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
+					i);
+				CommandBuffer->drawIndexed(
+					IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i],
+					0);
+			}
+
+			CommandBuffer->endRenderPass();
 		}
 
-		CommandBuffer->endRenderPass();
-
 		// Wait for image data to be ready
-		CommandBuffer->pipelineBarrier(
-			vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {}, {},
-			{// Source Image
-			 vk::ImageMemoryBarrier(
-				 vk::AccessFlagBits::eColorAttachmentWrite,
-				 vk::AccessFlagBits::eTransferRead,
-				 vk::ImageLayout::eTransferSrcOptimal,
-				 vk::ImageLayout::eTransferSrcOptimal, VK_QUEUE_FAMILY_IGNORED,
-				 VK_QUEUE_FAMILY_IGNORED, RenderImage.get(),
-				 vk::ImageSubresourceRange(
-					 vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
-		CommandBuffer->copyImageToBuffer(
-			RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
-			StagingBuffer.get(),
-			{vk::BufferImageCopy(
-				0, RenderSize.x, RenderSize.y,
-				vk::ImageSubresourceLayers(
-					vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-				vk::Offset3D(), vk::Extent3D(RenderSize.x, RenderSize.y, 1))});
+		{
+			Vulkan::DebugLabelScope DebugCopyScope(
+				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
+				"Upload framebuffer to staging buffer");
+			CommandBuffer->pipelineBarrier(
+				vk::PipelineStageFlagBits::eColorAttachmentOutput,
+				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
+				{},
+				{// Source Image
+				 vk::ImageMemoryBarrier(
+					 vk::AccessFlagBits::eColorAttachmentWrite,
+					 vk::AccessFlagBits::eTransferRead,
+					 vk::ImageLayout::eTransferSrcOptimal,
+					 vk::ImageLayout::eTransferSrcOptimal,
+					 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+					 RenderImage.get(),
+					 vk::ImageSubresourceRange(
+						 vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
+			CommandBuffer->copyImageToBuffer(
+				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
+				StagingBuffer.get(),
+				{vk::BufferImageCopy(
+					0, RenderSize.x, RenderSize.y,
+					vk::ImageSubresourceLayers(
+						vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+					vk::Offset3D(),
+					vk::Extent3D(RenderSize.x, RenderSize.y, 1))});
+		}
 	}
 
 	if( auto EndResult = CommandBuffer->end();
