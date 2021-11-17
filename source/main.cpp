@@ -1,5 +1,6 @@
 #include "Blam/Types.hpp"
 #include "Blam/Util.hpp"
+#include "Common/Format.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -255,6 +256,10 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	Vulkan::SetObjectName(
+		Device.get(), StagingBuffer.get(), "Staging Buffer( %s )",
+		Common::FormatByteCount(StagingBufferInfo.size).c_str());
+
 	// Allocate memory for staging buffer
 	{
 		const vk::MemoryRequirements StagingBufferMemoryRequirements
@@ -465,6 +470,10 @@ int main(int argc, char* argv[])
 			return EXIT_FAILURE;
 		}
 
+		Vulkan::SetObjectName(
+			Device.get(), VertexBuffer.get(), "Vertex Buffer( %s )",
+			Common::FormatByteCount(VertexBufferInfo.size).c_str());
+
 		//// Create Index buffer heap
 		vk::BufferCreateInfo IndexBufferInfo = {};
 		IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
@@ -483,6 +492,9 @@ int main(int argc, char* argv[])
 				vk::to_string(CreateResult.result).c_str());
 			return EXIT_FAILURE;
 		}
+		Vulkan::SetObjectName(
+			Device.get(), IndexBuffer.get(), "Index Buffer( %s )",
+			Common::FormatByteCount(IndexBufferInfo.size).c_str());
 
 		const vk::MemoryRequirements IndexBufferMemoryRequirements
 			= Device->getBufferMemoryRequirements(IndexBuffer.get());
@@ -567,6 +579,8 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+	Vulkan::SetObjectName(
+		Device.get(), RenderImage.get(), "Render Image Resolve");
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageAAInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -580,6 +594,8 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+	Vulkan::SetObjectName(
+		Device.get(), RenderImageAA.get(), "Render Image(AA)");
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageDepthInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -593,6 +609,8 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+	Vulkan::SetObjectName(
+		Device.get(), RenderImageDepth.get(), "Render Image Depth(AA)");
 
 	// Allocate all the memory we need for these images up-front into a single
 	// heap.
@@ -762,12 +780,20 @@ int main(int argc, char* argv[])
 
 	{
 		// Flush all vertex buffer uploads
-		CommandBuffer->copyBuffer(
-			StagingBuffer.get(), VertexBuffer.get(), VertexBufferCopies);
+		{
+			Vulkan::DebugLabelScope DebugCopyScope(
+				CommandBuffer.get(), {1.0, 1.0, 1.0, 1.0},
+				"Copy Vertex/Index Buffers");
+			CommandBuffer->copyBuffer(
+				StagingBuffer.get(), VertexBuffer.get(), VertexBufferCopies);
 
-		// Flush all vertex buffer uploads
-		CommandBuffer->copyBuffer(
-			StagingBuffer.get(), IndexBuffer.get(), IndexBufferCopies);
+			// Flush all vertex buffer uploads
+			CommandBuffer->copyBuffer(
+				StagingBuffer.get(), IndexBuffer.get(), IndexBufferCopies);
+		}
+
+		Vulkan::DebugLabelScope DebugCopyScope(
+			CommandBuffer.get(), {1.0, 1.0, 1.0, 1.0}, "Main Render Pass");
 
 		vk::RenderPassBeginInfo RenderBeginInfo   = {};
 		RenderBeginInfo.renderPass                = MainRenderPass.get();

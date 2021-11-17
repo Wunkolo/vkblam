@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <vulkan/vulkan_structs.hpp>
 
 namespace Vulkan
 {
@@ -13,8 +14,8 @@ void SetObjectName(
 {
 	va_list Args;
 	va_start(Args, Format);
-	const auto nameLength = std::vsnprintf(nullptr, 0, Format, Args);
-	if( nameLength < 0 )
+	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
+	if( NameLength < 0 )
 	{
 		// Invalid vsnprintf
 		va_end(Args);
@@ -22,10 +23,11 @@ void SetObjectName(
 	}
 
 	std::unique_ptr<char[]> ObjectName
-		= std::make_unique<char[]>(size_t(nameLength) + 1u);
+		= std::make_unique<char[]>(std::size_t(NameLength) + 1u);
 
 	// Write formatted object name
-	std::vsnprintf(ObjectName.get(), size_t(nameLength) + 1, Format, Args);
+	std::vsnprintf(
+		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
 
 	vk::DebugUtilsObjectNameInfoEXT NameInfo = {};
 	NameInfo.objectType                      = ObjectType;
@@ -39,4 +41,72 @@ void SetObjectName(
 
 	va_end(Args);
 }
+
+void BeginDebugLabel(
+	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
+	const char* Format, ...)
+{
+	va_list Args;
+	va_start(Args, Format);
+	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
+	if( NameLength < 0 )
+	{
+		// Invalid vsnprintf
+		va_end(Args);
+		return;
+	}
+
+	std::unique_ptr<char[]> ObjectName
+		= std::make_unique<char[]>(std::size_t(NameLength) + 1u);
+
+	// Write formatted object name
+	std::vsnprintf(
+		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+
+	vk::DebugUtilsLabelEXT LabelInfo = {};
+	LabelInfo.pLabelName             = ObjectName.get();
+	LabelInfo.color[0]               = Color[0];
+	LabelInfo.color[1]               = Color[1];
+	LabelInfo.color[2]               = Color[2];
+	LabelInfo.color[3]               = Color[3];
+
+	CommandBuffer.beginDebugUtilsLabelEXT(LabelInfo);
+}
+
+void InsertDebugLabel(
+	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
+	const char* Format, ...)
+{
+	va_list Args;
+	va_start(Args, Format);
+	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
+	if( NameLength < 0 )
+	{
+		// Invalid vsnprintf
+		va_end(Args);
+		return;
+	}
+
+	std::unique_ptr<char[]> ObjectName
+		= std::make_unique<char[]>(std::size_t(NameLength) + 1u);
+
+	// Write formatted object name
+	std::vsnprintf(
+		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+
+	vk::DebugUtilsLabelEXT LabelInfo = {};
+	LabelInfo.pLabelName             = ObjectName.get();
+	LabelInfo.color[0]               = Color[0];
+	LabelInfo.color[1]               = Color[1];
+	LabelInfo.color[2]               = Color[2];
+	LabelInfo.color[3]               = Color[3];
+
+	CommandBuffer.insertDebugUtilsLabelEXT(LabelInfo);
+}
+
+void EndDebugLabel(vk::CommandBuffer CommandBuffer)
+{
+	CommandBuffer.endDebugUtilsLabelEXT();
+}
+
 } // namespace Vulkan
