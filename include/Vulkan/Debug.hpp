@@ -1,6 +1,7 @@
 #include "VulkanAPI.hpp"
 
 #include <type_traits>
+#include <utility>
 
 namespace Vulkan
 {
@@ -34,20 +35,26 @@ void EndDebugLabel(vk::CommandBuffer CommandBuffer);
 class DebugLabelScope
 {
 private:
-	vk::CommandBuffer CommandBuffer;
+	const vk::CommandBuffer CommandBuffer;
 
 public:
+	template<typename... ArgsT>
 	DebugLabelScope(
 		vk::CommandBuffer           TargetCommandBuffer,
-		const std::array<float, 4>& Color, const char* Format, ...)
+		const std::array<float, 4>& Color, const char* Format, ArgsT&&... Args)
 		: CommandBuffer(TargetCommandBuffer)
 	{
-		BeginDebugLabel(CommandBuffer, Color, Format);
+		BeginDebugLabel(
+			CommandBuffer, Color, Format, std::forward<ArgsT>(Args)...);
 	}
 
-	void operator()(const std::array<float, 4>& Color, const char* Format, ...)
+	template<typename... ArgsT>
+	void operator()(
+		const std::array<float, 4>& Color, const char* Format,
+		ArgsT&&... Args) const
 	{
-		InsertDebugLabel(CommandBuffer, Color, Format);
+		InsertDebugLabel(
+			CommandBuffer, Color, Format, std::forward<ArgsT>(Args)...);
 	}
 
 	~DebugLabelScope()
