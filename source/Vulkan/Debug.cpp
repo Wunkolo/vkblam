@@ -15,7 +15,7 @@ void SetObjectName(
 	va_start(Args, Format);
 	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
 	va_end(Args);
-	if( NameLength <= 0 )
+	if( NameLength < 0 )
 	{
 		// Invalid vsnprintf
 		return;
@@ -49,7 +49,7 @@ void BeginDebugLabel(
 	va_start(Args, Format);
 	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
 	va_end(Args);
-	if( NameLength <= 0 )
+	if( NameLength < 0 )
 	{
 		// Invalid vsnprintf
 		return;
@@ -82,7 +82,7 @@ void InsertDebugLabel(
 	va_start(Args, Format);
 	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
 	va_end(Args);
-	if( NameLength <= 0 )
+	if( NameLength < 0 )
 	{
 		// Invalid vsnprintf
 		return;
