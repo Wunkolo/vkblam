@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <vulkan/vulkan_structs.hpp>
 
 namespace Vulkan
 {
@@ -15,10 +14,10 @@ void SetObjectName(
 	va_list Args;
 	va_start(Args, Format);
 	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
-	if( NameLength < 0 )
+	va_end(Args);
+	if( NameLength <= 0 )
 	{
 		// Invalid vsnprintf
-		va_end(Args);
 		return;
 	}
 
@@ -26,8 +25,10 @@ void SetObjectName(
 		= std::make_unique<char[]>(std::size_t(NameLength) + 1u);
 
 	// Write formatted object name
+	va_start(Args, Format);
 	std::vsnprintf(
 		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+	va_end(Args);
 
 	vk::DebugUtilsObjectNameInfoEXT NameInfo = {};
 	NameInfo.objectType                      = ObjectType;
@@ -38,8 +39,6 @@ void SetObjectName(
 	{
 		// Failed to set object name
 	}
-
-	va_end(Args);
 }
 
 void BeginDebugLabel(
@@ -49,10 +48,10 @@ void BeginDebugLabel(
 	va_list Args;
 	va_start(Args, Format);
 	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
-	if( NameLength < 0 )
+	va_end(Args);
+	if( NameLength <= 0 )
 	{
 		// Invalid vsnprintf
-		va_end(Args);
 		return;
 	}
 
@@ -60,8 +59,10 @@ void BeginDebugLabel(
 		= std::make_unique<char[]>(std::size_t(NameLength) + 1u);
 
 	// Write formatted object name
+	va_start(Args, Format);
 	std::vsnprintf(
 		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+	va_end(Args);
 
 	vk::DebugUtilsLabelEXT LabelInfo = {};
 	LabelInfo.pLabelName             = ObjectName.get();
@@ -80,10 +81,10 @@ void InsertDebugLabel(
 	va_list Args;
 	va_start(Args, Format);
 	const auto NameLength = std::vsnprintf(nullptr, 0, Format, Args);
-	if( NameLength < 0 )
+	va_end(Args);
+	if( NameLength <= 0 )
 	{
 		// Invalid vsnprintf
-		va_end(Args);
 		return;
 	}
 
@@ -91,8 +92,10 @@ void InsertDebugLabel(
 		= std::make_unique<char[]>(std::size_t(NameLength) + 1u);
 
 	// Write formatted object name
+	va_start(Args, Format);
 	std::vsnprintf(
 		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+	va_end(Args);
 
 	vk::DebugUtilsLabelEXT LabelInfo = {};
 	LabelInfo.pLabelName             = ObjectName.get();
