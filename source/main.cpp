@@ -58,12 +58,13 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 std::tuple<
 	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout,
 	vk::UniqueDescriptorSet>
-	CreateMainDrawPipeline(
+	CreateGraphicsPipeline(
 		vk::Device Device, vk::DescriptorPool DescriptorPool,
 		const std::vector<vk::PushConstantRange>&          PushConstants,
 		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
 		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-		vk::RenderPass RenderPass);
+		vk::RenderPass  RenderPass,
+		vk::PolygonMode PolygonMode = vk::PolygonMode::eFill);
 
 vk::UniqueShaderModule CreateShaderModule(
 	vk::Device Device, std::span<const std::uint32_t> ShaderCode)
@@ -715,30 +716,53 @@ int main(int argc, char* argv[])
 		= CreateMainDescriptorPool(Device.get());
 
 	// Main Shader modules
-	const cmrc::file VertShaderData = DataFS.open("shaders/Debug.vert.spv");
-	const cmrc::file FragShaderData = DataFS.open("shaders/Debug.frag.spv");
+	const cmrc::file DefaultVertShaderData
+		= DataFS.open("shaders/Default.vert.spv");
+	const cmrc::file DefaultFragShaderData
+		= DataFS.open("shaders/Default.frag.spv");
+	const cmrc::file UnlitFragShaderData
+		= DataFS.open("shaders/Unlit.frag.spv");
 
-	vk::UniqueShaderModule MainVertexShaderModule = CreateShaderModule(
+	vk::UniqueShaderModule DefaultVertexShaderModule = CreateShaderModule(
 		Device.get(),
 		std::span<const std::uint32_t>(
-			reinterpret_cast<const std::uint32_t*>(VertShaderData.begin()),
-			VertShaderData.size() / sizeof(std::uint32_t)));
-	vk::UniqueShaderModule MainFragmentShaderModule = CreateShaderModule(
+			reinterpret_cast<const std::uint32_t*>(
+				DefaultVertShaderData.begin()),
+			DefaultVertShaderData.size() / sizeof(std::uint32_t)));
+	vk::UniqueShaderModule DefaultFragmentShaderModule = CreateShaderModule(
 		Device.get(),
 		std::span<const std::uint32_t>(
-			reinterpret_cast<const std::uint32_t*>(FragShaderData.begin()),
-			FragShaderData.size() / sizeof(std::uint32_t)));
+			reinterpret_cast<const std::uint32_t*>(
+				DefaultFragShaderData.begin()),
+			DefaultFragShaderData.size() / sizeof(std::uint32_t)));
+	vk::UniqueShaderModule UnlitFragmentShaderModule = CreateShaderModule(
+		Device.get(),
+		std::span<const std::uint32_t>(
+			reinterpret_cast<const std::uint32_t*>(UnlitFragShaderData.begin()),
+			UnlitFragShaderData.size() / sizeof(std::uint32_t)));
 
 	auto
 		[DebugDrawPipeline, DebugDrawPipelineLayout, DebugDrawDescriptorLayout,
 		 DebugDrawSet]
-		= CreateMainDrawPipeline(
+		= CreateGraphicsPipeline(
 			Device.get(), MainDescriptorPool.get(),
 			{vk::PushConstantRange(
 				vk::ShaderStageFlagBits::eAllGraphics, 0,
 				sizeof(glm::f32mat4))},
-			{}, MainVertexShaderModule.get(), MainFragmentShaderModule.get(),
-			MainRenderPass.get());
+			{}, DefaultVertexShaderModule.get(),
+			DefaultFragmentShaderModule.get(), MainRenderPass.get());
+
+	auto
+		[UnlitDrawPipeline, UnlitDrawPipelineLayout, UnlitDrawDescriptorLayout,
+		 UnlitDrawSet]
+		= CreateGraphicsPipeline(
+			Device.get(), MainDescriptorPool.get(),
+			{vk::PushConstantRange(
+				vk::ShaderStageFlagBits::eAllGraphics, 0,
+				sizeof(glm::f32mat4) + sizeof(glm::f32vec4))},
+			{}, DefaultVertexShaderModule.get(),
+			UnlitFragmentShaderModule.get(), MainRenderPass.get(),
+			vk::PolygonMode::eLine);
 
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
@@ -872,6 +896,22 @@ int main(int argc, char* argv[])
 			CommandBuffer->bindIndexBuffer(
 				IndexBuffer.get(), 0, vk::IndexType::eUint16);
 
+			for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
+			{
+				Vulkan::InsertDebugLabel(
+					CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
+					i);
+				CommandBuffer->drawIndexed(
+					IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i],
+					0);
+			}
+
+			CommandBuffer->bindPipeline(
+				vk::PipelineBindPoint::eGraphics, UnlitDrawPipeline.get());
+			CommandBuffer->pushConstants<glm::vec4>(
+				UnlitDrawPipelineLayout.get(),
+				vk::ShaderStageFlagBits::eAllGraphics, sizeof(glm::f32mat4),
+				{glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)});
 			for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
 			{
 				Vulkan::InsertDebugLabel(
@@ -1115,12 +1155,12 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 std::tuple<
 	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout,
 	vk::UniqueDescriptorSet>
-	CreateMainDrawPipeline(
+	CreateGraphicsPipeline(
 		vk::Device Device, vk::DescriptorPool DescriptorPool,
 		const std::vector<vk::PushConstantRange>&          PushConstants,
 		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
 		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-		vk::RenderPass RenderPass)
+		vk::RenderPass RenderPass, vk::PolygonMode PolygonMode)
 {
 	// Create Descriptor layout
 	vk::DescriptorSetLayoutCreateInfo GraphicsDescriptorLayoutInfo{};
@@ -1260,7 +1300,7 @@ std::tuple<
 	vk::PipelineRasterizationStateCreateInfo RasterizationState = {};
 	RasterizationState.depthClampEnable                         = false;
 	RasterizationState.rasterizerDiscardEnable                  = false;
-	RasterizationState.polygonMode     = vk::PolygonMode::eFill;
+	RasterizationState.polygonMode                              = PolygonMode;
 	RasterizationState.cullMode        = vk::CullModeFlagBits::eBack;
 	RasterizationState.frontFace       = vk::FrontFace::eCounterClockwise;
 	RasterizationState.depthBiasEnable = false;
@@ -1280,7 +1320,7 @@ std::tuple<
 	vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {};
 	DepthStencilState.depthTestEnable                         = true;
 	DepthStencilState.depthWriteEnable                        = true;
-	DepthStencilState.depthCompareOp        = vk::CompareOp::eLess;
+	DepthStencilState.depthCompareOp        = vk::CompareOp::eLessOrEqual;
 	DepthStencilState.depthBoundsTestEnable = false;
 	DepthStencilState.stencilTestEnable     = false;
 	DepthStencilState.front                 = vk::StencilOp::eKeep;
