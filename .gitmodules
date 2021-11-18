@@ -1,3 +1,6 @@
 [submodule "external/mio"]
 	path = external/mio
 	url = git@github.com:mandreyel/mio.git
+[submodule "external/cmrc"]
+	path = external/cmrc
+	url = git@github.com:vector-of-bool/cmrc.git
