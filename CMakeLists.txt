@@ -130,8 +130,7 @@ cmrc_add_resource_library(
 	ALIAS Resource::vkblam
 	NAMESPACE vkblam
 	WHENCE ${PROJECT_BINARY_DIR}
-	"${PROJECT_BINARY_DIR}/shaders/Debug.vert.spv"
-	"${PROJECT_BINARY_DIR}/shaders/Debug.frag.spv"
+	${SPIRV_BINARY_FILES}
 )
 add_dependencies(vkblam-resources shaders)
 

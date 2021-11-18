@@ -1,10 +1,6 @@
 #version 460
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-layout( push_constant ) uniform Constants {
-	mat4 ViewProjection;
-} PushConstant;
-
 layout( location = 0 ) in f32vec3 InPosition;
 layout( location = 1 ) in f32vec3 InNormal;
 layout( location = 2 ) in f32vec3 InBinormal;
