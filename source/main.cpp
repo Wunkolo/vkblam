@@ -19,6 +19,10 @@
 
 #include <mio/mmap.hpp>
 
+#include <cmrc/cmrc.hpp>
+CMRC_DECLARE(vkblam);
+auto DataFS = cmrc::vkblam::get_filesystem();
+
 #include <Blam/Blam.hpp>
 
 #define GLM_FORCE_RADIANS
@@ -28,7 +32,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/component_wise.hpp>
 
-#include "DebugShader.hpp"
 #include "stb_image_write.h"
 
 #define CAPTURE
@@ -712,10 +715,19 @@ int main(int argc, char* argv[])
 		= CreateMainDescriptorPool(Device.get());
 
 	// Main Shader modules
-	vk::UniqueShaderModule MainVertexShaderModule
-		= CreateShaderModule(Device.get(), DebugVertData);
-	vk::UniqueShaderModule MainFragmentShaderModule
-		= CreateShaderModule(Device.get(), DebugFragData);
+	const cmrc::file VertShaderData = DataFS.open("shaders/Debug.vert.spv");
+	const cmrc::file FragShaderData = DataFS.open("shaders/Debug.frag.spv");
+
+	vk::UniqueShaderModule MainVertexShaderModule = CreateShaderModule(
+		Device.get(),
+		std::span<const std::uint32_t>(
+			reinterpret_cast<const std::uint32_t*>(VertShaderData.begin()),
+			VertShaderData.size() / sizeof(std::uint32_t)));
+	vk::UniqueShaderModule MainFragmentShaderModule = CreateShaderModule(
+		Device.get(),
+		std::span<const std::uint32_t>(
+			reinterpret_cast<const std::uint32_t*>(FragShaderData.begin()),
+			FragShaderData.size() / sizeof(std::uint32_t)));
 
 	auto
 		[DebugDrawPipeline, DebugDrawPipelineLayout, DebugDrawDescriptorLayout,

@@ -23,7 +23,59 @@ find_package( Vulkan REQUIRED )
 
 find_package( glm REQUIRED )
 
+# mio
 add_subdirectory( external/mio )
+
+#cmrc
+include( external/cmrc/CMakeRC.cmake )
+
+### shaders build target
+file(
+	GLOB_RECURSE GLSL_SOURCE_FILES
+	"shaders/*.frag"
+	"shaders/*.vert"
+	"shaders/*.comp"
+)
+
+# Get glslangValidator
+if( WIN32 )
+	if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64" )
+		set( GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator" )
+	else()
+		set( GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin32/glslangValidator" )
+	endif()
+else()
+	set( GLSL_VALIDATOR "glslangValidator" )
+endif()
+
+# Get spirv-opt
+if( WIN32 )
+	if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64" )
+		set( SPIRV_OPT "$ENV{VULKAN_SDK}/Bin/spirv-opt" )
+	else()
+		set( SPIRV_OPT "$ENV{VULKAN_SDK}/Bin32/spirv-opt" )
+	endif()
+else()
+	set( SPIRV_OPT "spirv-opt" )
+endif()
+
+foreach( GLSL ${GLSL_SOURCE_FILES} )
+	get_filename_component( FILE_NAME ${GLSL} NAME )
+	set( SPIRV "${PROJECT_BINARY_DIR}/shaders/${FILE_NAME}.spv" )
+	add_custom_command(
+		OUTPUT ${SPIRV}
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
+		COMMAND ${GLSL_VALIDATOR} -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
+		COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
+		DEPENDS ${GLSL}
+	)
+	list( APPEND SPIRV_BINARY_FILES ${SPIRV} )
+endforeach()
+
+add_custom_target(
+	shaders 
+	DEPENDS ${SPIRV_BINARY_FILES}
+)
 
 ### common
 add_library(
@@ -72,6 +124,17 @@ target_link_libraries(
 
 
 ### vkblam
+
+cmrc_add_resource_library(
+	vkblam-resources
+	ALIAS Resource::vkblam
+	NAMESPACE vkblam
+	WHENCE ${PROJECT_BINARY_DIR}
+	"${PROJECT_BINARY_DIR}/shaders/Debug.vert.spv"
+	"${PROJECT_BINARY_DIR}/shaders/Debug.frag.spv"
+)
+add_dependencies(vkblam-resources shaders)
+
 add_executable(
 	vkblam
 	source/main.cpp
@@ -88,6 +151,7 @@ target_include_directories(
 target_link_libraries(
 	vkblam
 	PRIVATE
+	vkblam-resources
 	blam
 	Vulkan::Vulkan
 	mio::mio
