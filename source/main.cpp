@@ -195,6 +195,7 @@ int main(int argc, char* argv[])
 
 	vk::PhysicalDeviceFeatures DeviceFeatures = {};
 	DeviceFeatures.sampleRateShading          = true;
+	DeviceFeatures.wideLines                  = true;
 	DeviceInfo.pEnabledFeatures               = &DeviceFeatures;
 
 	static const float QueuePriority = 1.0f;
@@ -844,9 +845,8 @@ int main(int argc, char* argv[])
 				vk::ClearColorValue(
 					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
 			};
-			RenderBeginInfo.pClearValues = ClearColors;
-			RenderBeginInfo.clearValueCount
-				= std::extent_v<decltype(ClearColors)>;
+			RenderBeginInfo.pClearValues             = ClearColors;
+			RenderBeginInfo.clearValueCount          = std::size(ClearColors);
 			RenderBeginInfo.renderArea.extent.width  = RenderSize.x;
 			RenderBeginInfo.renderArea.extent.height = RenderSize.y;
 			RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
@@ -1085,7 +1085,7 @@ vk::UniqueRenderPass
 		vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal),
 	};
 
-	RenderPassInfo.attachmentCount = std::extent_v<decltype(Attachments)>;
+	RenderPassInfo.attachmentCount = std::size(Attachments);
 	RenderPassInfo.pAttachments    = Attachments;
 
 	vk::SubpassDescription Subpasses[1] = {{}};
@@ -1096,7 +1096,7 @@ vk::UniqueRenderPass
 	Subpasses[0].pDepthStencilAttachment = &AttachmentRefs[1];
 	Subpasses[0].pResolveAttachments     = &AttachmentRefs[0];
 
-	RenderPassInfo.subpassCount = std::extent_v<decltype(Subpasses)>;
+	RenderPassInfo.subpassCount = std::size(Subpasses);
 	RenderPassInfo.pSubpasses   = Subpasses;
 
 	const vk::SubpassDependency SubpassDependencies[] = {vk::SubpassDependency(
@@ -1105,9 +1105,8 @@ vk::UniqueRenderPass
 		vk::AccessFlagBits::eShaderWrite,
 		vk::AccessFlagBits::eVertexAttributeRead, vk::DependencyFlags())};
 
-	RenderPassInfo.dependencyCount
-		= std::extent_v<decltype(SubpassDependencies)>;
-	RenderPassInfo.pDependencies = SubpassDependencies;
+	RenderPassInfo.dependencyCount = std::size(SubpassDependencies);
+	RenderPassInfo.pDependencies   = SubpassDependencies;
 
 	if( auto CreateResult = Device.createRenderPassUnique(RenderPassInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -1135,7 +1134,7 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	FramebufferInfo.renderPass = RenderPass;
 
 	const vk::ImageView Attachments[] = {Color, DepthAA, ColorAA};
-	FramebufferInfo.attachmentCount   = std::extent_v<decltype(Attachments)>;
+	FramebufferInfo.attachmentCount   = std::size(Attachments);
 	FramebufferInfo.pAttachments      = Attachments;
 
 	if( auto CreateResult = Device.createFramebufferUnique(FramebufferInfo);
@@ -1353,7 +1352,7 @@ std::tuple<
 		   // run-time
 		   // so we definately add these
 		   vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-	DynamicState.dynamicStateCount = std::uint32_t(glm::countof(DynamicStates));
+	DynamicState.dynamicStateCount = std::size(DynamicStates);
 	DynamicState.pDynamicStates    = DynamicStates;
 
 	vk::GraphicsPipelineCreateInfo RenderPipelineInfo = {};
