@@ -14,44 +14,20 @@ struct Tag
 template<>
 struct Tag<TagClass::Bitmap>
 {
-	BitmapType Type;
-
-	// 0x00 Compressed With Color-Key Transparency"
-	// 0x01 Compressed With Explicit Alpha"
-	// 0x02 Compressed With Interpolated Alpha"
-	// 0x03 16-Bit Color"
-	// 0x04 32-Bit Color"
-	// 0x05 Monochrome"
-	std::uint16_t ImportFormat;
-
-	// 0x00 Alpha-Blend
-	// 0x01 Default
-	// 0x02 Height Map
-	// 0x03 Detail Map
-	// 0x04 Light Map
-	// 0x05 Vector Map
-	std::uint16_t Usage;
-
-	// 0 Enable Diffusion Dithering
-	// 1 Disable Height Map Compression
-	// 2 Uniform Sprite Sequences
-	// 3 Filthy Sprite Bug Fix
-	std::uint16_t Flags;
+	BitmapType   Type;
+	BitmapFormat Format;
+	BitmapUsage  Usage;
+	BitmapFlags  Flags;
 
 	float DetailFadeFactor;
 	float SharpenAmount;
 	float BumpHeight;
 
-	// 0x00 32x32
-	// 0x01 64x64
-	// 0x02 128x128
-	// 0x03 256x256
-	// 0x04 512x512
-	std::uint16_t SpriteBudgetSize;
-	std::uint16_t SpriteBudgetCount;
+	BitmapSpriteBudgetSize SpriteBudgetSize;
+	std::uint16_t          SpriteBudgetCount;
 
-	std::uint16_t SpritePlateWidth;
-	std::uint16_t SpritePlateHeight;
+	std::uint16_t    SpritePlateWidth;
+	std::uint16_t    SpritePlateHeight;
 	TagDataReference CompressedColorPlateData;
 
 	TagDataReference ProcessedPixelData;
@@ -62,17 +38,42 @@ struct Tag<TagClass::Bitmap>
 	// 0 means all levels
 	std::uint16_t MipmapCount;
 
-	// 0x00 Blend/Add/Subtract/Max
-	// 0x01 Multiply/Min
-	// 0x02 Double Multiply
-	std::uint16_t SpriteUsage;
-
-	std::uint16_t SpriteSpacing;
-	std::uint16_t Unknown52;
+	BitmapSpriteUsage SpriteUsage;
+	std::uint16_t     SpriteSpacing;
+	std::uint16_t     Unknown52;
 
 	TagBlock<void> Sequences;
 
-	TagBlock<void> Bitmaps;
+	struct BitmapEntry
+	{
+		TagClass      Class;
+		std::uint16_t Width;
+		std::uint16_t Height;
+		std::uint16_t Depth;
+
+		BitmapEntryType   Type;
+		BitmapEntryFormat Format;
+
+		BitmapEntryFlags Flags;
+
+		std::uint16_t RegPointX, RegPointY;
+
+		std::uint16_t MipmapCount;
+		std::uint16_t Unknown16;
+		std::uint32_t PixelDataOffset;
+		std::uint32_t PixelDataSize;
+
+		// This seems to be the ID for the owning bitmap tag
+		std::uint32_t BitmapTagID;
+
+		std::int32_t  Unknown24;
+		std::uint32_t Unknown28;
+		std::uint8_t  Unknown2C;
+		std::uint8_t  Unknown2D;
+		std::uint8_t  Unknown2E;
+		std::uint8_t  Unknown2F;
+	};
+	TagBlock<BitmapEntry> Bitmaps;
 };
 static_assert(sizeof(Tag<TagClass::Bitmap>) == 0x6C);
 

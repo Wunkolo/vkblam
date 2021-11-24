@@ -39,6 +39,68 @@ enum class BitmapType : std::uint16_t
 
 enum class BitmapFormat : std::uint16_t
 {
+	CompressedColorKeyTransparency = 0x00,
+	CompressedExplicitAlpha        = 0x01,
+	CompressedInterpolatedAlpha    = 0x02,
+	Color16Bit                     = 0x03,
+	Color32Bit                     = 0x04,
+	Monochrome                     = 0x05,
+};
+
+enum class BitmapUsage : std::uint16_t
+{
+	AlphaBlend = 0x00,
+	Default    = 0x01,
+	HeightMap  = 0x02,
+	DetailMap  = 0x03,
+	LightMap   = 0x04,
+	VectorMap  = 0x05,
+};
+
+enum class BitmapSpriteBudgetSize : std::uint16_t
+{
+	_32  = 0x00,
+	_64  = 0x01,
+	_128 = 0x02,
+	_256 = 0x03,
+	_512 = 0x04,
+};
+
+enum class BitmapSpriteUsage : std::uint16_t
+{
+	Blend_Add_Subtract_Max = 0x00,
+	Multiply_Min           = 0x01,
+	Double_Multiply        = 0x02,
+};
+
+enum class BitmapFlags : std::uint16_t
+{
+	EnableDiffusionDithering    = 0,
+	DisableHeightMapCompression = 1,
+	UniformSpriteSequences      = 2,
+	FilthySpriteBugFix          = 3,
+};
+
+enum class BitmapEntryType : std::uint16_t
+{
+	Texture2D = 0x00,
+	Texture3D = 0x01,
+	CubeMap   = 0x02,
+	White     = 0x03,
+};
+
+enum class BitmapEntryFlags : std::uint16_t
+{
+	PowerOfTwoDimensions = 1u << 0,
+	Compressed           = 1u << 1,
+	Palettized           = 1u << 2,
+	Swizzled             = 1u << 3,
+	Linear               = 1u << 4,
+	V16U16               = 1u << 5,
+};
+
+enum class BitmapEntryFormat : std::uint16_t
+{
 	A8       = 0x00,
 	Y8       = 0x01,
 	AY8      = 0x02,
@@ -54,23 +116,18 @@ enum class BitmapFormat : std::uint16_t
 	P8       = 0x11,
 };
 
-
 template<std::size_t N>
-struct FourCC{
+struct FourCC
+{
 	std::uint32_t Value;
 
-	constexpr FourCC(	const char (&Identifier)[N])
-		: Value(0)
+	constexpr FourCC(const char (&Identifier)[N]) : Value(0)
 	{
 		static_assert(N == 5, "Tag must be 4 characters");
-		Value = (
-			  (Identifier[3] <<  0)
-			| (Identifier[2] <<  8)
-			| (Identifier[1] << 16)
-			| (Identifier[0] << 24)
-		);
+		Value
+			= ((Identifier[3] << 0) | (Identifier[2] << 8)
+			   | (Identifier[1] << 16) | (Identifier[0] << 24));
 	}
-
 };
 
 template<FourCC Code>
