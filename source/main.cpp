@@ -146,6 +146,12 @@ int main(int argc, char* argv[])
 
 	InstanceInfo.pApplicationInfo = &ApplicationInfo;
 
+	static const char* InstanceExtensions[]
+		= {VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
+
+	InstanceInfo.ppEnabledExtensionNames = InstanceExtensions;
+	InstanceInfo.enabledExtensionCount   = std::size(InstanceExtensions);
+
 	vk::UniqueInstance Instance = {};
 
 	if( auto CreateResult = vk::createInstanceUnique(InstanceInfo);
