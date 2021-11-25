@@ -20,7 +20,6 @@
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
-#include <vulkan/vulkan_handles.hpp>
 CMRC_DECLARE(vkblam);
 auto DataFS = cmrc::vkblam::get_filesystem();
 
@@ -204,6 +203,7 @@ int main(int argc, char* argv[])
 	vk::PhysicalDeviceFeatures DeviceFeatures = {};
 	DeviceFeatures.sampleRateShading          = true;
 	DeviceFeatures.wideLines                  = true;
+	DeviceFeatures.fillModeNonSolid           = true;
 	DeviceInfo.pEnabledFeatures               = &DeviceFeatures;
 
 	static const float QueuePriority = 1.0f;
@@ -1155,7 +1155,7 @@ int main(int argc, char* argv[])
 			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
 			{
 				CommandBuffer->pipelineBarrier(
-					vk::PipelineStageFlagBits::eTopOfPipe,
+					vk::PipelineStageFlagBits::eTransfer,
 					vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{},
 					{}, {},
 					{vk::ImageMemoryBarrier(
@@ -1177,9 +1177,9 @@ int main(int argc, char* argv[])
 			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
 			{
 				CommandBuffer->pipelineBarrier(
-					vk::PipelineStageFlagBits::eTopOfPipe,
-					vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{},
-					{}, {},
+					vk::PipelineStageFlagBits::eTransfer,
+					vk::PipelineStageFlagBits::eFragmentShader,
+					vk::DependencyFlags{}, {}, {},
 					{vk::ImageMemoryBarrier(
 						vk::AccessFlagBits::eTransferWrite,
 						vk::AccessFlagBits::eShaderRead,
