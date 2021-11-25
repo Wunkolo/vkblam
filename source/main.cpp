@@ -333,6 +333,9 @@ int main(int argc, char* argv[])
 	vk::UniqueBuffer            VertexBuffer;
 	std::vector<vk::BufferCopy> VertexBufferCopies;
 
+	vk::UniqueBuffer            LightmapVertexBuffer;
+	std::vector<vk::BufferCopy> LightmapVertexBufferCopies;
+
 	vk::UniqueBuffer            IndexBuffer;
 	std::vector<vk::BufferCopy> IndexBufferCopies;
 
@@ -486,63 +489,102 @@ int main(int argc, char* argv[])
 							 CurLightmap.Materials.GetSpan(
 								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 						{
+
 							//// Vertex Buffer data
-							const std::span<const Blam::Vertex> CurVertexData
-								= CurMaterial.GetVertices(
-									BSPData.data(), CurBSPEntry.BSPVirtualBase);
+							{
+								// Copy vertex data into the staging buffer
+								const std::span<const Blam::Vertex>
+									CurVertexData = CurMaterial.GetVertices(
+										BSPData.data(),
+										CurBSPEntry.BSPVirtualBase);
+								std::memcpy(
+									StagingBufferData.data()
+										+ StagingBufferWritePosition,
+									CurVertexData.data(),
+									CurVertexData.size_bytes());
 
-							// Copy into the staging buffer
-							std::memcpy(
-								StagingBufferData.data()
-									+ StagingBufferWritePosition,
-								CurVertexData.data(),
-								CurVertexData.size_bytes());
+								// Queue up staging buffer copy
+								VertexBufferCopies.emplace_back(vk::BufferCopy(
+									StagingBufferWritePosition,
+									VertexHeapIndexOffset
+										* sizeof(Blam::Vertex),
+									CurVertexData.size_bytes()));
 
-							// Queue up staging buffer copy
-							VertexBufferCopies.emplace_back(vk::BufferCopy(
-								StagingBufferWritePosition,
-								VertexHeapIndexOffset * sizeof(Blam::Vertex),
-								CurVertexData.size_bytes()));
+								// Add the offset needed to begin indexing into
+								// this particular part of the vertex buffer,
+								// used when drawing
+								VertexIndexOffsets.emplace_back(
+									VertexHeapIndexOffset);
 
-							// Add the offset needed to begin indexing into this
-							// particular part of the vertex buffer, used when
-							// drawing
-							VertexIndexOffsets.emplace_back(
-								VertexHeapIndexOffset);
+								StagingBufferWritePosition
+									+= CurVertexData.size_bytes();
 
-							StagingBufferWritePosition
-								+= CurVertexData.size_bytes();
+								//// Lightmap vertex buffer data
+								{
+									const std::span<const Blam::LightmapVertex>
+										CurLightmapVertexData
+										= CurMaterial.GetLightmapVertices(
+											BSPData.data(),
+											CurBSPEntry.BSPVirtualBase);
 
-							VertexHeapIndexOffset += CurVertexData.size();
+									const auto test
+										= CurLightmapVertexData.data();
+
+									// Copy lightmap vertex data into the
+									// staging buffer
+									std::memcpy(
+										StagingBufferData.data()
+											+ StagingBufferWritePosition,
+										CurLightmapVertexData.data(),
+										CurLightmapVertexData.size_bytes());
+
+									// Queue up staging buffer copy
+									LightmapVertexBufferCopies.emplace_back(
+										vk::BufferCopy(
+											StagingBufferWritePosition,
+											VertexHeapIndexOffset
+												* sizeof(Blam::LightmapVertex),
+											CurLightmapVertexData
+												.size_bytes()));
+
+									StagingBufferWritePosition
+										+= CurLightmapVertexData.size_bytes();
+								}
+
+								VertexHeapIndexOffset += CurVertexData.size();
+							}
 
 							//// Index Buffer data
-							const std::span<const std::byte> CurIndexData
-								= std::as_bytes(Surfaces.subspan(
-									CurMaterial.SurfacesIndexStart,
-									CurMaterial.SurfacesCount));
+							{
+								const std::span<const std::byte> CurIndexData
+									= std::as_bytes(Surfaces.subspan(
+										CurMaterial.SurfacesIndexStart,
+										CurMaterial.SurfacesCount));
 
-							IndexCounts.emplace_back(
-								CurMaterial.SurfacesCount * 3);
+								IndexCounts.emplace_back(
+									CurMaterial.SurfacesCount * 3);
 
-							IndexOffsets.emplace_back(IndexHeapIndexOffset);
+								IndexOffsets.emplace_back(IndexHeapIndexOffset);
+								// Copy into the staging buffer
+								std::memcpy(
+									StagingBufferData.data()
+										+ StagingBufferWritePosition,
+									CurIndexData.data(),
+									CurIndexData.size_bytes());
 
-							// Copy into the staging buffer
-							std::memcpy(
-								StagingBufferData.data()
-									+ StagingBufferWritePosition,
-								CurIndexData.data(), CurIndexData.size_bytes());
+								// Queue up staging buffer copy
+								IndexBufferCopies.emplace_back(vk::BufferCopy(
+									StagingBufferWritePosition,
+									IndexHeapIndexOffset
+										* sizeof(std::uint16_t),
+									CurIndexData.size_bytes()));
 
-							// Queue up staging buffer copy
-							IndexBufferCopies.emplace_back(vk::BufferCopy(
-								StagingBufferWritePosition,
-								IndexHeapIndexOffset * sizeof(std::uint16_t),
-								CurIndexData.size_bytes()));
-
-							// Increment offsets
-							IndexHeapIndexOffset
-								+= CurMaterial.SurfacesCount * 3;
-							StagingBufferWritePosition
-								+= CurIndexData.size_bytes();
+								// Increment offsets
+								IndexHeapIndexOffset
+									+= CurMaterial.SurfacesCount * 3;
+								StagingBufferWritePosition
+									+= CurIndexData.size_bytes();
+							}
 						}
 					}
 				}
@@ -572,6 +614,32 @@ int main(int argc, char* argv[])
 			Device.get(), VertexBuffer.get(), "Vertex Buffer( %s )",
 			Common::FormatByteCount(VertexBufferInfo.size).c_str());
 
+		//// Create Vertex buffer heap
+		vk::BufferCreateInfo LightmapVertexBufferInfo = {};
+		LightmapVertexBufferInfo.size
+			= VertexHeapIndexOffset * sizeof(Blam::LightmapVertex);
+		LightmapVertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
+									   | vk::BufferUsageFlagBits::eTransferDst;
+
+		if( auto CreateResult
+			= Device->createBufferUnique(LightmapVertexBufferInfo);
+			CreateResult.result == vk::Result::eSuccess )
+		{
+			LightmapVertexBuffer = std::move(CreateResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error creating lightmap vertex buffer: %s\n",
+				vk::to_string(CreateResult.result).c_str());
+			return EXIT_FAILURE;
+		}
+
+		Vulkan::SetObjectName(
+			Device.get(), LightmapVertexBuffer.get(),
+			"Lightmap Vertex Buffer( %s )",
+			Common::FormatByteCount(LightmapVertexBufferInfo.size).c_str());
+
 		//// Create Index buffer heap
 		vk::BufferCreateInfo IndexBufferInfo = {};
 		IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
@@ -599,7 +667,9 @@ int main(int argc, char* argv[])
 
 		if( auto [Result, Value] = Vulkan::CommitBufferHeap(
 				Device.get(), PhysicalDevice,
-				std::array{VertexBuffer.get(), IndexBuffer.get()});
+				std::array{
+					VertexBuffer.get(), IndexBuffer.get(),
+					LightmapVertexBuffer.get()});
 			Result == vk::Result::eSuccess )
 		{
 			GeometryBufferHeapMemory = std::move(Value);
@@ -932,6 +1002,9 @@ int main(int argc, char* argv[])
 				"Copy Vertex/Index Buffers");
 			CommandBuffer->copyBuffer(
 				StagingBuffer.get(), VertexBuffer.get(), VertexBufferCopies);
+			CommandBuffer->copyBuffer(
+				StagingBuffer.get(), LightmapVertexBuffer.get(),
+				LightmapVertexBufferCopies);
 
 			// Flush all vertex buffer uploads
 			CommandBuffer->copyBuffer(
@@ -1025,7 +1098,8 @@ int main(int argc, char* argv[])
 				DebugDrawPipelineLayout.get(),
 				vk::ShaderStageFlagBits::eAllGraphics, 0, {ViewProjMatrix});
 
-			CommandBuffer->bindVertexBuffers(0, {VertexBuffer.get()}, {0});
+			CommandBuffer->bindVertexBuffers(
+				0, {VertexBuffer.get(), LightmapVertexBuffer.get()}, {0, 0});
 			CommandBuffer->bindIndexBuffer(
 				IndexBuffer.get(), 0, vk::IndexType::eUint16);
 
@@ -1377,40 +1451,60 @@ std::tuple<
 
 	vk::PipelineVertexInputStateCreateInfo VertexInputState = {};
 
-	static vk::VertexInputBindingDescription VertexBindingDescription = {};
-	VertexBindingDescription.binding                                  = 0;
-	VertexBindingDescription.stride    = sizeof(Blam::Vertex);
-	VertexBindingDescription.inputRate = vk::VertexInputRate::eVertex;
-	VertexInputState.vertexBindingDescriptionCount = 1;
-	VertexInputState.pVertexBindingDescriptions    = &VertexBindingDescription;
+	static std::array<vk::VertexInputBindingDescription, 2>
+		VertexBindingDescriptions = {};
 
-	static std::array<vk::VertexInputAttributeDescription, 5>
+	VertexBindingDescriptions[0].binding   = 0;
+	VertexBindingDescriptions[0].stride    = sizeof(Blam::Vertex);
+	VertexBindingDescriptions[0].inputRate = vk::VertexInputRate::eVertex;
+
+	VertexBindingDescriptions[1].binding   = 1;
+	VertexBindingDescriptions[1].stride    = sizeof(Blam::LightmapVertex);
+	VertexBindingDescriptions[1].inputRate = vk::VertexInputRate::eVertex;
+
+	VertexInputState.vertexBindingDescriptionCount
+		= std::size(VertexBindingDescriptions);
+	VertexInputState.pVertexBindingDescriptions
+		= VertexBindingDescriptions.data();
+
+	static std::array<vk::VertexInputAttributeDescription, 7>
 		AttributeDescriptions = {};
 	// Position
 	AttributeDescriptions[0].binding  = 0;
 	AttributeDescriptions[0].location = 0;
 	AttributeDescriptions[0].format   = vk::Format::eR32G32B32Sfloat;
 	AttributeDescriptions[0].offset   = offsetof(Blam::Vertex, Position);
-	// Position
+	// Normal
 	AttributeDescriptions[1].binding  = 0;
 	AttributeDescriptions[1].location = 1;
 	AttributeDescriptions[1].format   = vk::Format::eR32G32B32Sfloat;
 	AttributeDescriptions[1].offset   = offsetof(Blam::Vertex, Normal);
-	// Position
+	// Binormal
 	AttributeDescriptions[2].binding  = 0;
 	AttributeDescriptions[2].location = 2;
 	AttributeDescriptions[2].format   = vk::Format::eR32G32B32Sfloat;
 	AttributeDescriptions[2].offset   = offsetof(Blam::Vertex, Binormal);
-	// Position
+	// Tangent
 	AttributeDescriptions[3].binding  = 0;
 	AttributeDescriptions[3].location = 3;
 	AttributeDescriptions[3].format   = vk::Format::eR32G32B32Sfloat;
 	AttributeDescriptions[3].offset   = offsetof(Blam::Vertex, Tangent);
-	// Position
+	// UV
 	AttributeDescriptions[4].binding  = 0;
 	AttributeDescriptions[4].location = 4;
 	AttributeDescriptions[4].format   = vk::Format::eR32G32Sfloat;
 	AttributeDescriptions[4].offset   = offsetof(Blam::Vertex, UV);
+
+	// Normal-Lightmap
+	AttributeDescriptions[5].binding  = 1;
+	AttributeDescriptions[5].location = 5;
+	AttributeDescriptions[5].format   = vk::Format::eR32G32B32Sfloat;
+	AttributeDescriptions[5].offset   = offsetof(Blam::LightmapVertex, Normal);
+	// UV-Lightmap
+	AttributeDescriptions[6].binding  = 1;
+	AttributeDescriptions[6].location = 6;
+	AttributeDescriptions[6].format   = vk::Format::eR32G32Sfloat;
+	AttributeDescriptions[6].offset   = offsetof(Blam::LightmapVertex, UV);
 
 	VertexInputState.vertexAttributeDescriptionCount
 		= AttributeDescriptions.size();

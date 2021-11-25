@@ -7,6 +7,9 @@ layout( location = 2 ) in f32vec3 InBinormal;
 layout( location = 3 ) in f32vec3 InTangent;
 layout( location = 4 ) in f32vec2 InUV;
 
+layout( location = 5 ) in f32vec3 InLightmapNormal;
+layout( location = 6 ) in f32vec2 InLightmapUV;
+
 layout( location = 0 ) out f32vec4 Attachment0;
 
 void main()
