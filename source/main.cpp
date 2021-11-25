@@ -20,6 +20,8 @@
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
+#include <vulkan/vulkan_handles.hpp>
+#include <vulkan/vulkan_structs.hpp>
 CMRC_DECLARE(vkblam);
 auto DataFS = cmrc::vkblam::get_filesystem();
 
@@ -93,7 +95,7 @@ int main(int argc, char* argv[])
 {
 	using namespace Common::Literals;
 
-	if( argc < 2 )
+	if( argc < 3 )
 	{
 		// Not enough arguments
 		return EXIT_FAILURE;
@@ -119,7 +121,9 @@ int main(int argc, char* argv[])
 #endif
 
 	std::filesystem::path CurPath(argv[1]);
-	auto                  MapFile = mio::mmap_source(CurPath.c_str());
+	std::filesystem::path BitmapPath(argv[2]);
+	auto                  MapFile    = mio::mmap_source(CurPath.c_str());
+	auto                  BitmapFile = mio::mmap_source(BitmapPath.c_str());
 
 	Blam::MapFile CurMap(std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
@@ -324,6 +328,8 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	std::unordered_map<vk::Image, vk::BufferImageCopy> ImageUploads;
+
 	vk::UniqueBuffer            VertexBuffer;
 	std::vector<vk::BufferCopy> VertexBufferCopies;
 
@@ -332,6 +338,11 @@ int main(int argc, char* argv[])
 
 	// Contains _both_ the vertex buffer and the index buffer
 	vk::UniqueDeviceMemory GeometryBufferHeapMemory = {};
+
+	// TagID -> list of images
+	std::unordered_map<
+		std::uint32_t, std::unordered_map<std::uint16_t, vk::UniqueImage>>
+		Lightmaps;
 
 	// Parameters used for drawing
 	std::vector<std::uint32_t> VertexIndexOffsets;
@@ -387,6 +398,88 @@ int main(int argc, char* argv[])
 						 ScenarioBSP.Lightmaps.GetSpan(
 							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 					{
+						const auto& LightmapTextureTag
+							= CurMap.GetTag<Blam::TagClass::Bitmap>(
+								ScenarioBSP.LightmapTexture.TagID);
+						const std::int16_t LightmapTextureIndex
+							= CurLightmap.LightmapIndex;
+
+						auto& LightmapImage
+							= Lightmaps[ScenarioBSP.LightmapTexture.TagID]
+									   [LightmapTextureIndex];
+
+						if( !LightmapImage && (LightmapTextureIndex >= 0) )
+						{
+							const auto& LightmapSubTexture
+								= LightmapTextureTag->Bitmaps.GetSpan(
+									MapFile.data(), CurMap.TagHeapVirtualBase)
+									  [LightmapTextureIndex];
+							const auto PixelData = std::span<const std::byte>(
+								reinterpret_cast<const std::byte*>(
+									BitmapFile.data())
+									+ LightmapSubTexture.PixelDataOffset,
+								LightmapSubTexture.PixelDataSize);
+
+							vk::ImageCreateInfo LightmapImageInfo = {};
+							LightmapImageInfo.imageType = vk::ImageType::e2D;
+							LightmapImageInfo.format
+								= vk::Format::eR5G6B5UnormPack16;
+							LightmapImageInfo.extent = vk::Extent3D(
+								LightmapSubTexture.Width,
+								LightmapSubTexture.Height,
+								LightmapSubTexture.Depth);
+							LightmapImageInfo.mipLevels   = 1;
+							LightmapImageInfo.arrayLayers = 1;
+							LightmapImageInfo.samples
+								= vk::SampleCountFlagBits::e1;
+							LightmapImageInfo.tiling
+								= vk::ImageTiling::eOptimal;
+							LightmapImageInfo.usage
+								= vk::ImageUsageFlagBits::eSampled
+								| vk::ImageUsageFlagBits::eTransferSrc;
+							LightmapImageInfo.sharingMode
+								= vk::SharingMode::eExclusive;
+							LightmapImageInfo.initialLayout
+								= vk::ImageLayout::eUndefined;
+
+							if( auto CreateResult
+								= Device->createImageUnique(LightmapImageInfo);
+								CreateResult.result == vk::Result::eSuccess )
+							{
+								LightmapImage = std::move(CreateResult.value);
+							}
+							else
+							{
+								std::fprintf(
+									stderr,
+									"Error creating render target: %s\n",
+									vk::to_string(CreateResult.result).c_str());
+								return EXIT_FAILURE;
+							}
+							Vulkan::SetObjectName(
+								Device.get(), LightmapImage.get(),
+								"Lightmap Image %08X[%2zu]",
+								ScenarioBSP.LightmapTexture.TagID,
+								LightmapTextureIndex);
+
+							std::memcpy(
+								StagingBufferData.data()
+									+ StagingBufferWritePosition,
+								PixelData.data(), PixelData.size_bytes());
+
+							ImageUploads[LightmapImage.get()]
+								= vk::BufferImageCopy(
+									StagingBufferWritePosition, 0, 0,
+									vk::ImageSubresourceLayers(
+										vk::ImageAspectFlagBits::eColor, 0, 0,
+										1),
+									vk::Offset3D(0, 0, 0),
+									LightmapImageInfo.extent);
+
+							StagingBufferWritePosition
+								+= PixelData.size_bytes();
+						}
+
 						const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
 							BSPData.data(), CurBSPEntry.BSPVirtualBase);
 						for( const auto& CurMaterial :
@@ -617,15 +710,28 @@ int main(int argc, char* argv[])
 	Vulkan::SetObjectName(
 		Device.get(), RenderImageDepth.get(), "Render Image Depth(AA)");
 
+	std::vector<vk::Image> ImageHeapTargets = {};
+	ImageHeapTargets.push_back(RenderImage.get());
+	ImageHeapTargets.push_back(RenderImageAA.get());
+	ImageHeapTargets.push_back(RenderImageDepth.get());
+
+	for( const auto& [_, CurLightmapBitmap] : Lightmaps )
+	{
+		for( const auto& [_, CurLightmapBitmapSubimage] : CurLightmapBitmap )
+		{
+			if( CurLightmapBitmapSubimage )
+			{
+				ImageHeapTargets.push_back(CurLightmapBitmapSubimage.get());
+			}
+		}
+	}
+
 	// Allocate all the memory we need for these images up-front into a single
 	// heap.
 	vk::UniqueDeviceMemory ImageHeapMemory = {};
 
 	if( auto [Result, Value] = Vulkan::CommitImageHeap(
-			Device.get(), PhysicalDevice,
-			std::array{
-				RenderImage.get(), RenderImageAA.get(),
-				RenderImageDepth.get()});
+			Device.get(), PhysicalDevice, ImageHeapTargets);
 		Result == vk::Result::eSuccess )
 	{
 		ImageHeapMemory = std::move(Value);
@@ -830,6 +936,33 @@ int main(int argc, char* argv[])
 			// Flush all vertex buffer uploads
 			CommandBuffer->copyBuffer(
 				StagingBuffer.get(), IndexBuffer.get(), IndexBufferCopies);
+		}
+		{
+			Vulkan::DebugLabelScope DebugCopyScope(
+				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Upload textures");
+
+			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
+			{
+				CommandBuffer->pipelineBarrier(
+					vk::PipelineStageFlagBits::eTopOfPipe,
+					vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{},
+					{}, {},
+					{vk::ImageMemoryBarrier(
+						vk::AccessFlagBits::eTransferWrite,
+						vk::AccessFlagBits::eTransferRead,
+						vk::ImageLayout::eUndefined,
+						vk::ImageLayout::eTransferDstOptimal,
+						VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+						TargetImage,
+						vk::ImageSubresourceRange(
+							vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
+			}
+			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
+			{
+				CommandBuffer->copyBufferToImage(
+					StagingBuffer.get(), TargetImage,
+					vk::ImageLayout::eTransferDstOptimal, ImageCopy);
+			}
 		}
 
 		{

@@ -60,6 +60,9 @@ struct Tag<TagClass::Bitmap>
 
 		std::uint16_t MipmapCount;
 		std::uint16_t Unknown16;
+		// This is an actual file-offset. No base-address fixup needed at all.
+		// Depending on the map version, this may be an offset either within the
+		// file itself or within bitmaps.map
 		std::uint32_t PixelDataOffset;
 		std::uint32_t PixelDataSize;
 
@@ -337,7 +340,7 @@ struct Tag<TagClass::ScenarioStructureBsp>
 
 	struct Lightmap
 	{
-		std::uint16_t LightmapIndex;
+		std::int16_t  LightmapIndex;
 		std::uint16_t Unknown;
 
 		std::byte _Padding4[0x10];
