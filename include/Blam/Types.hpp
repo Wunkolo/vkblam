@@ -26,6 +26,13 @@ struct Vertex
 };
 static_assert(sizeof(Vertex) == 56);
 
+struct LightmapVertex
+{
+	Blam::Vector3f Normal;
+	Blam::Vector2f UV;
+};
+static_assert(sizeof(LightmapVertex) == 20);
+
 struct TagReference
 {
 	TagClass      Class;

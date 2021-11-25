@@ -387,6 +387,15 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			TagDataReference UncompressedVertices;
 			TagDataReference CompressedVertices;
 
+			std::span<const std::byte> GetVertexBuffer(
+				const void* Data, std::uint32_t VirtualBase) const
+			{
+				return std::span<const std::byte>(
+					reinterpret_cast<const std::byte*>(Data)
+						+ (UncompressedVertices.VirtualOffset - VirtualBase),
+					UncompressedVertices.Size);
+			}
+
 			std::span<const Vertex>
 				GetVertices(const void* Data, std::uint32_t VirtualBase) const
 			{
@@ -395,6 +404,16 @@ struct Tag<TagClass::ScenarioStructureBsp>
 						reinterpret_cast<const std::byte*>(Data)
 						+ (UncompressedVertices.VirtualOffset - VirtualBase)),
 					Geometry.VertexBufferCount);
+			}
+			std::span<const LightmapVertex> GetLightmapVertices(
+				const void* Data, std::uint32_t VirtualBase) const
+			{
+				return std::span<const LightmapVertex>(
+					reinterpret_cast<const LightmapVertex*>(
+						reinterpret_cast<const std::byte*>(Data)
+						+ (UncompressedVertices.VirtualOffset - VirtualBase)
+						+ (Geometry.VertexBufferCount * sizeof(Vertex))),
+					LightmapGeometry.VertexBufferCount);
 			}
 		};
 		static_assert(sizeof(Material) == 0x100);
