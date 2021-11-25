@@ -12,10 +12,13 @@ layout( location = 6 ) in f32vec2 InLightmapUV;
 
 layout( location = 0 ) out f32vec4 Attachment0;
 
+layout( set = 0, binding = 0 ) uniform sampler2D LightmapImage;
+
 void main()
 {
 	Attachment0 = f32vec4(
-		dot(f32vec3(InNormal), vec3(0.0, 0.0, 1.0)).xxx,
+		//dot(f32vec3(InNormal), vec3(0.0, 0.0, 1.0)).xxx,
+		texture(LightmapImage, InLightmapUV).rgb,
 		1.0
 	);
 }	
