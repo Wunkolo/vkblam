@@ -37,17 +37,6 @@ file(
 	"shaders/*.comp"
 )
 
-# Get glslangValidator
-if( WIN32 )
-	if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64" )
-		set( GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator" )
-	else()
-		set( GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin32/glslangValidator" )
-	endif()
-else()
-	set( GLSL_VALIDATOR "glslangValidator" )
-endif()
-
 # Get spirv-opt
 if( WIN32 )
 	if( ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64" )
@@ -65,7 +54,7 @@ foreach( GLSL ${GLSL_SOURCE_FILES} )
 	add_custom_command(
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
-		COMMAND ${GLSL_VALIDATOR} -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
+		COMMAND ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE} -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
 		COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
 		DEPENDS ${GLSL}
 	)
