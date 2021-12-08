@@ -1,6 +1,5 @@
 #include "Blam/Types.hpp"
 #include "Blam/Util.hpp"
-#include "Common/Format.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -11,10 +10,12 @@
 #include <span>
 
 #include <Common/Alignment.hpp>
+#include <Common/Format.hpp>
 #include <Common/Literals.hpp>
 
 #include <Vulkan/Debug.hpp>
 #include <Vulkan/Memory.hpp>
+#include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
 #include <mio/mmap.hpp>
@@ -200,11 +201,27 @@ int main(int argc, char* argv[])
 	//// Create Device
 	vk::DeviceCreateInfo DeviceInfo = {};
 
-	vk::PhysicalDeviceFeatures DeviceFeatures = {};
-	DeviceFeatures.sampleRateShading          = true;
-	DeviceFeatures.wideLines                  = true;
-	DeviceFeatures.fillModeNonSolid           = true;
-	DeviceInfo.pEnabledFeatures               = &DeviceFeatures;
+	static const char* DeviceExtensions[]
+		= {VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME};
+	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions;
+	DeviceInfo.enabledExtensionCount   = std::size(DeviceExtensions);
+
+	vk::StructureChain<
+		vk::PhysicalDeviceFeatures2,
+		vk::PhysicalDeviceTimelineSemaphoreFeatures>
+		DeviceFeatureChain = {};
+
+	auto& DeviceFeatures
+		= DeviceFeatureChain.get<vk::PhysicalDeviceFeatures2>().features;
+	DeviceFeatures.sampleRateShading = true;
+	DeviceFeatures.wideLines         = true;
+	DeviceFeatures.fillModeNonSolid  = true;
+
+	auto& DeviceTimelineFeatures
+		= DeviceFeatureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
+	DeviceTimelineFeatures.timelineSemaphore = true;
+
+	DeviceInfo.pNext = &DeviceFeatureChain.get();
 
 	static const float QueuePriority = 1.0f;
 
@@ -250,6 +267,9 @@ int main(int argc, char* argv[])
 		= CreateMainRenderPass(Device.get(), RenderSamples);
 
 	// Buffers
+	Vulkan::StreamBuffer StreamBuffer(
+		Device.get(), PhysicalDevice, RenderQueue, 0, 32_MiB);
+
 	vk::UniqueBuffer       StagingBuffer              = {};
 	vk::UniqueDeviceMemory StagingBufferMemory        = {};
 	std::size_t            StagingBufferWritePosition = 0;
@@ -338,14 +358,81 @@ int main(int argc, char* argv[])
 
 	std::unordered_map<vk::Image, vk::BufferImageCopy> ImageUploads;
 
-	vk::UniqueBuffer            VertexBuffer;
-	std::vector<vk::BufferCopy> VertexBufferCopies;
+	vk::UniqueBuffer VertexBuffer;
+	//// Create Vertex buffer heap
+	vk::BufferCreateInfo VertexBufferInfo = {};
+	// VertexBufferInfo.size  = VertexHeapIndexOffset * sizeof(Blam::Vertex);
+	VertexBufferInfo.size  = 32_MiB;
+	VertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
+						   | vk::BufferUsageFlagBits::eTransferDst;
 
-	vk::UniqueBuffer            LightmapVertexBuffer;
-	std::vector<vk::BufferCopy> LightmapVertexBufferCopies;
+	if( auto CreateResult = Device->createBufferUnique(VertexBufferInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		VertexBuffer = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating vertex buffer: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
 
-	vk::UniqueBuffer            IndexBuffer;
-	std::vector<vk::BufferCopy> IndexBufferCopies;
+	Vulkan::SetObjectName(
+		Device.get(), VertexBuffer.get(), "Vertex Buffer( %s )",
+		Common::FormatByteCount(VertexBufferInfo.size).c_str());
+
+	vk::UniqueBuffer LightmapVertexBuffer;
+	//// Create Vertex buffer heap
+	vk::BufferCreateInfo LightmapVertexBufferInfo = {};
+	LightmapVertexBufferInfo.size                 = 32_MiB;
+	//= VertexHeapIndexOffset * sizeof(Blam::LightmapVertex);
+	LightmapVertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
+								   | vk::BufferUsageFlagBits::eTransferDst;
+
+	if( auto CreateResult
+		= Device->createBufferUnique(LightmapVertexBufferInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		LightmapVertexBuffer = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating lightmap vertex buffer: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
+	Vulkan::SetObjectName(
+		Device.get(), LightmapVertexBuffer.get(),
+		"Lightmap Vertex Buffer( %s )",
+		Common::FormatByteCount(LightmapVertexBufferInfo.size).c_str());
+
+	vk::UniqueBuffer IndexBuffer;
+	//// Create Index buffer heap
+	vk::BufferCreateInfo IndexBufferInfo = {};
+	// IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
+	IndexBufferInfo.size  = 16_MiB;
+	IndexBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer
+						  | vk::BufferUsageFlagBits::eTransferDst;
+
+	if( auto CreateResult = Device->createBufferUnique(IndexBufferInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		IndexBuffer = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating Index buffer: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+	Vulkan::SetObjectName(
+		Device.get(), IndexBuffer.get(), "Index Buffer( %s )",
+		Common::FormatByteCount(IndexBufferInfo.size).c_str());
 
 	// Contains _both_ the vertex buffer and the index buffer
 	vk::UniqueDeviceMemory GeometryBufferHeapMemory = {};
@@ -520,18 +607,13 @@ int main(int argc, char* argv[])
 									CurVertexData = CurMaterial.GetVertices(
 										BSPData.data(),
 										CurBSPEntry.BSPVirtualBase);
-								std::memcpy(
-									StagingBufferData.data()
-										+ StagingBufferWritePosition,
-									CurVertexData.data(),
-									CurVertexData.size_bytes());
 
 								// Queue up staging buffer copy
-								VertexBufferCopies.emplace_back(vk::BufferCopy(
-									StagingBufferWritePosition,
+								StreamBuffer.QueueBufferUpload(
+									std::as_bytes(CurVertexData),
+									VertexBuffer.get(),
 									VertexHeapIndexOffset
-										* sizeof(Blam::Vertex),
-									CurVertexData.size_bytes()));
+										* sizeof(Blam::Vertex));
 
 								// Add the offset needed to begin indexing into
 								// this particular part of the vertex buffer,
@@ -543,9 +625,6 @@ int main(int argc, char* argv[])
 									ScenarioBSP.LightmapTexture.TagID,
 									LightmapTextureIndex);
 
-								StagingBufferWritePosition
-									+= CurVertexData.size_bytes();
-
 								//// Lightmap vertex buffer data
 								{
 									const std::span<const Blam::LightmapVertex>
@@ -553,29 +632,12 @@ int main(int argc, char* argv[])
 										= CurMaterial.GetLightmapVertices(
 											BSPData.data(),
 											CurBSPEntry.BSPVirtualBase);
-
-									const auto test
-										= CurLightmapVertexData.data();
-
-									// Copy lightmap vertex data into the
-									// staging buffer
-									std::memcpy(
-										StagingBufferData.data()
-											+ StagingBufferWritePosition,
-										CurLightmapVertexData.data(),
-										CurLightmapVertexData.size_bytes());
-
 									// Queue up staging buffer copy
-									LightmapVertexBufferCopies.emplace_back(
-										vk::BufferCopy(
-											StagingBufferWritePosition,
-											VertexHeapIndexOffset
-												* sizeof(Blam::LightmapVertex),
-											CurLightmapVertexData
-												.size_bytes()));
-
-									StagingBufferWritePosition
-										+= CurLightmapVertexData.size_bytes();
+									StreamBuffer.QueueBufferUpload(
+										std::as_bytes(CurLightmapVertexData),
+										LightmapVertexBuffer.get(),
+										VertexHeapIndexOffset
+											* sizeof(Blam::LightmapVertex));
 								}
 
 								VertexHeapIndexOffset += CurVertexData.size();
@@ -592,105 +654,23 @@ int main(int argc, char* argv[])
 									CurMaterial.SurfacesCount * 3);
 
 								IndexOffsets.emplace_back(IndexHeapIndexOffset);
-								// Copy into the staging buffer
-								std::memcpy(
-									StagingBufferData.data()
-										+ StagingBufferWritePosition,
-									CurIndexData.data(),
-									CurIndexData.size_bytes());
 
 								// Queue up staging buffer copy
-								IndexBufferCopies.emplace_back(vk::BufferCopy(
-									StagingBufferWritePosition,
+								StreamBuffer.QueueBufferUpload(
+									std::as_bytes(CurIndexData),
+									IndexBuffer.get(),
 									IndexHeapIndexOffset
-										* sizeof(std::uint16_t),
-									CurIndexData.size_bytes()));
+										* sizeof(std::uint16_t));
 
 								// Increment offsets
 								IndexHeapIndexOffset
 									+= CurMaterial.SurfacesCount * 3;
-								StagingBufferWritePosition
-									+= CurIndexData.size_bytes();
 							}
 						}
 					}
 				}
 			}
 		}
-
-		//// Create Vertex buffer heap
-		vk::BufferCreateInfo VertexBufferInfo = {};
-		VertexBufferInfo.size  = VertexHeapIndexOffset * sizeof(Blam::Vertex);
-		VertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
-							   | vk::BufferUsageFlagBits::eTransferDst;
-
-		if( auto CreateResult = Device->createBufferUnique(VertexBufferInfo);
-			CreateResult.result == vk::Result::eSuccess )
-		{
-			VertexBuffer = std::move(CreateResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error creating vertex buffer: %s\n",
-				vk::to_string(CreateResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-
-		Vulkan::SetObjectName(
-			Device.get(), VertexBuffer.get(), "Vertex Buffer( %s )",
-			Common::FormatByteCount(VertexBufferInfo.size).c_str());
-
-		//// Create Vertex buffer heap
-		vk::BufferCreateInfo LightmapVertexBufferInfo = {};
-		LightmapVertexBufferInfo.size
-			= VertexHeapIndexOffset * sizeof(Blam::LightmapVertex);
-		LightmapVertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
-									   | vk::BufferUsageFlagBits::eTransferDst;
-
-		if( auto CreateResult
-			= Device->createBufferUnique(LightmapVertexBufferInfo);
-			CreateResult.result == vk::Result::eSuccess )
-		{
-			LightmapVertexBuffer = std::move(CreateResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error creating lightmap vertex buffer: %s\n",
-				vk::to_string(CreateResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-
-		Vulkan::SetObjectName(
-			Device.get(), LightmapVertexBuffer.get(),
-			"Lightmap Vertex Buffer( %s )",
-			Common::FormatByteCount(LightmapVertexBufferInfo.size).c_str());
-
-		//// Create Index buffer heap
-		vk::BufferCreateInfo IndexBufferInfo = {};
-		IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
-		IndexBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer
-							  | vk::BufferUsageFlagBits::eTransferDst;
-
-		if( auto CreateResult = Device->createBufferUnique(IndexBufferInfo);
-			CreateResult.result == vk::Result::eSuccess )
-		{
-			IndexBuffer = std::move(CreateResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error creating Index buffer: %s\n",
-				vk::to_string(CreateResult.result).c_str());
-			return EXIT_FAILURE;
-		}
-		Vulkan::SetObjectName(
-			Device.get(), IndexBuffer.get(), "Index Buffer( %s )",
-			Common::FormatByteCount(IndexBufferInfo.size).c_str());
-
-		const vk::MemoryRequirements IndexBufferMemoryRequirements
-			= Device->getBufferMemoryRequirements(IndexBuffer.get());
 
 		if( auto [Result, Value] = Vulkan::CommitBufferHeap(
 				Device.get(), PhysicalDevice,
@@ -1132,22 +1112,6 @@ int main(int argc, char* argv[])
 	{
 		Vulkan::DebugLabelScope DebugCopyScope(
 			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame");
-
-		// Flush all vertex buffer uploads
-		{
-			Vulkan::DebugLabelScope DebugCopyScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
-				"Copy Vertex/Index Buffers");
-			CommandBuffer->copyBuffer(
-				StagingBuffer.get(), VertexBuffer.get(), VertexBufferCopies);
-			CommandBuffer->copyBuffer(
-				StagingBuffer.get(), LightmapVertexBuffer.get(),
-				LightmapVertexBufferCopies);
-
-			// Flush all vertex buffer uploads
-			CommandBuffer->copyBuffer(
-				StagingBuffer.get(), IndexBuffer.get(), IndexBufferCopies);
-		}
 		{
 			Vulkan::DebugLabelScope DebugCopyScope(
 				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Upload textures");
@@ -1338,6 +1302,8 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	const std::uint64_t UploadTick = StreamBuffer.Flush();
+
 	// Submit work
 	vk::UniqueFence Fence = {};
 	if( auto CreateResult = Device->createFenceUnique({});
@@ -1353,9 +1319,26 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	vk::SubmitInfo SubmitInfo     = {};
+	vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
+		SubmitInfoChain;
+
+	auto& SubmitInfo = SubmitInfoChain.get<vk::SubmitInfo>();
+
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers    = &CommandBuffer.get();
+
+	SubmitInfo.waitSemaphoreCount = 1;
+	SubmitInfo.pWaitSemaphores    = &StreamBuffer.GetSemaphore();
+
+	static const vk::PipelineStageFlags WaitStage
+		= vk::PipelineStageFlagBits::eTransfer;
+	SubmitInfo.pWaitDstStageMask = &WaitStage;
+
+	auto& SubmitTimelineInfo
+		= SubmitInfoChain.get<vk::TimelineSemaphoreSubmitInfo>();
+
+	SubmitTimelineInfo.waitSemaphoreValueCount = 1;
+	SubmitTimelineInfo.pWaitSemaphoreValues    = &UploadTick;
 
 	if( auto SubmitResult = RenderQueue.submit(SubmitInfo, Fence.get());
 		SubmitResult != vk::Result::eSuccess )
