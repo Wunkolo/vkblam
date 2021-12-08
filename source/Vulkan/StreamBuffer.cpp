@@ -1,0 +1,332 @@
+#include <Vulkan/StreamBuffer.hpp>
+
+#include "Common/Format.hpp"
+#include <Vulkan/Debug.hpp>
+#include <Vulkan/Memory.hpp>
+
+namespace Vulkan
+{
+StreamBuffer::StreamBuffer(
+	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
+	vk::Queue TransferQueue, std::uint8_t TransferQueueFamilyIndex,
+	vk::DeviceSize BufferSize)
+	: Device(Device), PhysicalDevice(PhysicalDevice),
+	  TransferQueue(TransferQueue),
+	  TransferQueueFamilyIndex(TransferQueueFamilyIndex),
+	  BufferSize(BufferSize), FlushTick(0), RingOffset(0)
+{
+	//// Create Semaphore
+	{
+		vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>
+			FlushSemaphoreInfoChain = {};
+
+		auto& FlushSemaphoreInfo
+			= FlushSemaphoreInfoChain.get<vk::SemaphoreCreateInfo>();
+
+		FlushSemaphoreInfo.flags = {};
+
+		auto& FlushSemaphoreTypeInfo
+			= FlushSemaphoreInfoChain.get<vk::SemaphoreTypeCreateInfo>();
+
+		FlushSemaphoreTypeInfo.initialValue  = 0;
+		FlushSemaphoreTypeInfo.semaphoreType = vk::SemaphoreType::eTimeline;
+
+		if( auto CreateResult
+			= Device.createSemaphoreUnique(FlushSemaphoreInfoChain.get());
+			CreateResult.result == vk::Result::eSuccess )
+		{
+			FlushSemaphore = std::move(CreateResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error creating vertex buffer: %s\n",
+				vk::to_string(CreateResult.result).c_str());
+			/// ??? should we exit the program
+		}
+		Vulkan::SetObjectName(
+			Device, FlushSemaphore.get(), "Staging Ring Buffer Semaphore");
+	}
+
+	//// Create buffer
+	{
+		vk::BufferCreateInfo RingBufferInfo;
+		RingBufferInfo.size  = BufferSize;
+		RingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferSrc
+							 | vk::BufferUsageFlagBits::eTransferDst;
+
+		if( auto CreateResult = Device.createBufferUnique(RingBufferInfo);
+			CreateResult.result == vk::Result::eSuccess )
+		{
+			RingBuffer = std::move(CreateResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error creating vertex buffer: %s\n",
+				vk::to_string(CreateResult.result).c_str());
+			/// ??? should we exit the program
+		}
+		Vulkan::SetObjectName(
+			Device, RingBuffer.get(), "Staging Ring Buffer( %s )",
+			Common::FormatByteCount(BufferSize).c_str());
+	}
+
+	//// Allocate memory for staging ring buffer
+	{
+		const vk::MemoryRequirements RingBufferMemoryRequirements
+			= Device.getBufferMemoryRequirements(RingBuffer.get());
+
+		vk::MemoryAllocateInfo RingBufferAllocInfo = {};
+		RingBufferAllocInfo.allocationSize = RingBufferMemoryRequirements.size;
+
+		// Try to get some shared memory
+		std::int32_t RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
+			PhysicalDevice, RingBufferMemoryRequirements.memoryTypeBits,
+			vk::MemoryPropertyFlagBits::eHostVisible
+				| vk::MemoryPropertyFlagBits::eHostCoherent
+				| vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		// If that failed, then just get some host memory
+		if( RingBufferHeapIndex < 0 )
+		{
+			RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
+				PhysicalDevice, RingBufferMemoryRequirements.memoryTypeBits,
+				vk::MemoryPropertyFlagBits::eHostVisible
+					| vk::MemoryPropertyFlagBits::eHostCoherent);
+		}
+
+		RingBufferAllocInfo.memoryTypeIndex = RingBufferHeapIndex;
+
+		if( auto AllocResult = Device.allocateMemoryUnique(RingBufferAllocInfo);
+			AllocResult.result == vk::Result::eSuccess )
+		{
+			RingBufferMemory = std::move(AllocResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating memory for staging buffer: %s\n",
+				vk::to_string(AllocResult.result).c_str());
+			/// ??? should we exit the program
+		}
+		Vulkan::SetObjectName(
+			Device, RingBufferMemory.get(), "Staging Ring Buffer Memory( %s )",
+			Common::FormatByteCount(BufferSize).c_str());
+
+		if( auto BindResult = Device.bindBufferMemory(
+				RingBuffer.get(), RingBufferMemory.get(), 0);
+			BindResult == vk::Result::eSuccess )
+		{
+			// Successfully binded memory to buffer
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error binding memory to staging ring buffer: %s\n",
+				vk::to_string(BindResult).c_str());
+			/// ??? should we exit the program
+		}
+	}
+
+	//// Map the device memory
+	if( auto MapResult
+		= Device.mapMemory(RingBufferMemory.get(), 0, BufferSize);
+		MapResult.result == vk::Result::eSuccess )
+	{
+		RingMemoryMapped = std::span<std::byte>(
+			reinterpret_cast<std::byte*>(MapResult.value), BufferSize);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error mapping staging ring buffer memory: %s\n",
+			vk::to_string(MapResult.result).c_str());
+		/// ??? should we exit the program
+	}
+
+	//// Allocate command pool
+	{
+		vk::CommandPoolCreateInfo CommandPoolInfo;
+		CommandPoolInfo.flags
+			= vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+		CommandPoolInfo.queueFamilyIndex = TransferQueueFamilyIndex;
+
+		if( auto CreateResult = Device.createCommandPoolUnique(CommandPoolInfo);
+			CreateResult.result == vk::Result::eSuccess )
+		{
+			CommandPool = std::move(CreateResult.value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error creating staging buffer command pool: %s\n",
+				vk::to_string(CreateResult.result).c_str());
+			/// ??? should we exit the program
+		}
+	}
+}
+
+StreamBuffer::~StreamBuffer()
+{
+	Device.unmapMemory(RingBufferMemory.get());
+}
+
+std::uint64_t StreamBuffer::QueueBufferUpload(
+	const std::span<const std::byte> Data, vk::Buffer Buffer,
+	vk::DeviceSize Offset)
+{
+	if( Data.empty() )
+	{
+		return FlushTick;
+	}
+
+	if( RingOffset + Data.size_bytes() > BufferSize )
+	{
+		Flush();
+	}
+
+	const std::uint64_t CurRingOffset = RingOffset;
+	RingOffset += Data.size_bytes();
+
+	std::copy(
+		Data.begin(), Data.end(),
+		RingMemoryMapped.subspan(CurRingOffset).begin());
+
+	BufferCopies[Buffer].emplace_back(
+		vk::BufferCopy{CurRingOffset, Offset, Data.size_bytes()});
+
+	return FlushTick;
+}
+
+std::uint64_t StreamBuffer::Flush()
+{
+	// Any further pushes are going to be a part of the next tick
+	const std::uint64_t PrevFlushTick      = FlushTick++;
+	vk::CommandBuffer   FlushCommandBuffer = {};
+
+	// Get where the GPU is at in our submit-timeline
+	std::uint64_t GpuFlushTick = 0;
+	if( auto GetResult = Device.getSemaphoreCounterValue(FlushSemaphore.get());
+		GetResult.result == vk::Result::eSuccess )
+	{
+		GpuFlushTick = GetResult.value;
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error getting timeline semaphore value: %s\n",
+			vk::to_string(GetResult.result).c_str());
+		/// ??? should we exit the program
+	}
+
+	// Find a free command buffer
+	for( std::size_t i = 0; i < CommandBuffers.size(); ++i )
+	{
+		// This command context is free! recycle it
+		if( CommandBufferTimeStamps[i] < GpuFlushTick )
+		{
+			CommandBufferTimeStamps[i] = FlushTick;
+			FlushCommandBuffer         = CommandBuffers[i].get();
+			break;
+		}
+	}
+
+	if( !FlushCommandBuffer )
+	{
+		// No command buffer was free, we need to push a new one
+		CommandBufferTimeStamps.push_back(FlushTick);
+
+		vk::CommandBufferAllocateInfo CommandBufferInfo;
+		CommandBufferInfo.commandPool        = CommandPool.get();
+		CommandBufferInfo.commandBufferCount = 1;
+
+		if( auto AllocateResult
+			= Device.allocateCommandBuffersUnique(CommandBufferInfo);
+			AllocateResult.result == vk::Result::eSuccess )
+		{
+			FlushCommandBuffer = AllocateResult.value[0].get();
+			CommandBuffers.emplace_back(std::move(AllocateResult.value[0]));
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error allocating command buffer: %s\n",
+				vk::to_string(AllocateResult.result).c_str());
+			/// ??? should we exit the program
+		}
+	}
+
+	vk::CommandBufferBeginInfo BeginInfo;
+	BeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	if( auto BeginResult
+		= FlushCommandBuffer.begin(vk::CommandBufferBeginInfo{});
+		BeginResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error beginning command buffer: %s\n",
+			vk::to_string(BeginResult).c_str());
+	}
+
+	{
+		Vulkan::DebugLabelScope DebugCopyScope(
+			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Copy Buffers");
+		for( const auto& [CurBuffer, CurBufferCopies] : BufferCopies )
+		{
+			FlushCommandBuffer.copyBuffer(
+				RingBuffer.get(), CurBuffer, CurBufferCopies);
+		}
+	}
+
+	if( auto EndResult = FlushCommandBuffer.end();
+		EndResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error ending command buffer: %s\n",
+			vk::to_string(EndResult).c_str());
+	}
+
+	vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
+		SubmitInfoChain = {};
+
+	auto& SubmitInfo              = SubmitInfoChain.get<vk::SubmitInfo>();
+	SubmitInfo.commandBufferCount = 1;
+	SubmitInfo.pCommandBuffers    = &FlushCommandBuffer;
+
+	SubmitInfo.waitSemaphoreCount = 1;
+	SubmitInfo.pWaitSemaphores    = &FlushSemaphore.get();
+
+	static const vk::PipelineStageFlags WaitStage
+		= vk::PipelineStageFlagBits::eTransfer;
+	SubmitInfo.pWaitDstStageMask = &WaitStage;
+
+	SubmitInfo.signalSemaphoreCount = 1;
+	SubmitInfo.pSignalSemaphores    = &FlushSemaphore.get();
+
+	auto& SubmitTimelineInfo
+		= SubmitInfoChain.get<vk::TimelineSemaphoreSubmitInfo>();
+
+	SubmitTimelineInfo.waitSemaphoreValueCount = 1;
+	SubmitTimelineInfo.pWaitSemaphoreValues    = &PrevFlushTick;
+
+	SubmitTimelineInfo.signalSemaphoreValueCount = 1;
+	SubmitTimelineInfo.pSignalSemaphoreValues    = &FlushTick;
+
+	if( auto SubmitResult = TransferQueue.submit(SubmitInfoChain.get());
+		SubmitResult != vk::Result::eSuccess )
+	{
+		// Error submitting
+	}
+
+	RingOffset = 0;
+	BufferCopies.clear();
+
+	return FlushTick;
+}
+
+const vk::Semaphore& StreamBuffer::GetSemaphore() const
+{
+	return FlushSemaphore.get();
+}
+
+} // namespace Vulkan
