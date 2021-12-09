@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
 
 	// Buffers
 	Vulkan::StreamBuffer StreamBuffer(
-		Device.get(), PhysicalDevice, RenderQueue, 0, 32_MiB);
+		Device.get(), PhysicalDevice, RenderQueue, 0, 128_MiB);
 
 	vk::UniqueBuffer       StagingBuffer              = {};
 	vk::UniqueDeviceMemory StagingBufferMemory        = {};
@@ -437,6 +437,23 @@ int main(int argc, char* argv[])
 	// Contains _both_ the vertex buffer and the index buffer
 	vk::UniqueDeviceMemory GeometryBufferHeapMemory = {};
 
+	if( auto [Result, Value] = Vulkan::CommitBufferHeap(
+			Device.get(), PhysicalDevice,
+			std::array{
+				VertexBuffer.get(), IndexBuffer.get(),
+				LightmapVertexBuffer.get()});
+		Result == vk::Result::eSuccess )
+	{
+		GeometryBufferHeapMemory = std::move(Value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error committing vertex/index memory: %s\n",
+			vk::to_string(Result).c_str());
+		return EXIT_FAILURE;
+	}
+
 	// TagID -> BitmapTag[indexofimage] -> vulkan image
 	std::unordered_map<std::uint32_t, std::map<std::uint16_t, vk::UniqueImage>>
 		Lightmaps;
@@ -575,22 +592,10 @@ int main(int argc, char* argv[])
 								ScenarioBSP.LightmapTexture.TagID,
 								LightmapTextureIndex);
 
-							std::memcpy(
-								StagingBufferData.data()
-									+ StagingBufferWritePosition,
-								PixelData.data(), PixelData.size_bytes());
-
-							ImageUploads[LightmapImage.get()]
-								= vk::BufferImageCopy(
-									StagingBufferWritePosition, 0, 0,
-									vk::ImageSubresourceLayers(
-										vk::ImageAspectFlagBits::eColor, 0, 0,
-										1),
-									vk::Offset3D(0, 0, 0),
-									LightmapImageInfo.extent);
-
-							StagingBufferWritePosition
-								+= PixelData.size_bytes();
+							StreamBuffer.QueueImageUpload(
+								PixelData, LightmapImage.get(),
+								vk::Offset3D(0, 0, 0),
+								LightmapImageInfo.extent);
 						}
 
 						const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
@@ -670,23 +675,6 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
-		}
-
-		if( auto [Result, Value] = Vulkan::CommitBufferHeap(
-				Device.get(), PhysicalDevice,
-				std::array{
-					VertexBuffer.get(), IndexBuffer.get(),
-					LightmapVertexBuffer.get()});
-			Result == vk::Result::eSuccess )
-		{
-			GeometryBufferHeapMemory = std::move(Value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error committing vertex/index memory: %s\n",
-				vk::to_string(Result).c_str());
-			return EXIT_FAILURE;
 		}
 
 		Vulkan::SetObjectName(
@@ -1112,49 +1100,6 @@ int main(int argc, char* argv[])
 	{
 		Vulkan::DebugLabelScope DebugCopyScope(
 			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame");
-		{
-			Vulkan::DebugLabelScope DebugCopyScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Upload textures");
-
-			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
-			{
-				CommandBuffer->pipelineBarrier(
-					vk::PipelineStageFlagBits::eTransfer,
-					vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{},
-					{}, {},
-					{vk::ImageMemoryBarrier(
-						vk::AccessFlagBits::eTransferWrite,
-						vk::AccessFlagBits::eTransferRead,
-						vk::ImageLayout::eUndefined,
-						vk::ImageLayout::eTransferDstOptimal,
-						VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-						TargetImage,
-						vk::ImageSubresourceRange(
-							vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
-			}
-			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
-			{
-				CommandBuffer->copyBufferToImage(
-					StagingBuffer.get(), TargetImage,
-					vk::ImageLayout::eTransferDstOptimal, ImageCopy);
-			}
-			for( const auto& [TargetImage, ImageCopy] : ImageUploads )
-			{
-				CommandBuffer->pipelineBarrier(
-					vk::PipelineStageFlagBits::eTransfer,
-					vk::PipelineStageFlagBits::eFragmentShader,
-					vk::DependencyFlags{}, {}, {},
-					{vk::ImageMemoryBarrier(
-						vk::AccessFlagBits::eTransferWrite,
-						vk::AccessFlagBits::eShaderRead,
-						vk::ImageLayout::eTransferDstOptimal,
-						vk::ImageLayout::eShaderReadOnlyOptimal,
-						VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-						TargetImage,
-						vk::ImageSubresourceRange(
-							vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
-			}
-		}
 
 		{
 			Vulkan::DebugLabelScope DebugCopyScope(
