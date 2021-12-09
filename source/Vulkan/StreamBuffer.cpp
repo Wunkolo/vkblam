@@ -3,6 +3,7 @@
 #include "Common/Format.hpp"
 #include <Vulkan/Debug.hpp>
 #include <Vulkan/Memory.hpp>
+#include <vulkan/vulkan_enums.hpp>
 
 namespace Vulkan
 {
@@ -180,10 +181,30 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 	{
 		return FlushTick;
 	}
+	if( Data.size_bytes() > BufferSize )
+	{
+		std::fprintf(
+			stderr, "Staging buffer overflow: %zu > %zu \n", Data.size_bytes(),
+			BufferSize);
+	}
 
 	if( RingOffset + Data.size_bytes() > BufferSize )
 	{
-		Flush();
+		const std::uint64_t FlushTick = Flush();
+
+		// Blocking wait since we need to ensure that the staging buffer is
+		// entirely free todo, attach timestamps to particular regions of the
+		// ring buffer so that we can use parts of the buffer immediately when
+		// it is ready
+		vk::SemaphoreWaitInfo WaitInfo;
+		WaitInfo.semaphoreCount = 1;
+		WaitInfo.pSemaphores    = &GetSemaphore();
+		WaitInfo.pValues        = &FlushTick;
+		if( auto WaitResult = Device.waitSemaphores(WaitInfo, ~0ULL);
+			WaitResult != vk::Result::eSuccess )
+		{
+			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
+		}
 	}
 
 	const std::uint64_t CurRingOffset = RingOffset;
@@ -199,8 +220,74 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 	return FlushTick;
 }
 
+std::uint64_t StreamBuffer::QueueImageUpload(
+	const std::span<const std::byte> Data, vk::Image Image, vk::Offset3D Offset,
+	vk::Extent3D Extent, vk::ImageSubresourceLayers SubresourceLayers,
+	vk::ImageLayout DstLayout)
+{
+	if( Data.empty() )
+	{
+		return FlushTick;
+	}
+	if( Data.size_bytes() > BufferSize )
+	{
+		std::fprintf(
+			stderr, "Staging buffer overflow: %zu > %zu \n", Data.size_bytes(),
+			BufferSize);
+	}
+
+	if( RingOffset + Data.size_bytes() > BufferSize )
+	{
+		const std::uint64_t FlushTick = Flush();
+
+		// Blocking wait since we need to ensure that the staging buffer is
+		// entirely free todo, attach timestamps to particular regions of the
+		// ring buffer so that we can use parts of the buffer immediately when
+		// it is ready
+		vk::SemaphoreWaitInfo WaitInfo;
+		WaitInfo.semaphoreCount = 1;
+		WaitInfo.pSemaphores    = &GetSemaphore();
+		WaitInfo.pValues        = &FlushTick;
+		if( auto WaitResult = Device.waitSemaphores(WaitInfo, ~0ULL);
+			WaitResult != vk::Result::eSuccess )
+		{
+			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
+		}
+	}
+
+	const std::uint64_t CurRingOffset = RingOffset;
+	RingOffset += Data.size_bytes();
+
+	std::copy(
+		Data.begin(), Data.end(),
+		RingMemoryMapped.subspan(CurRingOffset).begin());
+
+	ImageCopies[Image].emplace_back(vk::BufferImageCopy{
+		CurRingOffset, 0, 0, SubresourceLayers, Offset, Extent});
+
+	ImagePreBarrier.emplace_back(vk::ImageMemoryBarrier(
+		vk::AccessFlagBits::eMemoryWrite, vk::AccessFlagBits::eMemoryRead,
+		vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+		VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, Image,
+		vk::ImageSubresourceRange(
+			vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)));
+	ImagePostBarrier.emplace_back(vk::ImageMemoryBarrier(
+		vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eMemoryRead,
+		vk::ImageLayout::eTransferDstOptimal,
+		vk::ImageLayout::eShaderReadOnlyOptimal, VK_QUEUE_FAMILY_IGNORED,
+		VK_QUEUE_FAMILY_IGNORED, Image,
+		vk::ImageSubresourceRange(
+			vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)));
+
+	return FlushTick;
+}
+
 std::uint64_t StreamBuffer::Flush()
 {
+	if( RingOffset == 0 )
+	{
+		return FlushTick;
+	}
 	// Any further pushes are going to be a part of the next tick
 	const std::uint64_t PrevFlushTick      = FlushTick++;
 	vk::CommandBuffer   FlushCommandBuffer = {};
@@ -270,12 +357,31 @@ std::uint64_t StreamBuffer::Flush()
 
 	{
 		Vulkan::DebugLabelScope DebugCopyScope(
-			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Copy Buffers");
+			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Upload Buffers");
 		for( const auto& [CurBuffer, CurBufferCopies] : BufferCopies )
 		{
 			FlushCommandBuffer.copyBuffer(
 				RingBuffer.get(), CurBuffer, CurBufferCopies);
 		}
+	}
+
+	{
+		Vulkan::DebugLabelScope DebugCopyScope(
+			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Upload Images");
+		FlushCommandBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer,
+			vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{}, {}, {},
+			ImagePreBarrier);
+		for( const auto& [CurImage, CurImageCopies] : ImageCopies )
+		{
+			FlushCommandBuffer.copyBufferToImage(
+				RingBuffer.get(), CurImage,
+				vk::ImageLayout::eTransferDstOptimal, CurImageCopies);
+		}
+		FlushCommandBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer,
+			vk::PipelineStageFlagBits::eAllCommands, vk::DependencyFlags{}, {},
+			{}, ImagePostBarrier);
 	}
 
 	if( auto EndResult = FlushCommandBuffer.end();

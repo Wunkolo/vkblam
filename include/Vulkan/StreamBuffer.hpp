@@ -39,6 +39,10 @@ private:
 	std::vector<std::uint64_t>           CommandBufferTimeStamps;
 
 	std::unordered_map<vk::Buffer, std::vector<vk::BufferCopy>> BufferCopies;
+	std::unordered_map<vk::Image, std::vector<vk::BufferImageCopy>> ImageCopies;
+
+	std::vector<vk::ImageMemoryBarrier> ImagePreBarrier;
+	std::vector<vk::ImageMemoryBarrier> ImagePostBarrier;
 
 public:
 	StreamBuffer(
@@ -65,7 +69,7 @@ public:
 		vk::Offset3D Offset, vk::Extent3D Extent,
 		vk::ImageSubresourceLayers SubresourceLayers
 		= vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-		vk::ImageLayout Layout = vk::ImageLayout::eTransferDstOptimal);
+		vk::ImageLayout DstLayout = vk::ImageLayout::eTransferDstOptimal);
 
 	// Flush all pending uploads and downloads to the specified queue
 	// and returns the semaphore value to wait for to know when completion is
