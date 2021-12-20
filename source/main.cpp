@@ -471,17 +471,13 @@ int main(int argc, char* argv[])
 		std::uint32_t VertexIndexOffset;
 		std::uint32_t IndexCount;
 		std::uint32_t IndexOffset;
+
+		// Some lightmap meshes don't have a lightmap!
+		std::optional<std::uint32_t> BitmapID;
+		std::optional<std::uint32_t> BitmapIndex;
 	};
 
 	std::vector<LightmapMesh> LightmapMeshs;
-
-	// Draw index -> {bitmapID, bitmap index}
-	struct LightmapIndexMapping
-	{
-		std::uint32_t BitmapID;
-		std::int32_t  BitmapIndex;
-	};
-	std::vector<LightmapIndexMapping> LightmapIndex;
 
 	{
 		// Offset is in elements, not bytes
@@ -633,9 +629,14 @@ int main(int argc, char* argv[])
 								CurLightmapMesh.VertexIndexOffset
 									= VertexHeapIndexOffset;
 
-								LightmapIndex.emplace_back(
-									ScenarioBSP.LightmapTexture.TagID,
-									LightmapTextureIndex);
+								if( ScenarioBSP.LightmapTexture.TagID != -1
+									&& LightmapTextureIndex != -1 )
+								{
+									CurLightmapMesh.BitmapID
+										= ScenarioBSP.LightmapTexture.TagID;
+									CurLightmapMesh.BitmapIndex
+										= LightmapTextureIndex;
+								}
 
 								//// Lightmap vertex buffer data
 								{
@@ -1176,25 +1177,24 @@ int main(int argc, char* argv[])
 
 			for( std::size_t i = 0; i < LightmapMeshs.size(); ++i )
 			{
+				const auto& CurLightmapMesh = LightmapMeshs[i];
 				Vulkan::InsertDebugLabel(
 					CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
 					i);
-				if( LightmapSets.count(LightmapIndex[i].BitmapID)
-					&& LightmapSets.at(LightmapIndex[i].BitmapID)
-						   .count(LightmapIndex[i].BitmapIndex) )
+				if( CurLightmapMesh.BitmapID.has_value()
+					&& CurLightmapMesh.BitmapIndex.has_value() )
 				{
 					CommandBuffer->bindDescriptorSets(
 						vk::PipelineBindPoint::eGraphics,
 						DebugDrawPipelineLayout.get(), 0,
-						{LightmapSets.at(LightmapIndex[i].BitmapID)
-							 .at(LightmapIndex[i].BitmapIndex)
+						{LightmapSets.at(CurLightmapMesh.BitmapID.value())
+							 .at(CurLightmapMesh.BitmapIndex.value())
 							 .get()},
 						{});
 				}
 				CommandBuffer->drawIndexed(
-					LightmapMeshs[i].IndexCount, 1,
-					LightmapMeshs[i].IndexOffset,
-					LightmapMeshs[i].VertexIndexOffset, 0);
+					CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
+					CurLightmapMesh.VertexIndexOffset, 0);
 			}
 
 			// CommandBuffer->bindPipeline(
