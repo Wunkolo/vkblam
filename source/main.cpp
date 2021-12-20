@@ -466,9 +466,14 @@ int main(int argc, char* argv[])
 		LightmapSets;
 
 	// Parameters used for drawing
-	std::vector<std::uint32_t> VertexIndexOffsets;
-	std::vector<std::uint32_t> IndexCounts;
-	std::vector<std::uint32_t> IndexOffsets;
+	struct LightmapMesh
+	{
+		std::uint32_t VertexIndexOffset;
+		std::uint32_t IndexCount;
+		std::uint32_t IndexOffset;
+	};
+
+	std::vector<LightmapMesh> LightmapMeshs;
 
 	// Draw index -> {bitmapID, bitmap index}
 	struct LightmapIndexMapping
@@ -605,6 +610,8 @@ int main(int argc, char* argv[])
 								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 						{
 
+							auto& CurLightmapMesh
+								= LightmapMeshs.emplace_back();
 							//// Vertex Buffer data
 							{
 								// Copy vertex data into the staging buffer
@@ -623,8 +630,8 @@ int main(int argc, char* argv[])
 								// Add the offset needed to begin indexing into
 								// this particular part of the vertex buffer,
 								// used when drawing
-								VertexIndexOffsets.emplace_back(
-									VertexHeapIndexOffset);
+								CurLightmapMesh.VertexIndexOffset
+									= VertexHeapIndexOffset;
 
 								LightmapIndex.emplace_back(
 									ScenarioBSP.LightmapTexture.TagID,
@@ -655,10 +662,11 @@ int main(int argc, char* argv[])
 										CurMaterial.SurfacesIndexStart,
 										CurMaterial.SurfacesCount));
 
-								IndexCounts.emplace_back(
-									CurMaterial.SurfacesCount * 3);
+								CurLightmapMesh.IndexCount
+									= CurMaterial.SurfacesCount * 3;
 
-								IndexOffsets.emplace_back(IndexHeapIndexOffset);
+								CurLightmapMesh.IndexOffset
+									= IndexHeapIndexOffset;
 
 								// Queue up staging buffer copy
 								StreamBuffer.QueueBufferUpload(
@@ -1166,7 +1174,7 @@ int main(int argc, char* argv[])
 			CommandBuffer->bindIndexBuffer(
 				IndexBuffer.get(), 0, vk::IndexType::eUint16);
 
-			for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
+			for( std::size_t i = 0; i < LightmapMeshs.size(); ++i )
 			{
 				Vulkan::InsertDebugLabel(
 					CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
@@ -1184,8 +1192,9 @@ int main(int argc, char* argv[])
 						{});
 				}
 				CommandBuffer->drawIndexed(
-					IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i],
-					0);
+					LightmapMeshs[i].IndexCount, 1,
+					LightmapMeshs[i].IndexOffset,
+					LightmapMeshs[i].VertexIndexOffset, 0);
 			}
 
 			// CommandBuffer->bindPipeline(
