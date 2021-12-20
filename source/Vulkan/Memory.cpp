@@ -39,8 +39,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	vk::MemoryPropertyFlags          MemoryProperties,
 	vk::MemoryPropertyFlags          MemoryExcludeProperties)
 {
-	vk::DeviceSize                       ImageHeapMemorySize = 0;
-	std::uint32_t                        ImageHeapMemoryMask = 0xFFFFFFFF;
+	vk::DeviceSize                       CurImageHeapMemoryExtent = 0;
+	std::uint32_t                        ImageHeapMemoryMask      = 0xFFFFFFFF;
 	std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
 
 	const vk::DeviceSize BufferImageGranularity
@@ -55,18 +55,21 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 		// handles
 		ImageHeapMemoryMask &= MemReqs.memoryTypeBits;
 
+		// Ensure the binding offset meets the required alignment
+		const vk::DeviceSize CurMemoryOffset
+			= Common::AlignUp(CurImageHeapMemoryExtent, MemReqs.alignment);
 		// Pad up the memory sizes so they are not considered aliasing
-		const vk::DeviceSize MemorySize
+		const vk::DeviceSize CurMemorySize
 			= Common::AlignUp(MemReqs.size, BufferImageGranularity);
 
 		// Put nullptr for the device memory for now
 		ImageHeapBinds.emplace_back(
-			vk::BindImageMemoryInfo{CurImage, nullptr, ImageHeapMemorySize});
-		ImageHeapMemorySize += MemorySize;
+			vk::BindImageMemoryInfo{CurImage, nullptr, CurMemoryOffset});
+		CurImageHeapMemoryExtent = (CurMemoryOffset + CurMemorySize);
 	}
 
 	vk::MemoryAllocateInfo ImageHeapAllocInfo;
-	ImageHeapAllocInfo.allocationSize  = ImageHeapMemorySize;
+	ImageHeapAllocInfo.allocationSize  = CurImageHeapMemoryExtent;
 	ImageHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
 		PhysicalDevice, ImageHeapMemoryMask, MemoryProperties,
 		MemoryExcludeProperties);
@@ -109,8 +112,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	vk::MemoryPropertyFlags           MemoryProperties,
 	vk::MemoryPropertyFlags           MemoryExcludeProperties)
 {
-	vk::DeviceSize                        BufferHeapMemorySize = 0;
-	std::uint32_t                         BufferHeapMemoryMask = 0xFFFFFFFF;
+	vk::DeviceSize                        BufferHeapMemoryExtent = 0;
+	std::uint32_t                         BufferHeapMemoryMask   = 0xFFFFFFFF;
 	std::vector<vk::BindBufferMemoryInfo> BufferHeapBinds;
 
 	const vk::DeviceSize BufferImageGranularity
@@ -126,17 +129,19 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 		BufferHeapMemoryMask &= MemReqs.memoryTypeBits;
 
 		// Pad up the memory sizes so they are not considered aliasing
-		const vk::DeviceSize MemorySize
+		const vk::DeviceSize CurMemoryOffset
+			= Common::AlignUp(BufferHeapMemoryExtent, MemReqs.alignment);
+		const vk::DeviceSize CurMemorySize
 			= Common::AlignUp(MemReqs.size, BufferImageGranularity);
 
 		// Put nullptr for the device memory for now
-		BufferHeapBinds.emplace_back(
-			vk::BindBufferMemoryInfo{CurBuffer, nullptr, BufferHeapMemorySize});
-		BufferHeapMemorySize += MemorySize;
+		BufferHeapBinds.emplace_back(vk::BindBufferMemoryInfo{
+			CurBuffer, nullptr, BufferHeapMemoryExtent});
+		BufferHeapMemoryExtent = (CurMemoryOffset + CurMemorySize);
 	}
 
 	vk::MemoryAllocateInfo BufferHeapAllocInfo;
-	BufferHeapAllocInfo.allocationSize  = BufferHeapMemorySize;
+	BufferHeapAllocInfo.allocationSize  = BufferHeapMemoryExtent;
 	BufferHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
 		PhysicalDevice, BufferHeapMemoryMask, MemoryProperties,
 		MemoryExcludeProperties);
