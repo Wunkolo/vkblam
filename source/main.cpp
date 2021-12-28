@@ -21,6 +21,7 @@
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
+#include <vulkan/vulkan_structs.hpp>
 CMRC_DECLARE(vkblam);
 auto DataFS = cmrc::vkblam::get_filesystem();
 
@@ -88,6 +89,8 @@ vk::UniqueShaderModule CreateShaderModule(
 	}
 	return ShaderModule;
 }
+
+std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice);
 
 int main(int argc, char* argv[])
 {
@@ -192,6 +195,13 @@ int main(int argc, char* argv[])
 			vk::to_string(EnumerateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+
+	std::fprintf(
+		stdout,
+		"---\n"
+		"%s"
+		"---\n",
+		FormatDeviceCaps(PhysicalDevice).c_str());
 
 	// We're putting images/buffers right after each other, so we need to
 	// ensure they are far apart enough to not be considered aliasing
@@ -1687,4 +1697,34 @@ std::tuple<
 	return std::make_tuple(
 		std::move(Pipeline), std::move(GraphicsPipelineLayout),
 		std::move(GraphicsDescriptorLayout));
+}
+
+std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice)
+{
+	std::string Result;
+
+	const vk::PhysicalDeviceProperties Properties
+		= PhysicalDevice.getProperties();
+
+	Result += Common::Format(
+		"Device Name: %.256s\n", Properties.deviceName.data());
+	Result += Common::Format(
+		"Device Type: %s\n", vk::to_string(Properties.deviceType).c_str());
+	Result += Common::Format(
+		"DeviceID/VendorID: %8x:%8x\n", Properties.deviceID,
+		Properties.vendorID);
+
+	const vk::PhysicalDeviceMemoryProperties MemoryProperties
+		= PhysicalDevice.getMemoryProperties();
+	for( std::uint8_t HeapIdx = 0; HeapIdx < MemoryProperties.memoryHeapCount;
+		 ++HeapIdx )
+	{
+		const auto& CurHeap = MemoryProperties.memoryHeaps[HeapIdx];
+		Result += Common::Format(
+			"Heap %2u: %12s %s\n", HeapIdx,
+			Common::FormatByteCount(CurHeap.size).c_str(),
+			vk::to_string(CurHeap.flags).c_str());
+	}
+
+	return Result;
 }

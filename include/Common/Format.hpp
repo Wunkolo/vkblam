@@ -2,10 +2,10 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
-#include <memory>
 
 namespace Common
 {
@@ -15,18 +15,19 @@ void HexDump(
 
 std::string FormatByteCount(std::size_t ByteCount);
 
-template<typename ... ArgsT>
-std::string Format( const std::string_view Format, ArgsT ... Args )
+template<typename... ArgsT>
+std::string Format(const std::string_view Format, ArgsT... Args)
 {
-    int FormatSize = std::snprintf( nullptr, 0, Format.data(), Args ... ) + 1u;
-    if( FormatSize <= 0 )
+	int FormatSize = std::snprintf(nullptr, 0, Format.data(), Args...) + 1u;
+	if( FormatSize <= 0 )
 	{
 		return "";
 	}
-    const std::size_t StringSize = static_cast<size_t>( FormatSize );
+	const std::size_t StringSize = static_cast<size_t>(FormatSize);
+
 	std::string Result(StringSize - 1, '\0');
-    std::snprintf( Result.data(), StringSize, Format.data(), Args ... );
-    return Result;
+	std::snprintf(Result.data(), StringSize, Format.data(), Args...);
+	return Result;
 }
 
 } // namespace Common
