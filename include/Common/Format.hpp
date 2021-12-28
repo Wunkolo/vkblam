@@ -24,7 +24,7 @@ std::string Format( const std::string_view Format, ArgsT ... Args )
 		return "";
 	}
     const std::size_t StringSize = static_cast<size_t>( FormatSize );
-	std::string Result(StringSize, '\0');
+	std::string Result(StringSize - 1, '\0');
     std::snprintf( Result.data(), StringSize, Format.data(), Args ... );
     return Result;
 }
