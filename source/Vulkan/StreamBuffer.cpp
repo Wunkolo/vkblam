@@ -236,7 +236,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 			BufferSize);
 	}
 
-	if( RingOffset + Data.size_bytes() > BufferSize )
+	if( (RingOffset + Data.size_bytes()) >= BufferSize )
 	{
 		const std::uint64_t FlushTick = Flush();
 
@@ -248,8 +248,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		WaitInfo.semaphoreCount = 1;
 		WaitInfo.pSemaphores    = &GetSemaphore();
 		WaitInfo.pValues        = &FlushTick;
-		if( auto WaitResult = Device.waitSemaphores(WaitInfo, ~0ULL);
-			WaitResult != vk::Result::eSuccess )
+		if( Device.waitSemaphores(WaitInfo, ~0ULL) != vk::Result::eSuccess )
 		{
 			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
 		}

@@ -6,6 +6,7 @@
 #include <span>
 #include <unordered_map>
 #include <vector>
+#include <vulkan/vulkan_hash.hpp>
 
 namespace Vulkan
 {
