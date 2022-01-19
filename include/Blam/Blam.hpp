@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <type_traits>
@@ -32,15 +33,36 @@ public:
 	const TagIndexEntry* GetTagIndexEntry(std::uint16_t TagIndex) const;
 
 	template<TagClass TagClassT>
+	void VisitTagClass(
+		const std::function<
+			void(const Blam::TagIndexEntry, const Blam::Tag<TagClassT>&)>& Func)
+		const
+	{
+		for( const auto& CurTagEntry : GetTagIndexArray() )
+		{
+			if( CurTagEntry.ClassPrimary == TagClassT )
+			{
+				const auto& CurTag
+					= *reinterpret_cast<const Blam::Tag<TagClassT>*>(
+						MapData.data()
+						+ (CurTagEntry.TagDataVirtualOffset
+						   - TagHeapVirtualBase));
+				Func(CurTagEntry, CurTag);
+			}
+		}
+	}
+
+	template<TagClass TagClassT>
 	const Tag<TagClassT>* GetTag(std::uint32_t TagID) const
 	{
-		const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(std::uint16_t(TagID));
+		const TagIndexEntry* TagIndexEntryPtr
+			= GetTagIndexEntry(std::uint16_t(TagID));
 		if( !TagIndexEntryPtr )
 		{
 			return nullptr;
 		}
 
-		if(TagIndexEntryPtr->TagID != TagID)
+		if( TagIndexEntryPtr->TagID != TagID )
 		{
 			// Salts don't match
 			return nullptr;
