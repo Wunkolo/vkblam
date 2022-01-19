@@ -1,5 +1,6 @@
 #include <Vulkan/StreamBuffer.hpp>
 
+#include "Common/Alignment.hpp"
 #include "Common/Format.hpp"
 #include <Vulkan/Debug.hpp>
 #include <Vulkan/Memory.hpp>
@@ -188,7 +189,9 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 			BufferSize);
 	}
 
-	if( RingOffset + Data.size_bytes() > BufferSize )
+	const std::uint64_t CurRingOffset = RingOffset;
+
+	if( CurRingOffset + Data.size_bytes() > BufferSize )
 	{
 		const std::uint64_t FlushTick = Flush();
 
@@ -207,7 +210,6 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 		}
 	}
 
-	const std::uint64_t CurRingOffset = RingOffset;
 	RingOffset += Data.size_bytes();
 
 	std::copy(
@@ -236,7 +238,12 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 			BufferSize);
 	}
 
-	if( (RingOffset + Data.size_bytes()) >= BufferSize )
+	// Memory offset must at least match the alignment of the image format's
+	// texel size. Here we just force it to handle the upper-bound alignment
+	// as a temporary catch-all
+	const std::uint64_t CurRingOffset = Common::AlignUp(RingOffset, 16);
+
+	if( (CurRingOffset + Data.size_bytes()) >= BufferSize )
 	{
 		const std::uint64_t FlushTick = Flush();
 
@@ -254,8 +261,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		}
 	}
 
-	const std::uint64_t CurRingOffset = RingOffset;
-	RingOffset += Data.size_bytes();
+	RingOffset = CurRingOffset + Data.size_bytes();
 
 	std::copy(
 		Data.begin(), Data.end(),
