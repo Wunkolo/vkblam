@@ -421,10 +421,16 @@ std::uint64_t StreamBuffer::Flush()
 		SubmitResult != vk::Result::eSuccess )
 	{
 		// Error submitting
+		std::fprintf(
+			stderr, "Error submitting streaming buffer flush: %s\n",
+			vk::to_string(SubmitResult).c_str());
 	}
 
 	RingOffset = 0;
 	BufferCopies.clear();
+	ImageCopies.clear();
+	ImagePreBarrier.clear();
+	ImagePostBarrier.clear();
 
 	return FlushTick;
 }
