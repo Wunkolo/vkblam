@@ -1,3 +1,4 @@
+#include "Blam/Enums.hpp"
 #include "Blam/Types.hpp"
 #include "Blam/Util.hpp"
 #include <algorithm>
@@ -18,6 +19,8 @@
 #include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
+#include <vkBlam.hpp>
+
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
@@ -36,7 +39,7 @@ auto DataFS = cmrc::vkblam::get_filesystem();
 
 #include "stb_image_write.h"
 
-//#define CAPTURE
+#define CAPTURE
 #ifdef CAPTURE
 #include <dlfcn.h>
 #include <renderdoc_app.h>
@@ -280,6 +283,38 @@ int main(int argc, char* argv[])
 	Vulkan::StreamBuffer StreamBuffer(
 		Device.get(), PhysicalDevice, RenderQueue, 0, 128_MiB);
 
+	//// Create Default Sampler
+	vk::SamplerCreateInfo SamplerInfo{};
+	SamplerInfo.magFilter               = vk::Filter::eLinear;
+	SamplerInfo.minFilter               = vk::Filter::eLinear;
+	SamplerInfo.mipmapMode              = vk::SamplerMipmapMode::eLinear;
+	SamplerInfo.addressModeU            = vk::SamplerAddressMode::eRepeat;
+	SamplerInfo.addressModeV            = vk::SamplerAddressMode::eRepeat;
+	SamplerInfo.addressModeW            = vk::SamplerAddressMode::eRepeat;
+	SamplerInfo.mipLodBias              = 0.0f;
+	SamplerInfo.anisotropyEnable        = VK_FALSE;
+	SamplerInfo.maxAnisotropy           = 1.0f;
+	SamplerInfo.compareEnable           = VK_FALSE;
+	SamplerInfo.compareOp               = vk::CompareOp::eAlways;
+	SamplerInfo.minLod                  = 0.0f;
+	SamplerInfo.maxLod                  = 1.0f;
+	SamplerInfo.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
+	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+	vk::UniqueSampler DefaultSampler = {};
+	if( auto CreateResult = Device->createSamplerUnique(SamplerInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		DefaultSampler = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating default sampler: %s\n",
+			vk::to_string(CreateResult.result).c_str());
+		return EXIT_FAILURE;
+	}
+
 	vk::UniqueBuffer       StagingBuffer              = {};
 	vk::UniqueDeviceMemory StagingBufferMemory        = {};
 	std::size_t            StagingBufferWritePosition = 0;
@@ -464,17 +499,6 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	// TagID -> BitmapTag[indexofimage] -> vulkan image
-	std::unordered_map<std::uint32_t, std::map<std::uint16_t, vk::UniqueImage>>
-		Lightmaps;
-	std::unordered_map<
-		std::uint32_t, std::map<std::uint16_t, vk::UniqueImageView>>
-		LightmapViews;
-
-	std::unordered_map<
-		std::uint32_t, std::map<std::uint16_t, vk::UniqueDescriptorSet>>
-		LightmapSets;
-
 	// Parameters used for drawing
 	struct LightmapMesh
 	{
@@ -543,71 +567,6 @@ int main(int argc, char* argv[])
 								ScenarioBSP.LightmapTexture.TagID);
 						const std::int16_t LightmapTextureIndex
 							= CurLightmap.LightmapIndex;
-
-						auto& LightmapImage
-							= Lightmaps[ScenarioBSP.LightmapTexture.TagID]
-									   [LightmapTextureIndex];
-
-						if( !LightmapImage && (LightmapTextureIndex >= 0) )
-						{
-							const auto& LightmapSubTexture
-								= LightmapTextureTag->Bitmaps.GetSpan(
-									MapFile.data(), CurMap.TagHeapVirtualBase)
-									  [LightmapTextureIndex];
-							const auto PixelData = std::span<const std::byte>(
-								reinterpret_cast<const std::byte*>(
-									BitmapFile.data())
-									+ LightmapSubTexture.PixelDataOffset,
-								LightmapSubTexture.PixelDataSize);
-
-							vk::ImageCreateInfo LightmapImageInfo = {};
-							LightmapImageInfo.imageType = vk::ImageType::e2D;
-							LightmapImageInfo.format
-								= vk::Format::eR5G6B5UnormPack16;
-							LightmapImageInfo.extent = vk::Extent3D(
-								LightmapSubTexture.Width,
-								LightmapSubTexture.Height,
-								LightmapSubTexture.Depth);
-							LightmapImageInfo.mipLevels   = 1;
-							LightmapImageInfo.arrayLayers = 1;
-							LightmapImageInfo.samples
-								= vk::SampleCountFlagBits::e1;
-							LightmapImageInfo.tiling
-								= vk::ImageTiling::eOptimal;
-							LightmapImageInfo.usage
-								= vk::ImageUsageFlagBits::eSampled
-								| vk::ImageUsageFlagBits::eTransferDst
-								| vk::ImageUsageFlagBits::eTransferSrc;
-							LightmapImageInfo.sharingMode
-								= vk::SharingMode::eExclusive;
-							LightmapImageInfo.initialLayout
-								= vk::ImageLayout::eUndefined;
-
-							if( auto CreateResult
-								= Device->createImageUnique(LightmapImageInfo);
-								CreateResult.result == vk::Result::eSuccess )
-							{
-								LightmapImage = std::move(CreateResult.value);
-							}
-							else
-							{
-								std::fprintf(
-									stderr,
-									"Error creating render target: %s\n",
-									vk::to_string(CreateResult.result).c_str());
-								return EXIT_FAILURE;
-							}
-							Vulkan::SetObjectName(
-								Device.get(), LightmapImage.get(),
-								"Lightmap Image %08X[%2zu]",
-								ScenarioBSP.LightmapTexture.TagID,
-								LightmapTextureIndex);
-
-							StreamBuffer.QueueImageUpload(
-								PixelData, LightmapImage.get(),
-								vk::Offset3D(0, 0, 0),
-								LightmapImageInfo.extent);
-						}
 
 						const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
 							BSPData.data(), CurBSPEntry.BSPVirtualBase);
@@ -799,17 +758,6 @@ int main(int argc, char* argv[])
 	ImageHeapTargets.push_back(RenderImageAA.get());
 	ImageHeapTargets.push_back(RenderImageDepth.get());
 
-	for( const auto& [_, CurLightmapBitmap] : Lightmaps )
-	{
-		for( const auto& [_, CurLightmapBitmapSubimage] : CurLightmapBitmap )
-		{
-			if( CurLightmapBitmapSubimage )
-			{
-				ImageHeapTargets.push_back(CurLightmapBitmapSubimage.get());
-			}
-		}
-	}
-
 	// Allocate all the memory we need for these images up-front into a single
 	// heap.
 	vk::UniqueDeviceMemory ImageHeapMemory = {};
@@ -902,39 +850,6 @@ int main(int argc, char* argv[])
 		Device.get(), RenderImageView.get(), RenderImageDepthView.get(),
 		RenderImageAAView.get(), RenderSize, MainRenderPass.get());
 
-	//// Create Default Sampler
-
-	vk::SamplerCreateInfo SamplerInfo{};
-	SamplerInfo.magFilter               = vk::Filter::eLinear;
-	SamplerInfo.minFilter               = vk::Filter::eLinear;
-	SamplerInfo.mipmapMode              = vk::SamplerMipmapMode::eLinear;
-	SamplerInfo.addressModeU            = vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.addressModeV            = vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.addressModeW            = vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.mipLodBias              = 0.0f;
-	SamplerInfo.anisotropyEnable        = VK_FALSE;
-	SamplerInfo.maxAnisotropy           = 1.0f;
-	SamplerInfo.compareEnable           = VK_FALSE;
-	SamplerInfo.compareOp               = vk::CompareOp::eAlways;
-	SamplerInfo.minLod                  = 0.0f;
-	SamplerInfo.maxLod                  = 1.0f;
-	SamplerInfo.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
-	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-	vk::UniqueSampler DefaultSampler = {};
-	if( auto CreateResult = Device->createSamplerUnique(SamplerInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		DefaultSampler = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating default sampler: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-
 	// Main Shader modules
 	const cmrc::file DefaultVertShaderData
 		= DataFS.open("shaders/Default.vert.spv");
@@ -975,43 +890,121 @@ int main(int argc, char* argv[])
 			DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
 			MainRenderPass.get());
 
-	//// Create lightmap image descriptor sets
-	for( const auto& [LightmapTagID, CurLightmapBitmap] : Lightmaps )
-	{
-		for( const auto& [LightmapIndex, CurLightmapBitmapSubimage] :
-			 CurLightmapBitmap )
-		{
-			if( CurLightmapBitmapSubimage )
-			{
-				auto& LightmapImageView
-					= LightmapViews[LightmapTagID][LightmapIndex];
-				vk::ImageViewCreateInfo LightmapImageViewInfo = {};
-				LightmapImageViewInfo.image = CurLightmapBitmapSubimage.get();
-				LightmapImageViewInfo.viewType = vk::ImageViewType::e2D;
-				LightmapImageViewInfo.format   = vk::Format::eR5G6B5UnormPack16;
-				LightmapImageViewInfo.subresourceRange.aspectMask
-					= vk::ImageAspectFlagBits::eColor;
-				LightmapImageViewInfo.subresourceRange.baseMipLevel   = 0;
-				LightmapImageViewInfo.subresourceRange.levelCount     = 1;
-				LightmapImageViewInfo.subresourceRange.baseArrayLayer = 0;
-				LightmapImageViewInfo.subresourceRange.layerCount     = 1;
+	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout, UnlitDrawDescriptorLayout]
+		= CreateGraphicsPipeline(
+			Device.get(),
+			{vk::PushConstantRange(
+				vk::ShaderStageFlagBits::eAllGraphics, 0,
+				sizeof(glm::f32mat4) + sizeof(glm::f32vec4))},
+			{vk::DescriptorSetLayoutBinding(
+				0, vk::DescriptorType::eCombinedImageSampler, 1,
+				vk::ShaderStageFlagBits::eFragment)},
+			DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
+			MainRenderPass.get(), vk::PolygonMode::eLine);
 
-				if( auto CreateResult
-					= Device->createImageViewUnique(LightmapImageViewInfo);
+	//////// Stream in all images
+
+	// TagID -> BitmapTag[indexofimage] -> vulkan image
+	std::unordered_map<std::uint32_t, std::map<std::uint16_t, vk::UniqueImage>>
+		BitmapImages;
+	std::unordered_map<
+		std::uint32_t, std::map<std::uint16_t, vk::UniqueImageView>>
+		BitmapViews;
+	std::unordered_map<
+		std::uint32_t, std::map<std::uint16_t, vk::UniqueDescriptorSet>>
+		BitmapSets;
+	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
+		[&](const Blam::TagIndexEntry&               TagEntry,
+			const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+			std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
+			for( std::size_t CurSubTextureIdx = 0;
+				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
+			{
+				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
+					MapFile.data(),
+					CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
+				const auto PixelData = std::span<const std::byte>(
+					reinterpret_cast<const std::byte*>(BitmapFile.data())
+						+ CurSubTexture.PixelDataOffset,
+					CurSubTexture.PixelDataSize);
+
+				vk::ImageCreateInfo ImageInfo = {};
+				ImageInfo.imageType = vkBlam::BlamToVk(CurSubTexture.Type);
+				ImageInfo.format    = vkBlam::BlamToVk(CurSubTexture.Format);
+				ImageInfo.extent    = vk::Extent3D(
+					   CurSubTexture.Width, CurSubTexture.Height,
+					   CurSubTexture.Depth);
+				ImageInfo.mipLevels
+					= std::max<std::uint16_t>(CurSubTexture.MipmapCount, 1);
+				ImageInfo.arrayLayers
+					= CurSubTexture.Type == Blam::BitmapEntryType::CubeMap ? 6
+																		   : 1;
+				ImageInfo.samples = vk::SampleCountFlagBits::e1;
+				ImageInfo.tiling  = vk::ImageTiling::eOptimal;
+				ImageInfo.usage   = vk::ImageUsageFlagBits::eSampled
+								| vk::ImageUsageFlagBits::eTransferDst
+								| vk::ImageUsageFlagBits::eTransferSrc;
+				ImageInfo.sharingMode   = vk::SharingMode::eExclusive;
+				ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
+
+				auto& ImageDest
+					= BitmapImages[TagEntry.TagID][CurSubTextureIdx];
+
+				if( auto CreateResult = Device->createImageUnique(ImageInfo);
 					CreateResult.result == vk::Result::eSuccess )
 				{
-					LightmapImageView = std::move(CreateResult.value);
+					ImageDest = std::move(CreateResult.value);
 				}
 				else
 				{
 					std::fprintf(
-						stderr, "Error creating render target: %s\n",
+						stderr, "Error creating image: %s\n",
 						vk::to_string(CreateResult.result).c_str());
-					return EXIT_FAILURE;
+					return;
+				}
+				Vulkan::SetObjectName(
+					Device.get(), ImageDest.get(), "Bitmap %08X[%2zu] | %s",
+					TagEntry.TagID, CurSubTextureIdx,
+					CurMap.GetTagName(TagEntry.TagID).data());
+
+				auto& BitmapImageView
+					= BitmapViews[TagEntry.TagID][CurSubTextureIdx];
+
+				vk::ImageViewCreateInfo BitmapImageViewInfo = {};
+				BitmapImageViewInfo.image                   = ImageDest.get();
+				BitmapImageViewInfo.viewType = vk::ImageViewType::e2D;
+				BitmapImageViewInfo.format   = ImageInfo.format;
+				BitmapImageViewInfo.subresourceRange.aspectMask
+					= vk::ImageAspectFlagBits::eColor;
+				BitmapImageViewInfo.subresourceRange.baseMipLevel = 0;
+				BitmapImageViewInfo.subresourceRange.levelCount
+					= ImageInfo.mipLevels;
+				BitmapImageViewInfo.subresourceRange.baseArrayLayer = 0;
+				BitmapImageViewInfo.subresourceRange.layerCount
+					= ImageInfo.arrayLayers;
+
+				if( auto CreateResult
+					= Device->createImageViewUnique(BitmapImageViewInfo);
+					CreateResult.result == vk::Result::eSuccess )
+				{
+					BitmapImageView = std::move(CreateResult.value);
+				}
+				else
+				{
+					std::fprintf(
+						stderr, "Error bitmap view: %s\n",
+						vk::to_string(CreateResult.result).c_str());
+					return;
 				}
 
+				Vulkan::SetObjectName(
+					Device.get(), BitmapImageView.get(),
+					"Bitmap View %08X[%2zu] | %s", TagEntry.TagID,
+					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
+
 				vk::UniqueDescriptorSet& TargetSet
-					= LightmapSets[LightmapTagID][LightmapIndex];
+					= BitmapSets[TagEntry.TagID][CurSubTextureIdx];
+
 				vk::DescriptorSetAllocateInfo AllocInfo{};
 				AllocInfo.descriptorPool     = MainDescriptorPool.get();
 				AllocInfo.pSetLayouts        = &DebugDrawDescriptorLayout.get();
@@ -1028,17 +1021,19 @@ int main(int argc, char* argv[])
 					std::fprintf(
 						stderr, "Error allocating descriptor set: %s\n",
 						vk::to_string(AllocResult.result).c_str());
-					return EXIT_FAILURE;
+					return;
 				}
 
 				Vulkan::SetObjectName(
-					Device.get(), TargetSet.get(), "Lightmap Image %08X[%2zu]",
-					LightmapTagID, LightmapIndex);
+					Device.get(), TargetSet.get(),
+					"Bitmap Descriptor Set %08X[%2zu] | %s", TagEntry.TagID,
+					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
 
-				vk::DescriptorImageInfo ImageInfo{};
-				ImageInfo.sampler     = DefaultSampler.get();
-				ImageInfo.imageView   = LightmapImageView.get();
-				ImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+				vk::DescriptorImageInfo ImageDescriptorInfo{};
+				ImageDescriptorInfo.sampler   = DefaultSampler.get();
+				ImageDescriptorInfo.imageView = BitmapImageView.get();
+				ImageDescriptorInfo.imageLayout
+					= vk::ImageLayout::eShaderReadOnlyOptimal;
 
 				vk::WriteDescriptorSet WriteDescriptorSet{};
 				WriteDescriptorSet.dstSet          = TargetSet.get();
@@ -1047,24 +1042,43 @@ int main(int argc, char* argv[])
 				WriteDescriptorSet.descriptorCount = 1;
 				WriteDescriptorSet.descriptorType
 					= vk::DescriptorType::eCombinedImageSampler;
-				WriteDescriptorSet.pImageInfo = &ImageInfo;
+				WriteDescriptorSet.pImageInfo = &ImageDescriptorInfo;
 
 				Device->updateDescriptorSets({WriteDescriptorSet}, {});
+
+				StreamBuffer.QueueImageUpload(
+					PixelData, ImageDest.get(), vk::Offset3D(0, 0, 0),
+					ImageInfo.extent,
+					vk::ImageSubresourceLayers(
+						vk::ImageAspectFlagBits::eColor, 0, 0, 1));
+			}
+		});
+
+	vk::UniqueDeviceMemory BitmapHeapMemory = {};
+	{
+		std::vector<vk::Image> Bitmaps;
+		for( const auto& CurBitmap : BitmapImages )
+		{
+			for( const auto& CurSubBitmap : CurBitmap.second )
+			{
+				Bitmaps.emplace_back(CurSubBitmap.second.get());
 			}
 		}
+		if( auto [Result, Value]
+			= Vulkan::CommitImageHeap(Device.get(), PhysicalDevice, Bitmaps);
+			Result == vk::Result::eSuccess )
+		{
+			BitmapHeapMemory = std::move(Value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error committing bitmap memory: %s\n",
+				vk::to_string(Result).c_str());
+			return EXIT_FAILURE;
+		}
 	}
-
-	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout, UnlitDrawDescriptorLayout]
-		= CreateGraphicsPipeline(
-			Device.get(),
-			{vk::PushConstantRange(
-				vk::ShaderStageFlagBits::eAllGraphics, 0,
-				sizeof(glm::f32mat4) + sizeof(glm::f32vec4))},
-			{vk::DescriptorSetLayoutBinding(
-				0, vk::DescriptorType::eCombinedImageSampler, 1,
-				vk::ShaderStageFlagBits::eFragment)},
-			DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
-			MainRenderPass.get(), vk::PolygonMode::eLine);
+	StreamBuffer.Flush();
 
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
@@ -1197,7 +1211,7 @@ int main(int argc, char* argv[])
 					CommandBuffer->bindDescriptorSets(
 						vk::PipelineBindPoint::eGraphics,
 						DebugDrawPipelineLayout.get(), 0,
-						{LightmapSets.at(CurLightmapMesh.BitmapID.value())
+						{BitmapSets.at(CurLightmapMesh.BitmapID.value())
 							 .at(CurLightmapMesh.BitmapIndex.value())
 							 .get()},
 						{});
@@ -1339,7 +1353,7 @@ int main(int argc, char* argv[])
 
 vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device)
 {
-	constexpr std::size_t MaxDescriptorType = 128;
+	constexpr std::size_t MaxDescriptorType = 512;
 
 	const vk::DescriptorPoolSize PoolSizes[] = {
 		{vk::DescriptorType::eStorageBuffer, MaxDescriptorType},
