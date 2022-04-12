@@ -275,14 +275,16 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
 		VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, Image,
 		vk::ImageSubresourceRange(
-			vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)));
+			SubresourceLayers.aspectMask, SubresourceLayers.mipLevel, 1, 0,
+			SubresourceLayers.layerCount)));
 	ImagePostBarrier.emplace_back(vk::ImageMemoryBarrier(
 		vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eMemoryRead,
 		vk::ImageLayout::eTransferDstOptimal,
 		vk::ImageLayout::eShaderReadOnlyOptimal, VK_QUEUE_FAMILY_IGNORED,
 		VK_QUEUE_FAMILY_IGNORED, Image,
 		vk::ImageSubresourceRange(
-			vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)));
+			SubresourceLayers.aspectMask, SubresourceLayers.mipLevel, 1, 0,
+			SubresourceLayers.layerCount)));
 
 	return FlushTick;
 }

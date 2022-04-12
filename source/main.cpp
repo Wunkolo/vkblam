@@ -24,7 +24,9 @@
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
+#include <vulkan/vulkan_format_traits.hpp>
 #include <vulkan/vulkan_structs.hpp>
+
 CMRC_DECLARE(vkblam);
 auto DataFS = cmrc::vkblam::get_filesystem();
 
@@ -1046,11 +1048,36 @@ int main(int argc, char* argv[])
 
 				Device->updateDescriptorSets({WriteDescriptorSet}, {});
 
-				StreamBuffer.QueueImageUpload(
-					PixelData, ImageDest.get(), vk::Offset3D(0, 0, 0),
-					ImageInfo.extent,
-					vk::ImageSubresourceLayers(
-						vk::ImageAspectFlagBits::eColor, 0, 0, 1));
+				auto CurExtent = ImageInfo.extent;
+
+				const std::size_t BlockSize = vk::blockSize(ImageInfo.format);
+				const std::array<std::uint8_t, 3> BlockExtent
+					= vk::blockExtent(ImageInfo.format);
+
+				std::size_t PixelDataOff = 0;
+
+				for( std::size_t CurMip = 0; CurMip < CurSubTexture.MipmapCount;
+					 ++CurMip )
+				{
+					StreamBuffer.QueueImageUpload(
+						PixelData.subspan(PixelDataOff), ImageDest.get(),
+						vk::Offset3D(0, 0, 0), CurExtent,
+						vk::ImageSubresourceLayers(
+							vk::ImageAspectFlagBits::eColor, CurMip, 0,
+							ImageInfo.arrayLayers));
+
+					const std::array<std::uint32_t, 3> BlockCount
+						= {CurExtent.width / BlockExtent[0],
+						   CurExtent.height / BlockExtent[1],
+						   CurExtent.depth / BlockExtent[2]};
+
+					PixelDataOff += BlockCount[0] * BlockCount[1]
+								  * BlockCount[2] * BlockSize;
+
+					CurExtent.width  = std::max(1u, CurExtent.width / 2);
+					CurExtent.height = std::max(1u, CurExtent.height / 2);
+					CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
+				}
 			}
 		});
 
