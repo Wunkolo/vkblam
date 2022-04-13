@@ -24,6 +24,7 @@
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
+#include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_format_traits.hpp>
 #include <vulkan/vulkan_structs.hpp>
 
@@ -299,7 +300,7 @@ int main(int argc, char* argv[])
 	SamplerInfo.compareEnable           = VK_FALSE;
 	SamplerInfo.compareOp               = vk::CompareOp::eAlways;
 	SamplerInfo.minLod                  = 0.0f;
-	SamplerInfo.maxLod                  = 1.0f;
+	SamplerInfo.maxLod                  = VK_LOD_CLAMP_NONE;
 	SamplerInfo.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 
@@ -316,6 +317,8 @@ int main(int argc, char* argv[])
 			vk::to_string(CreateResult.result).c_str());
 		return EXIT_FAILURE;
 	}
+	Vulkan::SetObjectName(
+		Device.get(), DefaultSampler.get(), "Default Sampler");
 
 	vk::UniqueBuffer       StagingBuffer              = {};
 	vk::UniqueDeviceMemory StagingBufferMemory        = {};
@@ -915,6 +918,8 @@ int main(int argc, char* argv[])
 	std::unordered_map<
 		std::uint32_t, std::map<std::uint16_t, vk::UniqueDescriptorSet>>
 		BitmapSets;
+
+	// Queue up image uploads
 	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
 		[&](const Blam::TagIndexEntry&               TagEntry,
 			const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
@@ -968,22 +973,117 @@ int main(int argc, char* argv[])
 					Device.get(), ImageDest.get(), "Bitmap %08X[%2zu] | %s",
 					TagEntry.TagID, CurSubTextureIdx,
 					CurMap.GetTagName(TagEntry.TagID).data());
+			}
+		});
 
-				auto& BitmapImageView
-					= BitmapViews[TagEntry.TagID][CurSubTextureIdx];
+	// Allocate and bind memory for all bitmaps
+	vk::UniqueDeviceMemory BitmapHeapMemory = {};
+	{
+		std::vector<vk::Image> Bitmaps;
+		for( const auto& CurBitmap : BitmapImages )
+		{
+			for( const auto& CurSubBitmap : CurBitmap.second )
+			{
+				Bitmaps.emplace_back(CurSubBitmap.second.get());
+			}
+		}
+		if( auto [Result, Value]
+			= Vulkan::CommitImageHeap(Device.get(), PhysicalDevice, Bitmaps);
+			Result == vk::Result::eSuccess )
+		{
+			BitmapHeapMemory = std::move(Value);
+		}
+		else
+		{
+			std::fprintf(
+				stderr, "Error committing bitmap memory: %s\n",
+				vk::to_string(Result).c_str());
+			return EXIT_FAILURE;
+		}
+	}
 
+	// All images are now created and binded to memory
+	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
+		[&](const Blam::TagIndexEntry&               TagEntry,
+			const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+			std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
+			for( std::size_t CurSubTextureIdx = 0;
+				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
+			{
+				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
+					MapFile.data(),
+					CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
+				const auto PixelData = std::span<const std::byte>(
+					reinterpret_cast<const std::byte*>(BitmapFile.data())
+						+ CurSubTexture.PixelDataOffset,
+					CurSubTexture.PixelDataSize);
+
+				auto& ImageDest
+					= BitmapImages[TagEntry.TagID][CurSubTextureIdx];
+
+				const std::size_t MipCount
+					= std::max<std::uint16_t>(CurSubTexture.MipmapCount, 1);
+				const std::size_t LayerCount
+					= CurSubTexture.Type == Blam::BitmapEntryType::CubeMap ? 6
+																		   : 1;
+
+				// Upload image data
+				const std::size_t BlockSize
+					= vk::blockSize(vkBlam::BlamToVk(CurSubTexture.Format));
+				const std::array<std::uint8_t, 3> BlockExtent
+					= vk::blockExtent(vkBlam::BlamToVk(CurSubTexture.Format));
+
+				std::size_t PixelDataOff = 0;
+
+				auto CurExtent = vk::Extent3D(
+					CurSubTexture.Width, CurSubTexture.Height,
+					CurSubTexture.Depth);
+
+				for( std::size_t CurMip = 0; CurMip < MipCount; ++CurMip )
+				{
+					const std::array<std::uint32_t, 3> CurBlockCount
+						= {CurExtent.width / BlockExtent[0],
+						   CurExtent.height / BlockExtent[1],
+						   CurExtent.depth / BlockExtent[2]};
+
+					const std::size_t CurPixelDataSize
+						= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
+						* BlockSize;
+
+					StreamBuffer.QueueImageUpload(
+						PixelData.subspan(PixelDataOff, CurPixelDataSize),
+						ImageDest.get(), vk::Offset3D(0, 0, 0), CurExtent,
+						vk::ImageSubresourceLayers(
+							vk::ImageAspectFlagBits::eColor, CurMip, 0,
+							LayerCount));
+
+					PixelDataOff += CurPixelDataSize;
+
+					CurExtent.width  = std::max(1u, CurExtent.width / 2);
+					CurExtent.height = std::max(1u, CurExtent.height / 2);
+					CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
+				}
+
+				// Create image view
 				vk::ImageViewCreateInfo BitmapImageViewInfo = {};
 				BitmapImageViewInfo.image                   = ImageDest.get();
 				BitmapImageViewInfo.viewType = vk::ImageViewType::e2D;
-				BitmapImageViewInfo.format   = ImageInfo.format;
+				BitmapImageViewInfo.format
+					= vkBlam::BlamToVk(CurSubTexture.Format);
+				;
+				BitmapImageViewInfo.components.r = vk::ComponentSwizzle::eR;
+				BitmapImageViewInfo.components.g = vk::ComponentSwizzle::eG;
+				BitmapImageViewInfo.components.b = vk::ComponentSwizzle::eB;
+				BitmapImageViewInfo.components.a = vk::ComponentSwizzle::eA;
 				BitmapImageViewInfo.subresourceRange.aspectMask
 					= vk::ImageAspectFlagBits::eColor;
-				BitmapImageViewInfo.subresourceRange.baseMipLevel = 0;
-				BitmapImageViewInfo.subresourceRange.levelCount
-					= ImageInfo.mipLevels;
+				BitmapImageViewInfo.subresourceRange.baseMipLevel   = 0;
+				BitmapImageViewInfo.subresourceRange.levelCount     = MipCount;
 				BitmapImageViewInfo.subresourceRange.baseArrayLayer = 0;
-				BitmapImageViewInfo.subresourceRange.layerCount
-					= ImageInfo.arrayLayers;
+				BitmapImageViewInfo.subresourceRange.layerCount = LayerCount;
+
+				auto& BitmapImageView
+					= BitmapViews[TagEntry.TagID][CurSubTextureIdx];
 
 				if( auto CreateResult
 					= Device->createImageViewUnique(BitmapImageViewInfo);
@@ -1004,6 +1104,7 @@ int main(int argc, char* argv[])
 					"Bitmap View %08X[%2zu] | %s", TagEntry.TagID,
 					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
 
+				// Create descriptor set
 				vk::UniqueDescriptorSet& TargetSet
 					= BitmapSets[TagEntry.TagID][CurSubTextureIdx];
 
@@ -1047,68 +1148,8 @@ int main(int argc, char* argv[])
 				WriteDescriptorSet.pImageInfo = &ImageDescriptorInfo;
 
 				Device->updateDescriptorSets({WriteDescriptorSet}, {});
-
-				const std::size_t BlockSize = vk::blockSize(ImageInfo.format);
-				const std::array<std::uint8_t, 3> BlockExtent
-					= vk::blockExtent(ImageInfo.format);
-
-				std::size_t PixelDataOff = 0;
-				auto        CurExtent    = ImageInfo.extent;
-
-				for( std::size_t CurMip = 0; CurMip < std::max<std::uint16_t>(
-												 CurSubTexture.MipmapCount, 1);
-					 ++CurMip )
-				{
-					const std::array<std::uint32_t, 3> CurBlockCount
-						= {CurExtent.width / BlockExtent[0],
-						   CurExtent.height / BlockExtent[1],
-						   CurExtent.depth / BlockExtent[2]};
-
-					const std::size_t CurPixelDataSize
-						= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
-						* BlockSize;
-
-					StreamBuffer.QueueImageUpload(
-						PixelData.subspan(PixelDataOff, CurPixelDataSize),
-						ImageDest.get(), vk::Offset3D(0, 0, 0), CurExtent,
-						vk::ImageSubresourceLayers(
-							vk::ImageAspectFlagBits::eColor, CurMip, 0,
-							ImageInfo.arrayLayers));
-
-					PixelDataOff += CurPixelDataSize;
-
-					CurExtent.width  = std::max(1u, CurExtent.width / 2);
-					CurExtent.height = std::max(1u, CurExtent.height / 2);
-					CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
-				}
 			}
 		});
-
-	vk::UniqueDeviceMemory BitmapHeapMemory = {};
-	{
-		std::vector<vk::Image> Bitmaps;
-		for( const auto& CurBitmap : BitmapImages )
-		{
-			for( const auto& CurSubBitmap : CurBitmap.second )
-			{
-				Bitmaps.emplace_back(CurSubBitmap.second.get());
-			}
-		}
-		if( auto [Result, Value]
-			= Vulkan::CommitImageHeap(Device.get(), PhysicalDevice, Bitmaps);
-			Result == vk::Result::eSuccess )
-		{
-			BitmapHeapMemory = std::move(Value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error committing bitmap memory: %s\n",
-				vk::to_string(Result).c_str());
-			return EXIT_FAILURE;
-		}
-	}
-	StreamBuffer.Flush();
 
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
@@ -1467,9 +1508,9 @@ vk::UniqueRenderPass
 	RenderPassInfo.pSubpasses   = Subpasses;
 
 	const vk::SubpassDependency SubpassDependencies[] = {vk::SubpassDependency(
-		VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eComputeShader,
+		VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eTransfer,
 		vk::PipelineStageFlagBits::eVertexInput,
-		vk::AccessFlagBits::eShaderWrite,
+		vk::AccessFlagBits::eTransferWrite,
 		vk::AccessFlagBits::eVertexAttributeRead, vk::DependencyFlags())};
 
 	RenderPassInfo.dependencyCount = std::size(SubpassDependencies);
