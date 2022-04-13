@@ -189,9 +189,10 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 			BufferSize);
 	}
 
-	const std::uint64_t CurRingOffset = RingOffset;
+	// Satisfy any alignment requirements here
+	std::uint64_t CurRingOffset = RingOffset;
 
-	if( CurRingOffset + Data.size_bytes() > BufferSize )
+	if( (CurRingOffset + Data.size_bytes()) >= BufferSize )
 	{
 		const std::uint64_t FlushTick = Flush();
 
@@ -208,9 +209,12 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 		{
 			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
 		}
+
+		// Satisfy any alignment requirements here
+		CurRingOffset = RingOffset;
 	}
 
-	RingOffset += Data.size_bytes();
+	RingOffset = CurRingOffset + Data.size_bytes();
 
 	std::copy(
 		Data.begin(), Data.end(),
@@ -241,7 +245,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 	// Memory offset must at least match the alignment of the image format's
 	// texel size. Here we just force it to handle the upper-bound alignment
 	// as a temporary catch-all
-	const std::uint64_t CurRingOffset = Common::AlignUp(RingOffset, 16);
+	std::uint64_t CurRingOffset = Common::AlignUp(RingOffset, 16);
 
 	if( (CurRingOffset + Data.size_bytes()) >= BufferSize )
 	{
@@ -259,6 +263,8 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		{
 			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
 		}
+
+		CurRingOffset = Common::AlignUp(RingOffset, 16);
 	}
 
 	RingOffset = CurRingOffset + Data.size_bytes();

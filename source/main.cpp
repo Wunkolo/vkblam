@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
 
 	// Buffers
 	Vulkan::StreamBuffer StreamBuffer(
-		Device.get(), PhysicalDevice, RenderQueue, 0, 128_MiB);
+		Device.get(), PhysicalDevice, RenderQueue, 0, 64_MiB);
 
 	//// Create Default Sampler
 	vk::SamplerCreateInfo SamplerInfo{};
