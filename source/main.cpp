@@ -1048,31 +1048,34 @@ int main(int argc, char* argv[])
 
 				Device->updateDescriptorSets({WriteDescriptorSet}, {});
 
-				auto CurExtent = ImageInfo.extent;
-
 				const std::size_t BlockSize = vk::blockSize(ImageInfo.format);
 				const std::array<std::uint8_t, 3> BlockExtent
 					= vk::blockExtent(ImageInfo.format);
 
 				std::size_t PixelDataOff = 0;
+				auto        CurExtent    = ImageInfo.extent;
 
-				for( std::size_t CurMip = 0; CurMip < CurSubTexture.MipmapCount;
+				for( std::size_t CurMip = 0; CurMip < std::max<std::uint16_t>(
+												 CurSubTexture.MipmapCount, 1);
 					 ++CurMip )
 				{
-					StreamBuffer.QueueImageUpload(
-						PixelData.subspan(PixelDataOff), ImageDest.get(),
-						vk::Offset3D(0, 0, 0), CurExtent,
-						vk::ImageSubresourceLayers(
-							vk::ImageAspectFlagBits::eColor, CurMip, 0,
-							ImageInfo.arrayLayers));
-
-					const std::array<std::uint32_t, 3> BlockCount
+					const std::array<std::uint32_t, 3> CurBlockCount
 						= {CurExtent.width / BlockExtent[0],
 						   CurExtent.height / BlockExtent[1],
 						   CurExtent.depth / BlockExtent[2]};
 
-					PixelDataOff += BlockCount[0] * BlockCount[1]
-								  * BlockCount[2] * BlockSize;
+					const std::size_t CurPixelDataSize
+						= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
+						* BlockSize;
+
+					StreamBuffer.QueueImageUpload(
+						PixelData.subspan(PixelDataOff, CurPixelDataSize),
+						ImageDest.get(), vk::Offset3D(0, 0, 0), CurExtent,
+						vk::ImageSubresourceLayers(
+							vk::ImageAspectFlagBits::eColor, CurMip, 0,
+							ImageInfo.arrayLayers));
+
+					PixelDataOff += CurPixelDataSize;
 
 					CurExtent.width  = std::max(1u, CurExtent.width / 2);
 					CurExtent.height = std::max(1u, CurExtent.height / 2);
