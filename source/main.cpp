@@ -954,6 +954,11 @@ int main(int argc, char* argv[])
 				ImageInfo.sharingMode   = vk::SharingMode::eExclusive;
 				ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
 
+				if( CurSubTexture.Type == Blam::BitmapEntryType::CubeMap )
+				{
+					ImageInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+				}
+
 				auto& ImageDest
 					= BitmapImages[TagEntry.TagID][CurSubTextureIdx];
 
@@ -1067,7 +1072,25 @@ int main(int argc, char* argv[])
 				// Create image view
 				vk::ImageViewCreateInfo BitmapImageViewInfo = {};
 				BitmapImageViewInfo.image                   = ImageDest.get();
-				BitmapImageViewInfo.viewType = vk::ImageViewType::e2D;
+				switch( CurSubTexture.Type )
+				{
+				default:
+				case Blam::BitmapEntryType::Texture2D:
+				{
+					BitmapImageViewInfo.viewType = vk::ImageViewType::e2D;
+					break;
+				}
+				case Blam::BitmapEntryType::Texture3D:
+				{
+					BitmapImageViewInfo.viewType = vk::ImageViewType::e3D;
+					break;
+				}
+				case Blam::BitmapEntryType::CubeMap:
+				{
+					BitmapImageViewInfo.viewType = vk::ImageViewType::eCube;
+					break;
+				}
+				}
 				BitmapImageViewInfo.format
 					= vkBlam::BlamToVk(CurSubTexture.Format);
 				;
