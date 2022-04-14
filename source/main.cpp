@@ -1043,27 +1043,30 @@ int main(int argc, char* argv[])
 				auto CurExtent = vk::Extent3D(
 					CurSubTexture.Width, CurSubTexture.Height,
 					CurSubTexture.Depth);
-
 				for( std::size_t CurMip = 0; CurMip < MipCount; ++CurMip )
 				{
-					const std::array<std::uint32_t, 3> CurBlockCount
-						= {CurExtent.width / BlockExtent[0],
-						   CurExtent.height / BlockExtent[1],
-						   CurExtent.depth / BlockExtent[2]};
 
-					const std::size_t CurPixelDataSize
-						= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
-						* BlockSize;
+					for( std::size_t CurLayer = 0; CurLayer < LayerCount;
+						 ++CurLayer )
+					{
+						const std::array<std::uint32_t, 3> CurBlockCount
+							= {CurExtent.width / BlockExtent[0],
+							   CurExtent.height / BlockExtent[1],
+							   CurExtent.depth / BlockExtent[2]};
 
-					StreamBuffer.QueueImageUpload(
-						PixelData.subspan(PixelDataOff, CurPixelDataSize),
-						ImageDest.get(), vk::Offset3D(0, 0, 0), CurExtent,
-						vk::ImageSubresourceLayers(
-							vk::ImageAspectFlagBits::eColor, CurMip, 0,
-							LayerCount));
+						const std::size_t CurPixelDataSize
+							= CurBlockCount[0] * CurBlockCount[1]
+							* CurBlockCount[2] * BlockSize;
 
-					PixelDataOff += CurPixelDataSize;
+						StreamBuffer.QueueImageUpload(
+							PixelData.subspan(PixelDataOff, CurPixelDataSize),
+							ImageDest.get(), vk::Offset3D(0, 0, 0), CurExtent,
+							vk::ImageSubresourceLayers(
+								vk::ImageAspectFlagBits::eColor, CurMip,
+								CurLayer, 1));
 
+						PixelDataOff += CurPixelDataSize;
+					}
 					CurExtent.width  = std::max(1u, CurExtent.width / 2);
 					CurExtent.height = std::max(1u, CurExtent.height / 2);
 					CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
