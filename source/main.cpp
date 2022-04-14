@@ -710,8 +710,8 @@ int main(int argc, char* argv[])
 	RenderImageDepthInfo.tiling      = vk::ImageTiling::eOptimal;
 	RenderImageDepthInfo.usage
 		= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	RenderImageInfo.sharingMode   = vk::SharingMode::eExclusive;
-	RenderImageInfo.initialLayout = vk::ImageLayout::eUndefined;
+	RenderImageDepthInfo.sharingMode   = vk::SharingMode::eExclusive;
+	RenderImageDepthInfo.initialLayout = vk::ImageLayout::eUndefined;
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -783,12 +783,12 @@ int main(int argc, char* argv[])
 
 	//// Image Views
 	// Create the image views for the render-targets
-	vk::ImageViewCreateInfo ImageViewInfoTemplate{};
-	ImageViewInfoTemplate.viewType     = vk::ImageViewType::e2D;
-	ImageViewInfoTemplate.components.r = vk::ComponentSwizzle::eR;
-	ImageViewInfoTemplate.components.g = vk::ComponentSwizzle::eG;
-	ImageViewInfoTemplate.components.b = vk::ComponentSwizzle::eB;
-	ImageViewInfoTemplate.components.a = vk::ComponentSwizzle::eA;
+	vk::ImageViewCreateInfo ImageViewInfoTemplate = {};
+	ImageViewInfoTemplate.viewType                = vk::ImageViewType::e2D;
+	ImageViewInfoTemplate.components.r            = vk::ComponentSwizzle::eR;
+	ImageViewInfoTemplate.components.g            = vk::ComponentSwizzle::eG;
+	ImageViewInfoTemplate.components.b            = vk::ComponentSwizzle::eB;
+	ImageViewInfoTemplate.components.a            = vk::ComponentSwizzle::eA;
 	ImageViewInfoTemplate.subresourceRange.aspectMask
 		= vk::ImageAspectFlagBits::eColor;
 	ImageViewInfoTemplate.subresourceRange.baseMipLevel   = 0;
@@ -1045,7 +1045,6 @@ int main(int argc, char* argv[])
 					CurSubTexture.Depth);
 				for( std::size_t CurMip = 0; CurMip < MipCount; ++CurMip )
 				{
-
 					for( std::size_t CurLayer = 0; CurLayer < LayerCount;
 						 ++CurLayer )
 					{
@@ -1067,6 +1066,7 @@ int main(int argc, char* argv[])
 
 						PixelDataOff += CurPixelDataSize;
 					}
+
 					CurExtent.width  = std::max(1u, CurExtent.width / 2);
 					CurExtent.height = std::max(1u, CurExtent.height / 2);
 					CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
