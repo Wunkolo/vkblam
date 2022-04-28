@@ -81,6 +81,250 @@ struct Tag<TagClass::Bitmap>
 static_assert(sizeof(Tag<TagClass::Bitmap>) == 0x6C);
 
 template<>
+struct Tag<TagClass::ShaderEnvironment>
+{
+	// Radiocity properties
+	std::uint16_t RadiosityFlags;
+	std::uint16_t RadiosityDetailLevel;
+	float         Power;
+	Vector3f      EmissionColor;
+	Vector3f      TintColor;
+
+	// Physics properties
+	std::uint16_t PhysicsFlags;
+	std::uint16_t PhysicsMaterialType;
+	std::int16_t  Unknown24;
+	std::int16_t  Unknown26;
+
+	// Environment Shader properties
+	std::uint16_t ShaderFlags;
+	std::uint16_t ShaderType;
+
+	// Lens flare
+	float        LensFlareSpacing;
+	TagReference LensFlare;
+
+	std::uint32_t Unknown40;
+	std::uint32_t Unknown44;
+	std::uint32_t Unknown48;
+	std::uint32_t Unknown4C;
+	std::uint32_t Unknown50;
+	std::uint32_t Unknown54;
+	std::uint32_t Unknown58;
+	std::uint32_t Unknown5C;
+	std::uint32_t Unknown60;
+	std::uint32_t Unknown64;
+	std::uint32_t Unknown68;
+
+	// Diffuse properties
+	std::uint16_t DiffuseFlags;
+	std::uint16_t Unknown6E;
+
+	std::uint32_t Unknown70;
+	std::uint32_t Unknown74;
+	std::uint32_t Unknown78;
+	std::uint32_t Unknown7C;
+	std::uint32_t Unknown80;
+	std::uint32_t Unknown84;
+
+	TagReference BaseMap;
+
+	std::uint32_t Unknown98;
+	std::uint32_t Unknown9C;
+	std::uint32_t UnknownA0;
+	std::uint32_t UnknownA4;
+	std::uint32_t UnknownA8;
+	std::uint32_t UnknownAC;
+
+	std::uint16_t DetailMapFunction;
+
+	std::int16_t UnknownB2;
+
+	float        PrimaryDetailMapScale;
+	TagReference PrimaryDetailMap;
+
+	float        SecondaryDetailMapScale;
+	TagReference SecondaryDetailMap;
+
+	std::uint32_t UnknownDC;
+	std::uint32_t UnknownE0;
+	std::uint32_t UnknownE4;
+	std::uint32_t UnknownE8;
+	std::uint32_t UnknownEC;
+	std::uint32_t UnknownF0;
+
+	std::uint16_t MicroDetailMapFunction;
+	std::int16_t  UnknownF6;
+	float         MicroDetailMapScale;
+	TagReference  MicroDetailMap;
+
+	Vector3f MaterialColor;
+
+	std::uint32_t Unknown118;
+	std::uint32_t Unknown11C;
+	std::uint32_t Unknown120;
+
+	// Bump Map
+	float        BumpMapScale;
+	TagReference BumpMap;
+
+	std::uint32_t Unknown138;
+	std::uint32_t Unknown13C;
+	std::uint32_t Unknown140;
+	std::uint32_t Unknown144;
+	std::uint32_t Unknown148;
+	std::uint32_t Unknown14C;
+
+	std::uint16_t UAnimationFunction;
+	std::int16_t  Unknown152;
+	float         UAnimationPeriod;
+	float         UAnimationScale;
+
+	std::uint16_t VAnimationFunction;
+	std::int16_t  Unknown15E;
+	float         VAnimationPeriod;
+	float         VAnimationScale;
+
+	std::uint32_t Unknown168;
+	std::uint32_t Unknown16C;
+	std::uint32_t Unknown170;
+	std::uint32_t Unknown174;
+	std::uint32_t Unknown178;
+	std::uint32_t Unknown17C;
+
+	// Self-illumination properties
+	std::uint16_t SelfIlluminationFlags;
+	std::int16_t  Unknown182;
+
+	std::uint32_t Unknown184;
+	std::uint32_t Unknown188;
+	std::uint32_t Unknown18C;
+	std::uint32_t Unknown190;
+	std::uint32_t Unknown194;
+	std::uint32_t Unknown198;
+
+	Vector3f PrimaryOnColor;
+	Vector3f PrimaryOffColor;
+
+	std::uint16_t PrimaryAnimationFunction;
+	std::int16_t  Unknown1B6;
+
+	float PrimaryAnimationPeriod;
+	float PrimaryAnimationPhase;
+
+	std::uint32_t Unknown1C0;
+	std::uint32_t Unknown1C4;
+	std::uint32_t Unknown1C8;
+	std::uint32_t Unknown1CC;
+	std::uint32_t Unknown1D0;
+	std::uint32_t Unknown1D4;
+
+	Vector3f SecondaryOnColor;
+	Vector3f SecondaryOffColor;
+
+	std::uint16_t SecondaryAnimationFunction;
+	std::int16_t  Unknown1F2;
+
+	float SecondaryAnimationPeriod;
+	float SecondaryAnimationPhase;
+
+	std::uint32_t Unknown1FC;
+	std::uint32_t Unknown200;
+	std::uint32_t Unknown204;
+	std::uint32_t Unknown208;
+	std::uint32_t Unknown20C;
+	std::uint32_t Unknown210;
+
+	Vector3f PlasmaOnColor;
+	Vector3f PlasmaOffColor;
+
+	std::uint16_t PlasmaAnimationFunction;
+	std::int16_t  Unknown22E;
+
+	float PlasmaAnimationPeriod;
+	float PlasmaAnimationPhase;
+
+	std::uint32_t Unknown238;
+	std::uint32_t Unknown23C;
+	std::uint32_t Unknown240;
+	std::uint32_t Unknown244;
+	std::uint32_t Unknown248;
+	std::uint32_t Unknown24C;
+
+	float        MapScale;
+	TagReference Map;
+
+	std::uint32_t Unknown264;
+	std::uint32_t Unknown268;
+	std::uint32_t Unknown26C;
+	std::uint32_t Unknown270;
+	std::uint32_t Unknown274;
+	std::uint32_t Unknown278;
+
+	// Specular properties
+	std::uint16_t SpecularFlags;
+	std::int16_t  Unknown27E;
+
+	std::uint32_t Unknown280;
+	std::uint32_t Unknown284;
+	std::uint32_t Unknown288;
+	std::uint32_t Unknown28C;
+
+	float SpecularBrightness;
+
+	std::uint32_t Unknown294;
+	std::uint32_t Unknown298;
+	std::uint32_t Unknown29C;
+	std::uint32_t Unknown2A0;
+	std::uint32_t Unknown2A4;
+
+	Vector3f PerpendicularColor;
+	Vector3f ParallelColor;
+
+	std::uint32_t Unknown2C0;
+	std::uint32_t Unknown2C4;
+	std::uint32_t Unknown2C8;
+	std::uint32_t Unknown2CC;
+
+	// Reflection properties
+	std::uint16_t ReflectionFlags;
+	std::uint16_t ReflectionType;
+
+	float LightmapBrightnessScale;
+
+	std::uint32_t Unknown2D8;
+	std::uint32_t Unknown2DC;
+	std::uint32_t Unknown2E0;
+	std::uint32_t Unknown2E4;
+	std::uint32_t Unknown2E8;
+	std::uint32_t Unknown2EC;
+	std::uint32_t Unknown2F0;
+
+	float PerpendicularBrightness;
+	float ParallelBrightness;
+
+	std::uint32_t Unknown2FC;
+	std::uint32_t Unknown300;
+	std::uint32_t Unknown304;
+	std::uint32_t Unknown308;
+	std::uint32_t Unknown30C;
+	std::uint32_t Unknown310;
+	std::uint32_t Unknown314;
+	std::uint32_t Unknown318;
+	std::uint32_t Unknown31C;
+	std::uint32_t Unknown320;
+
+	TagReference ReflectionCubeMap;
+
+	std::uint32_t Unknown334;
+	std::uint32_t Unknown338;
+	std::uint32_t Unknown33C;
+	std::uint32_t Unknown340;
+};
+
+static_assert(sizeof(Tag<TagClass::ShaderEnvironment>) == 0x344);
+
+template<>
 struct Tag<TagClass::Wind>
 {
 	float MinWindSpeed;
@@ -117,9 +361,9 @@ struct Tag<TagClass::Scenario>
 	TagBlock<std::array<char, 32>> ObjectNames;
 	TagBlock<void> /*Todo*/        Scenery;
 
-	// A lot of the palettes are really just TagReference aligned up to a size
-	// of 0x30. So this is just a utility-wrapper for TagReference that adds
-	// the extra padding
+	// A lot of the palettes are really just TagReference aligned up to a
+	// size of 0x30. So this is just a utility-wrapper for TagReference that
+	// adds the extra padding
 	struct PaletteEntry : public TagReference
 	{
 	private:
