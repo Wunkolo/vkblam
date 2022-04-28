@@ -54,7 +54,7 @@ struct Tag<TagClass::Bitmap>
 		BitmapEntryType   Type;
 		BitmapEntryFormat Format;
 
-		BitmapEntryFlags Flags;
+		BitmapEntryBitFlags Flags;
 
 		std::uint16_t RegPointX, RegPointY;
 
@@ -84,21 +84,44 @@ template<>
 struct Tag<TagClass::ShaderEnvironment>
 {
 	// Radiocity properties
-	std::uint16_t RadiosityFlags;
-	std::uint16_t RadiosityDetailLevel;
-	float         Power;
-	Vector3f      EmissionColor;
-	Vector3f      TintColor;
+	enum class RadiosityBitFlags : std::uint16_t
+	{
+		SimpleParameterization = 1 << 0,
+		IgnoreNormals          = 1 << 1,
+		TransparentLit         = 1 << 2,
+	} RadiosityFlags;
+
+	enum class RadiosityDetailLevel : std::uint16_t
+	{
+		High,
+		Medium,
+		Low,
+		Turd
+	} RadiosityDetailLevel;
+	float    Power;
+	Vector3f EmissionColor;
+	Vector3f TintColor;
 
 	// Physics properties
-	std::uint16_t PhysicsFlags;
-	std::uint16_t PhysicsMaterialType;
-	std::int16_t  Unknown24;
-	std::int16_t  Unknown26;
+	std::uint16_t       PhysicsFlags;
+	PhysicsMaterialType PhysicsMaterial;
+	std::int16_t        Unknown24;
+	std::int16_t        Unknown26;
 
 	// Environment Shader properties
-	std::uint16_t ShaderFlags;
-	std::uint16_t ShaderType;
+	enum class ShaderBitFlags : std::uint16_t
+	{
+		AlphaTested           = 1 << 0,
+		BumpMapIsSpecularMask = 1 << 1,
+		TrueAtmosphericFog    = 1 << 2,
+	} ShaderFlags;
+
+	enum class ShaderEnvironmentType : std::uint16_t
+	{
+		Normal,
+		Blended,
+		BlendedBaseSpecular
+	} ShaderType;
 
 	// Lens flare
 	float        LensFlareSpacing;
@@ -117,7 +140,11 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t Unknown68;
 
 	// Diffuse properties
-	std::uint16_t DiffuseFlags;
+	enum class DiffuseBitFlags : std::uint16_t
+	{
+		RescaleDetailMaps = 1 << 0,
+		RescaleBumpMap    = 1 << 1,
+	} DiffuseFlags;
 	std::uint16_t Unknown6E;
 
 	std::uint32_t Unknown70;
@@ -136,7 +163,7 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t UnknownA8;
 	std::uint32_t UnknownAC;
 
-	std::uint16_t DetailMapFunction;
+	DetailMapFunction BaseDetailMapFunction;
 
 	std::int16_t UnknownB2;
 
@@ -153,10 +180,10 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t UnknownEC;
 	std::uint32_t UnknownF0;
 
-	std::uint16_t MicroDetailMapFunction;
-	std::int16_t  UnknownF6;
-	float         MicroDetailMapScale;
-	TagReference  MicroDetailMap;
+	DetailMapFunction MicroDetailMapFunction;
+	std::int16_t      UnknownF6;
+	float             MicroDetailMapScale;
+	TagReference      MicroDetailMap;
 
 	Vector3f MaterialColor;
 
@@ -175,15 +202,15 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t Unknown148;
 	std::uint32_t Unknown14C;
 
-	std::uint16_t UAnimationFunction;
-	std::int16_t  Unknown152;
-	float         UAnimationPeriod;
-	float         UAnimationScale;
+	AnimationFunction UAnimationFunction;
+	std::int16_t      Unknown152;
+	float             UAnimationPeriod;
+	float             UAnimationScale;
 
-	std::uint16_t VAnimationFunction;
-	std::int16_t  Unknown15E;
-	float         VAnimationPeriod;
-	float         VAnimationScale;
+	AnimationFunction VAnimationFunction;
+	std::int16_t      Unknown15E;
+	float             VAnimationPeriod;
+	float             VAnimationScale;
 
 	std::uint32_t Unknown168;
 	std::uint32_t Unknown16C;
@@ -193,8 +220,11 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t Unknown17C;
 
 	// Self-illumination properties
-	std::uint16_t SelfIlluminationFlags;
-	std::int16_t  Unknown182;
+	enum class SelfIlluminationBitFlags : std::uint16_t
+	{
+		Unfiltered = 1 << 0,
+	} SelfIlluminationFlags;
+	std::int16_t Unknown182;
 
 	std::uint32_t Unknown184;
 	std::uint32_t Unknown188;
@@ -206,8 +236,8 @@ struct Tag<TagClass::ShaderEnvironment>
 	Vector3f PrimaryOnColor;
 	Vector3f PrimaryOffColor;
 
-	std::uint16_t PrimaryAnimationFunction;
-	std::int16_t  Unknown1B6;
+	AnimationFunction PrimaryAnimationFunction;
+	std::int16_t      Unknown1B6;
 
 	float PrimaryAnimationPeriod;
 	float PrimaryAnimationPhase;
@@ -222,8 +252,8 @@ struct Tag<TagClass::ShaderEnvironment>
 	Vector3f SecondaryOnColor;
 	Vector3f SecondaryOffColor;
 
-	std::uint16_t SecondaryAnimationFunction;
-	std::int16_t  Unknown1F2;
+	AnimationFunction SecondaryAnimationFunction;
+	std::int16_t      Unknown1F2;
 
 	float SecondaryAnimationPeriod;
 	float SecondaryAnimationPhase;
@@ -238,8 +268,8 @@ struct Tag<TagClass::ShaderEnvironment>
 	Vector3f PlasmaOnColor;
 	Vector3f PlasmaOffColor;
 
-	std::uint16_t PlasmaAnimationFunction;
-	std::int16_t  Unknown22E;
+	AnimationFunction PlasmaAnimationFunction;
+	std::int16_t      Unknown22E;
 
 	float PlasmaAnimationPeriod;
 	float PlasmaAnimationPhase;
@@ -262,8 +292,13 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t Unknown278;
 
 	// Specular properties
-	std::uint16_t SpecularFlags;
-	std::int16_t  Unknown27E;
+	enum class SpecularBitFlags : std::uint16_t
+	{
+		Overbright         = 1 << 0,
+		ExtraShiny         = 1 << 1,
+		LightmapIsSpecular = 1 << 2,
+	} SpecularFlags;
+	std::int16_t Unknown27E;
 
 	std::uint32_t Unknown280;
 	std::uint32_t Unknown284;
@@ -287,8 +322,16 @@ struct Tag<TagClass::ShaderEnvironment>
 	std::uint32_t Unknown2CC;
 
 	// Reflection properties
-	std::uint16_t ReflectionFlags;
-	std::uint16_t ReflectionType;
+	enum class ReflectionBitFlags : std::uint16_t
+	{
+		DynamicMirror = 1 << 0
+	} ReflectionFlags;
+	enum class ReflectionType : std::uint16_t
+	{
+		BumpedCubeMap,
+		FlatCubeMap,
+		BumpedRadiosity
+	} ReflectionType;
 
 	float LightmapBrightnessScale;
 

@@ -89,7 +89,7 @@ enum class BitmapEntryType : std::uint16_t
 	White     = 0x03,
 };
 
-enum class BitmapEntryFlags : std::uint16_t
+enum class BitmapEntryBitFlags : std::uint16_t
 {
 	PowerOfTwoDimensions = 1u << 0,
 	Compressed           = 1u << 1,
@@ -114,6 +114,66 @@ enum class BitmapEntryFormat : std::uint16_t
 	DXT2AND3 = 0x0F,
 	DXT4AND5 = 0x10,
 	P8       = 0x11,
+};
+
+enum class PhysicsMaterialType : std::uint16_t
+{
+	Dirt,
+	Sand,
+	Stone,
+	Snow,
+	Wood,
+	MetalHollow,
+	MetalThin,
+	MetalThick,
+	Rubber,
+	Glass,
+	ForceField,
+	Grunt,
+	HunterArmor,
+	HunterSkin,
+	Elite,
+	Jackal,
+	JackalEnergyShield,
+	EngineerSkin,
+	EngineerForceField,
+	FloodCombatForm,
+	FloodCarrierForm,
+	CyborgArmor,
+	CyborgEnergyShield,
+	HumanArmor,
+	HumanSkin,
+	Sentinel,
+	Monitor,
+	Plastic,
+	Water,
+	Leaves,
+	EliteEnergyShield,
+	Ice,
+	HunterShield,
+};
+
+enum class DetailMapFunction : std::uint16_t
+{
+	DoubleBiasedMultiply,
+	Multiply,
+	DoubleBiasedAdd,
+};
+
+enum class AnimationFunction : std::uint16_t
+{
+	One,
+	Zero,
+	Cosine,
+	CosineVariablePeriod,
+	DiagonalWave,
+	DiagonalWaveVariablePeriod,
+	Slide,
+	SlideVariablePeriod,
+	Noise,
+	Jitter,
+	Wander,
+	Spark,
 };
 
 template<std::size_t N>
