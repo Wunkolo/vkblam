@@ -2,6 +2,7 @@
 
 #include "Enums.hpp"
 #include "Types.hpp"
+#include <cstddef>
 
 namespace Blam
 {
@@ -79,6 +80,113 @@ struct Tag<TagClass::Bitmap>
 	TagBlock<BitmapEntry> Bitmaps;
 };
 static_assert(sizeof(Tag<TagClass::Bitmap>) == 0x6C);
+
+template<>
+struct Tag<TagClass::ShaderTransparentChicago>
+{
+	// Radiocity properties
+	enum class RadiosityBitFlags : std::uint16_t
+	{
+		SimpleParameterization = 1 << 0,
+		IgnoreNormals          = 1 << 1,
+		TransparentLit         = 1 << 2,
+	} RadiosityFlags;
+
+	enum class RadiosityDetailLevel : std::uint16_t
+	{
+		High,
+		Medium,
+		Low,
+		Turd
+	} RadiosityDetailLevel;
+	float    Power;
+	Vector3f EmissionColor;
+	Vector3f TintColor;
+
+	// Physics properties
+	std::uint16_t       PhysicsFlags;
+	PhysicsMaterialType PhysicsMaterial;
+	std::int16_t        Unknown24;
+	std::int16_t        Unknown26;
+
+	// Chicago Shader
+	std::int8_t NumericCounterLimit;
+	enum class ChicagoFlags : std::uint8_t
+	{
+		AlphaTested               = 1 << 0,
+		Decal                     = 1 << 1,
+		TwoSided                  = 1 << 2,
+		FirstMapIsScreenSpace     = 1 << 3,
+		DrawBeforeWater           = 1 << 4,
+		IgnoreEffectColor         = 1 << 5,
+		ScaleFirstMapWithDistance = 1 << 6,
+		Numeric                   = 1 << 7,
+	} ChicagoFlags;
+
+	enum class FirstMapType : std::uint16_t
+	{
+		MapIs2DMap,
+		MapIsObjectCenteredCubeMap,
+		MapIsViewCenteredCubeMap
+	} FirstMap;
+
+	enum class FramebufferBlendFunction : std::uint16_t
+	{
+		AlphaBlend,
+		Multiply,
+		DoubleMultiply,
+		Add,
+		Subtract,
+		ComponentMin,
+		ComponentMax,
+		AlphaMultiplyAdd
+	} FramebufferBlend;
+
+	enum class FramebufferFadeMode : std::uint16_t
+	{
+		AlphaBlend,
+		Multiply,
+		DoubleMultiply,
+		Add,
+		Subtract,
+		ComponentMin,
+		ComponentMax,
+		AlphaMultiplyAdd
+	} FramebufferFade;
+
+	enum class FramebufferFadeSource : std::uint16_t
+	{
+		None,
+		AOut,
+		BOut,
+		COut,
+		DOut
+	} FramebufferFadeSource;
+
+	std::uint16_t Unknown32;
+
+	// Lens flare
+	float        LensFlareSpacing;
+	TagReference LensFlare;
+
+	TagBlock<TagReference> ExtraLayers;
+
+	struct MapEntry
+	{
+		std::byte Data[0xDC];
+	};
+
+	TagBlock<MapEntry> Maps;
+
+	enum class ExtraFlagBits : std::uint32_t
+	{
+		DontFadeActiveCamoflage = 1 << 0,
+		NumericCountdownTimer   = 1 << 1,
+	} ExtraFlags;
+	std::uint32_t Unknown64;
+	std::uint32_t Unknown68;
+};
+static_assert(sizeof(Tag<TagClass::ShaderTransparentChicago>) == 0x6C);
 
 template<>
 struct Tag<TagClass::ShaderEnvironment>
