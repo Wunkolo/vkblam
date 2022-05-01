@@ -133,7 +133,7 @@ struct Tag<TagClass::ShaderTransparentChicago> : public Tag<TagClass::Shader>
 		MapIs2DMap,
 		MapIsObjectCenteredCubeMap,
 		MapIsViewCenteredCubeMap
-	} FirstMap;
+	} FirstMapType;
 
 	enum class FramebufferBlendFunction : std::uint16_t
 	{
@@ -149,24 +149,12 @@ struct Tag<TagClass::ShaderTransparentChicago> : public Tag<TagClass::Shader>
 
 	enum class FramebufferFadeMode : std::uint16_t
 	{
-		AlphaBlend,
-		Multiply,
-		DoubleMultiply,
-		Add,
-		Subtract,
-		ComponentMin,
-		ComponentMax,
-		AlphaMultiplyAdd
+		None,
+		FadeWhenPerpendicular,
+		FadeWhenParallel,
 	} FramebufferFade;
 
-	enum class FramebufferFadeSource : std::uint16_t
-	{
-		None,
-		AOut,
-		BOut,
-		COut,
-		DOut
-	} FramebufferFadeSource;
+	AnimationSource FramebufferFadeSource;
 
 	std::uint16_t Unknown32;
 
@@ -178,8 +166,96 @@ struct Tag<TagClass::ShaderTransparentChicago> : public Tag<TagClass::Shader>
 
 	struct MapEntry
 	{
-		std::byte Data[0xDC];
+		enum MapEntryBitFlags : std::uint16_t
+		{
+			Unfiltered     = 1 << 0,
+			AlphaReplicate = 1 << 1,
+			UClamped       = 1 << 2,
+			VClamped       = 1 << 3,
+		} Flags;
+		std::int16_t Unknown2;
+
+		std::uint32_t Unknown4;
+		std::uint32_t Unknown8;
+		std::uint32_t UnknownC;
+		std::uint32_t Unknown10;
+		std::uint32_t Unknown14;
+		std::uint32_t Unknown18;
+		std::uint32_t Unknown1C;
+		std::uint32_t Unknown20;
+		std::uint32_t Unknown24;
+		std::uint32_t Unknown28;
+
+		enum class BlendFunction : std::uint16_t
+		{
+			Current,
+			NextMap,
+			Multiply,
+			DoubleMultiply,
+			Add,
+			AddSignedCurrent,
+			AddSignedNextMap,
+			SubtractCurrent,
+			SubtractNextMap,
+			BlendCurrentAlpha,
+			BlendCurrentAlphaInverse,
+			BlendNextMapAlpha,
+			BlendNextMapAlphaInverse,
+		};
+
+		BlendFunction ColorBlendFunction;
+		BlendFunction AlphaBlendFunction;
+
+		std::uint32_t Unknown30;
+		std::uint32_t Unknown34;
+		std::uint32_t Unknown38;
+		std::uint32_t Unknown3C;
+		std::uint32_t Unknown40;
+		std::uint32_t Unknown44;
+		std::uint32_t Unknown48;
+		std::uint32_t Unknown4C;
+		std::uint32_t Unknown50;
+
+		float MapUScale;
+		float MapVScale;
+		float MapUOffset;
+		float MapVOffset;
+		float MapRotation;
+		float MipmapBias;
+
+		TagReference Map;
+
+		std::uint32_t Unknown7C;
+		std::uint32_t Unknown80;
+		std::uint32_t Unknown84;
+		std::uint32_t Unknown88;
+		std::uint32_t Unknown8C;
+		std::uint32_t Unknown90;
+		std::uint32_t Unknown94;
+		std::uint32_t Unknown98;
+		std::uint32_t Unknown9C;
+		std::uint32_t UnknownA0;
+
+		AnimationSource   UAnimationSource;
+		AnimationFunction UAnimationFunction;
+		float             UAnimationPeriod;
+		float             UAnimationPhase;
+		float             UAnimationScale;
+
+		AnimationSource   VAnimationSource;
+		AnimationFunction VAnimationFunction;
+		float             VAnimationPeriod;
+		float             VAnimationPhase;
+		float             VAnimationScale;
+
+		AnimationSource   RotationAnimationSource;
+		AnimationFunction RotationAnimationFunction;
+		float             RotationAnimationPeriod;
+		float             RotationAnimationPhase;
+		float             RotationAnimationScale;
+		Vector2f          RotationPointCenter;
 	};
+	static_assert(sizeof(MapEntry) == 0xDC);
 
 	TagBlock<MapEntry> Maps;
 
@@ -188,6 +264,7 @@ struct Tag<TagClass::ShaderTransparentChicago> : public Tag<TagClass::Shader>
 		DontFadeActiveCamoflage = 1 << 0,
 		NumericCountdownTimer   = 1 << 1,
 	} ExtraFlags;
+
 	std::uint32_t Unknown64;
 	std::uint32_t Unknown68;
 };
@@ -270,8 +347,9 @@ struct Tag<TagClass::ShaderEnvironment> : public Tag<TagClass::Shader>
 
 	DetailMapFunction MicroDetailMapFunction;
 	std::int16_t      UnknownF6;
-	float             MicroDetailMapScale;
-	TagReference      MicroDetailMap;
+
+	float        MicroDetailMapScale;
+	TagReference MicroDetailMap;
 
 	Vector3f MaterialColor;
 
