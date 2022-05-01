@@ -176,6 +176,15 @@ enum class AnimationFunction : std::uint16_t
 	Spark,
 };
 
+enum class AnimationSource : std::uint16_t
+{
+	None,
+	AOut,
+	BOut,
+	COut,
+	DOut
+};
+
 template<std::size_t N>
 struct FourCC
 {
