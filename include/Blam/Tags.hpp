@@ -82,7 +82,7 @@ struct Tag<TagClass::Bitmap>
 static_assert(sizeof(Tag<TagClass::Bitmap>) == 0x6C);
 
 template<>
-struct Tag<TagClass::ShaderTransparentChicago>
+struct Tag<TagClass::Shader>
 {
 	// Radiocity properties
 	enum class RadiosityBitFlags : std::uint16_t
@@ -108,7 +108,12 @@ struct Tag<TagClass::ShaderTransparentChicago>
 	PhysicsMaterialType PhysicsMaterial;
 	std::int16_t        Unknown24;
 	std::int16_t        Unknown26;
+};
+static_assert(sizeof(Tag<TagClass::Shader>) == 0x28);
 
+template<>
+struct Tag<TagClass::ShaderTransparentChicago> : public Tag<TagClass::Shader>
+{
 	// Chicago Shader
 	std::int8_t NumericCounterLimit;
 	enum class ChicagoFlags : std::uint8_t
@@ -189,33 +194,8 @@ struct Tag<TagClass::ShaderTransparentChicago>
 static_assert(sizeof(Tag<TagClass::ShaderTransparentChicago>) == 0x6C);
 
 template<>
-struct Tag<TagClass::ShaderEnvironment>
+struct Tag<TagClass::ShaderEnvironment> : public Tag<TagClass::Shader>
 {
-	// Radiocity properties
-	enum class RadiosityBitFlags : std::uint16_t
-	{
-		SimpleParameterization = 1 << 0,
-		IgnoreNormals          = 1 << 1,
-		TransparentLit         = 1 << 2,
-	} RadiosityFlags;
-
-	enum class RadiosityDetailLevel : std::uint16_t
-	{
-		High,
-		Medium,
-		Low,
-		Turd
-	} RadiosityDetailLevel;
-	float    Power;
-	Vector3f EmissionColor;
-	Vector3f TintColor;
-
-	// Physics properties
-	std::uint16_t       PhysicsFlags;
-	PhysicsMaterialType PhysicsMaterial;
-	std::int16_t        Unknown24;
-	std::int16_t        Unknown26;
-
 	// Environment Shader properties
 	enum class ShaderBitFlags : std::uint16_t
 	{
