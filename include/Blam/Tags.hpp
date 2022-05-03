@@ -271,6 +271,115 @@ struct Tag<TagClass::ShaderTransparentChicago> : public Tag<TagClass::Shader>
 static_assert(sizeof(Tag<TagClass::ShaderTransparentChicago>) == 0x6C);
 
 template<>
+struct Tag<TagClass::ShaderTransparentWater> : public Tag<TagClass::Shader>
+{
+	enum class ShaderTransparentWaterBitFlags : std::uint16_t
+	{
+		BaseMapAlphaModulatesReflection = 1 << 0,
+		BaseMapColorModulatesReflection = 1 << 1,
+		AtmosphericFog                  = 1 << 2,
+		DrawBeforeFog                   = 1 << 3,
+	} Flags;
+	std::uint16_t Unknown2A;
+
+	std::uint32_t Unknown2C;
+	std::uint32_t Unknown30;
+	std::uint32_t Unknown34;
+	std::uint32_t Unknown38;
+	std::uint32_t Unknown3C;
+	std::uint32_t Unknown40;
+	std::uint32_t Unknown44;
+	std::uint32_t Unknown48;
+
+	TagReference BaseMap;
+
+	std::uint32_t Unknown5C;
+	std::uint32_t Unknown60;
+	std::uint32_t Unknown64;
+	std::uint32_t Unknown68;
+
+	float    ViewPerpendicularBrightness;
+	Vector3f ViewPerpendicularTintColor;
+
+	float    ViewParallelBrightness;
+	Vector3f ViewParallelTintColor;
+
+	std::uint32_t Unknown8C;
+	std::uint32_t Unknown90;
+	std::uint32_t Unknown94;
+	std::uint32_t Unknown98;
+
+	TagReference ReflectionMap;
+
+	std::uint32_t UnknownAC;
+	std::uint32_t UnknownB0;
+	std::uint32_t UnknownB4;
+	std::uint32_t UnknownB8;
+
+	float        RippleAnimationAngle;
+	float        RippleAnimationVelocity;
+	float        RippleAnimationScale;
+	TagReference RippleMaps;
+
+	std::int16_t RippleMipmapLevels;
+	std::int16_t UnknownDA;
+
+	float RippleMipmapFadeFactor;
+	float RippleMipmapDetailBias;
+
+	std::uint32_t UnknownE4;
+	std::uint32_t UnknownE8;
+	std::uint32_t UnknownEC;
+	std::uint32_t UnknownF0;
+	std::uint32_t UnknownF4;
+	std::uint32_t UnknownF8;
+	std::uint32_t UnknownFC;
+	std::uint32_t Unknown100;
+	std::uint32_t Unknown104;
+	std::uint32_t Unknown108;
+	std::uint32_t Unknown10C;
+	std::uint32_t Unknown110;
+	std::uint32_t Unknown114;
+	std::uint32_t Unknown118;
+	std::uint32_t Unknown11C;
+	std::uint32_t Unknown120;
+
+	struct RippleEntry
+	{
+		std::uint16_t Unknown0;
+		std::uint16_t Unknown2;
+		float         ContributionFactor;
+		std::uint32_t Unknown8;
+		std::uint32_t UnknownC;
+		std::uint32_t Unknown10;
+		std::uint32_t Unknown14;
+		std::uint32_t Unknown18;
+		std::uint32_t Unknown1C;
+		std::uint32_t Unknown20;
+		std::uint32_t Unknown24;
+		float         AnimationAngle;
+		float         AnimationVelocity;
+		Vector2f      MapOffset;
+		std::int16_t  MapRepeats;
+		std::int16_t  MapIndex;
+
+		std::uint32_t Unknown3C;
+		std::uint32_t Unknown40;
+		std::uint32_t Unknown44;
+		std::uint32_t Unknown48;
+	};
+	static_assert(sizeof(RippleEntry) == 0x4C);
+
+	TagBlock<RippleEntry> Ripples;
+
+	std::uint32_t Unknown130;
+	std::uint32_t Unknown134;
+	std::uint32_t Unknown138;
+	std::uint32_t Unknown13C;
+};
+static_assert(sizeof(Tag<TagClass::ShaderTransparentWater>) == 0x140);
+
+template<>
 struct Tag<TagClass::ShaderEnvironment> : public Tag<TagClass::Shader>
 {
 	// Environment Shader properties
