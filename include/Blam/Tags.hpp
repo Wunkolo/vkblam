@@ -658,12 +658,15 @@ template<>
 struct Tag<TagClass::Scenario>
 {
 	// Depreciated fields, don't use
-	TagReference                      _UnusedBSP0;
-	TagReference                      _UnusedBSP1;
-	TagReference                      _UnusedSky;
-	TagBlock<Tag<TagClass::Sky>>      Skies;
-	ScenarioType                      Type;
-	std::uint16_t                     Flags;
+	TagReference                 _UnusedBSP0;
+	TagReference                 _UnusedBSP1;
+	TagReference                 _UnusedSky;
+	TagBlock<Tag<TagClass::Sky>> Skies;
+	ScenarioType                 Type;
+	std::uint16_t                Flags;
+
+	// Fully "cooked" maps automatically merge all scenarios into a
+	// single scenario, so this field is no longer used.
 	TagBlock<Tag<TagClass::Scenario>> ChildScenarios;
 	float                             LocalNorth;
 
