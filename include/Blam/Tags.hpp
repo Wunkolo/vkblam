@@ -540,14 +540,14 @@ struct Tag<TagClass::ShaderEnvironment> : public Tag<TagClass::Shader>
 	std::uint32_t Unknown20C;
 	std::uint32_t Unknown210;
 
-	Vector3f PlasmaOnColor;
-	Vector3f PlasmaOffColor;
+	Vector3f GlowOnColor;
+	Vector3f GlowOffColor;
 
-	AnimationFunction PlasmaAnimationFunction;
+	AnimationFunction GlowAnimationFunction;
 	std::int16_t      Unknown22E;
 
-	float PlasmaAnimationPeriod;
-	float PlasmaAnimationPhase;
+	float GlowAnimationPeriod;
+	float GlowAnimationPhase;
 
 	std::uint32_t Unknown238;
 	std::uint32_t Unknown23C;
@@ -556,8 +556,8 @@ struct Tag<TagClass::ShaderEnvironment> : public Tag<TagClass::Shader>
 	std::uint32_t Unknown248;
 	std::uint32_t Unknown24C;
 
-	float        MapScale;
-	TagReference Map;
+	float        GlowMapScale;
+	TagReference GlowMap;
 
 	std::uint32_t Unknown264;
 	std::uint32_t Unknown268;

@@ -580,6 +580,14 @@ int main(int argc, char* argv[])
 								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 						{
 
+							std::printf(
+								"Shader(%s): %s | Permutation: %04X\n",
+								Blam::FormatTagClass(CurMaterial.Shader.Class)
+									.c_str(),
+								CurMap.GetTagName(CurMaterial.Shader.TagID)
+									.data(),
+								CurMaterial.ShaderPermutation);
+
 							auto& CurLightmapMesh
 								= LightmapMeshs.emplace_back();
 							//// Vertex Buffer data
@@ -923,7 +931,7 @@ int main(int argc, char* argv[])
 	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
 		[&](const Blam::TagIndexEntry&               TagEntry,
 			const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-			std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
+			// std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
 			for( std::size_t CurSubTextureIdx = 0;
 				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 			{
@@ -1175,6 +1183,49 @@ int main(int argc, char* argv[])
 
 				Device->updateDescriptorSets({WriteDescriptorSet}, {});
 			}
+		});
+
+	// Each shader creates a derived graphics pipeline as well as a
+	// descriptor set+buffer that flattens out all of the material
+	// parameters that need to be passed onto the fragment shader
+	// itself
+	// There might possibly be some runtime overhead needed for the
+	// animated U/V functions and other animation phases but they might
+	// just be able to be derived at runtime from the current time
+	// without having to maintain a per-shader animation-state
+	// - Thu Apr 28 01:00:23 PM PDT 2022
+
+	const auto CheckBitmapRef
+		= [&CurMap,
+		   &BitmapImages](std::uint32_t TagID, const char* Name) -> void {
+		if( BitmapImages.contains(TagID) )
+		{
+			std::printf("\t-%s: %s\n", Name, CurMap.GetTagName(TagID).data());
+		}
+		else
+		{
+			std::printf("\t-%s: \e[31m%08X\e[0m\n", Name, TagID);
+		}
+	};
+
+	CurMap.VisitTagClass<Blam::TagClass::ShaderEnvironment>(
+		[&](const Blam::TagIndexEntry& TagEntry,
+			const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
+				ShaderEnvironment) -> void {
+			std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
+
+			CheckBitmapRef(ShaderEnvironment.BaseMap.TagID, "BaseMap");
+			CheckBitmapRef(
+				ShaderEnvironment.PrimaryDetailMap.TagID, "PrimaryDetailMap");
+			CheckBitmapRef(
+				ShaderEnvironment.SecondaryDetailMap.TagID,
+				"SecondaryDetailMap");
+			CheckBitmapRef(
+				ShaderEnvironment.MicroDetailMap.TagID, "MicroDetailMap");
+			CheckBitmapRef(ShaderEnvironment.BumpMap.TagID, "BumpMap");
+			CheckBitmapRef(ShaderEnvironment.GlowMap.TagID, "GlowMap");
+			CheckBitmapRef(
+				ShaderEnvironment.ReflectionCubeMap.TagID, "ReflectionCubeMap");
 		});
 
 	//// Create Command Pool
