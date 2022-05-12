@@ -887,7 +887,7 @@ int main(int argc, char* argv[])
 			Device.get(),
 			{vk::PushConstantRange(
 				vk::ShaderStageFlagBits::eAllGraphics, 0,
-				sizeof(glm::f32mat4))},
+				sizeof(vkBlam::CameraGlobals))},
 			{
 				vk::DescriptorSetLayoutBinding(
 					0, vk::DescriptorType::eCombinedImageSampler, 1,
@@ -901,7 +901,7 @@ int main(int argc, char* argv[])
 			Device.get(),
 			{vk::PushConstantRange(
 				vk::ShaderStageFlagBits::eAllGraphics, 0,
-				sizeof(glm::f32mat4) + sizeof(glm::f32vec4))},
+				sizeof(vkBlam::CameraGlobals))},
 			{vk::DescriptorSetLayoutBinding(
 				0, vk::DescriptorType::eCombinedImageSampler, 1,
 				vk::ShaderStageFlagBits::eFragment)},
@@ -1012,7 +1012,6 @@ int main(int argc, char* argv[])
 	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
 		[&](const Blam::TagIndexEntry&               TagEntry,
 			const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-			std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
 			for( std::size_t CurSubTextureIdx = 0;
 				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 			{
@@ -1313,27 +1312,32 @@ int main(int argc, char* argv[])
 			CommandBuffer->bindPipeline(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
+			vkBlam::CameraGlobals CameraGlobals = {};
+
 			const glm::vec3 WorldCenter
 				= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
-			const glm::mat4 ViewMatrix = glm::lookAt<glm::f32>(
-				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
-				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
-				glm::vec3(0, 1, 0));
 
 			const glm::f32 MaxExtent
 				= glm::compMax(WorldBoundMax - WorldBoundMin) / 2.0f;
-			const glm::mat4 ProjectionMatrix = glm::ortho<glm::f32>(
+
+			CameraGlobals.View = glm::lookAt<glm::f32>(
+				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
+				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
+
+				glm::vec3(0, 1, 0));
+			CameraGlobals.Projection = glm::ortho<glm::f32>(
 				-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
 				WorldBoundMax.z - WorldBoundMin.z);
 			// = glm::perspective<glm::f32>(
 			// 	glm::radians(60.0f),
 			// 	static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
 
-			const glm::mat4 ViewProjMatrix = ProjectionMatrix * ViewMatrix;
+			CameraGlobals.ViewProjection
+				= CameraGlobals.Projection * CameraGlobals.View;
 
-			CommandBuffer->pushConstants<glm::mat4>(
+			CommandBuffer->pushConstants<vkBlam::CameraGlobals>(
 				DebugDrawPipelineLayout.get(),
-				vk::ShaderStageFlagBits::eAllGraphics, 0, {ViewProjMatrix});
+				vk::ShaderStageFlagBits::eAllGraphics, 0, {CameraGlobals});
 
 			CommandBuffer->bindVertexBuffers(
 				0, {VertexBuffer.get(), LightmapVertexBuffer.get()}, {0, 0});

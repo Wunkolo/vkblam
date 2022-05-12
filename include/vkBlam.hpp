@@ -64,4 +64,14 @@ constexpr vk::Format BlamToVk(Blam::BitmapEntryFormat Value)
 	}
 	return vk::Format::eUndefined;
 }
+
+//// Must match vkBlam.glsl structures
+
+struct CameraGlobals
+{
+	alignas(16) glm::mat4x4 View;
+	alignas(16) glm::mat4x4 Projection;
+	alignas(16) glm::mat4x4 ViewProjection;
+};
+
 } // namespace vkBlam
