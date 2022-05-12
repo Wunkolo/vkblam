@@ -85,6 +85,23 @@ public:
 			reinterpret_cast<const char*>(MapData.data())
 			+ (TagIndexEntryPtr->TagPathVirtualOffset - TagHeapVirtualBase));
 	}
+
+	// Helpers
+	const Tag<Blam::TagClass::Scenario>* GetScenarioTag() const
+	{
+		return GetTag<Blam::TagClass::Scenario>(TagIndexHeader.BaseTag);
+	}
+
+	std::span<const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP>
+		GetScenarioBSPs() const
+	{
+		if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
+		{
+			return ScenarioTag->StructureBSPs.GetSpan(
+				MapData.data(), TagHeapVirtualBase);
+		}
+		return {};
+	}
 };
 
 } // namespace Blam

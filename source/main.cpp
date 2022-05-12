@@ -516,146 +516,112 @@ int main(int argc, char* argv[])
 		std::uint32_t VertexHeapIndexOffset = 0;
 		std::uint32_t IndexHeapIndexOffset  = 0;
 
-		if( const auto BaseTagPtr
-			= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
-			BaseTagPtr )
+		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
+				 CurBSPEntry : CurMap.GetScenarioBSPs() )
 		{
-			const auto&            CurTag = *BaseTagPtr;
-			const std::string_view TagName
-				= CurMap.GetTagName(CurMap.TagIndexHeader.BaseTag);
+			const std::span<const std::byte> BSPData
+				= CurBSPEntry.GetSBSPData(MapFile.data());
+			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
+				= CurBSPEntry.GetSBSP(MapFile.data());
 
-			if( const auto ScenarioPtr
-				= CurMap.GetTag<Blam::TagClass::Scenario>(
-					CurMap.TagIndexHeader.BaseTag);
-				ScenarioPtr )
+			WorldBoundMin.x
+				= glm::min(WorldBoundMin.x, ScenarioBSP.WorldBoundsX[0]);
+			WorldBoundMin.y
+				= glm::min(WorldBoundMin.y, ScenarioBSP.WorldBoundsY[0]);
+			WorldBoundMin.z
+				= glm::min(WorldBoundMin.z, ScenarioBSP.WorldBoundsZ[0]);
+
+			WorldBoundMax.x
+				= glm::max(WorldBoundMax.x, ScenarioBSP.WorldBoundsX[1]);
+			WorldBoundMax.y
+				= glm::max(WorldBoundMax.y, ScenarioBSP.WorldBoundsY[1]);
+			WorldBoundMax.z
+				= glm::max(WorldBoundMax.z, ScenarioBSP.WorldBoundsZ[1]);
+			// Lightmap
+			for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
+					 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 			{
-				const Blam::Tag<Blam::TagClass::Scenario>& Scenario
-					= *ScenarioPtr;
+				const auto& LightmapTextureTag
+					= CurMap.GetTag<Blam::TagClass::Bitmap>(
+						ScenarioBSP.LightmapTexture.TagID);
+				const std::int16_t LightmapTextureIndex
+					= CurLightmap.LightmapIndex;
 
-				for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
-						 CurBSPEntry : Scenario.StructureBSPs.GetSpan(
-							 MapFile.data(), CurMap.TagHeapVirtualBase) )
+				const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
+					BSPData.data(), CurBSPEntry.BSPVirtualBase);
+				for( const auto& CurMaterial : CurLightmap.Materials.GetSpan(
+						 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 				{
-					const std::span<const std::byte> BSPData
-						= CurBSPEntry.GetSBSPData(MapFile.data());
-					const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
-						ScenarioBSP
-						= CurBSPEntry.GetSBSP(MapFile.data());
 
-					WorldBoundMin.x = glm::min(
-						WorldBoundMin.x, ScenarioBSP.WorldBoundsX[0]);
-					WorldBoundMin.y = glm::min(
-						WorldBoundMin.y, ScenarioBSP.WorldBoundsY[0]);
-					WorldBoundMin.z = glm::min(
-						WorldBoundMin.z, ScenarioBSP.WorldBoundsZ[0]);
+					std::printf(
+						"Shader(%s): %s | Permutation: %04X\n",
+						Blam::FormatTagClass(CurMaterial.Shader.Class).c_str(),
+						CurMap.GetTagName(CurMaterial.Shader.TagID).data(),
+						CurMaterial.ShaderPermutation);
 
-					WorldBoundMax.x = glm::max(
-						WorldBoundMax.x, ScenarioBSP.WorldBoundsX[1]);
-					WorldBoundMax.y = glm::max(
-						WorldBoundMax.y, ScenarioBSP.WorldBoundsY[1]);
-					WorldBoundMax.z = glm::max(
-						WorldBoundMax.z, ScenarioBSP.WorldBoundsZ[1]);
-					// Lightmap
-					for( const auto& CurLightmap :
-						 ScenarioBSP.Lightmaps.GetSpan(
-							 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
+					auto& CurLightmapMesh = LightmapMeshs.emplace_back();
+					//// Vertex Buffer data
 					{
-						const auto& LightmapTextureTag
-							= CurMap.GetTag<Blam::TagClass::Bitmap>(
-								ScenarioBSP.LightmapTexture.TagID);
-						const std::int16_t LightmapTextureIndex
-							= CurLightmap.LightmapIndex;
+						// Copy vertex data into the staging buffer
+						const std::span<const Blam::Vertex> CurVertexData
+							= CurMaterial.GetVertices(
+								BSPData.data(), CurBSPEntry.BSPVirtualBase);
 
-						const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
-							BSPData.data(), CurBSPEntry.BSPVirtualBase);
-						for( const auto& CurMaterial :
-							 CurLightmap.Materials.GetSpan(
-								 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
+						// Queue up staging buffer copy
+						StreamBuffer.QueueBufferUpload(
+							std::as_bytes(CurVertexData), VertexBuffer.get(),
+							VertexHeapIndexOffset * sizeof(Blam::Vertex));
+
+						// Add the offset needed to begin indexing into
+						// this particular part of the vertex buffer,
+						// used when drawing
+						CurLightmapMesh.VertexIndexOffset
+							= VertexHeapIndexOffset;
+
+						if( ScenarioBSP.LightmapTexture.TagID != -1
+							&& LightmapTextureIndex != -1 )
 						{
-
-							std::printf(
-								"Shader(%s): %s | Permutation: %04X\n",
-								Blam::FormatTagClass(CurMaterial.Shader.Class)
-									.c_str(),
-								CurMap.GetTagName(CurMaterial.Shader.TagID)
-									.data(),
-								CurMaterial.ShaderPermutation);
-
-							auto& CurLightmapMesh
-								= LightmapMeshs.emplace_back();
-							//// Vertex Buffer data
-							{
-								// Copy vertex data into the staging buffer
-								const std::span<const Blam::Vertex>
-									CurVertexData = CurMaterial.GetVertices(
-										BSPData.data(),
-										CurBSPEntry.BSPVirtualBase);
-
-								// Queue up staging buffer copy
-								StreamBuffer.QueueBufferUpload(
-									std::as_bytes(CurVertexData),
-									VertexBuffer.get(),
-									VertexHeapIndexOffset
-										* sizeof(Blam::Vertex));
-
-								// Add the offset needed to begin indexing into
-								// this particular part of the vertex buffer,
-								// used when drawing
-								CurLightmapMesh.VertexIndexOffset
-									= VertexHeapIndexOffset;
-
-								if( ScenarioBSP.LightmapTexture.TagID != -1
-									&& LightmapTextureIndex != -1 )
-								{
-									CurLightmapMesh.BitmapID
-										= ScenarioBSP.LightmapTexture.TagID;
-									CurLightmapMesh.BitmapIndex
-										= LightmapTextureIndex;
-								}
-
-								//// Lightmap vertex buffer data
-								{
-									const std::span<const Blam::LightmapVertex>
-										CurLightmapVertexData
-										= CurMaterial.GetLightmapVertices(
-											BSPData.data(),
-											CurBSPEntry.BSPVirtualBase);
-									// Queue up staging buffer copy
-									StreamBuffer.QueueBufferUpload(
-										std::as_bytes(CurLightmapVertexData),
-										LightmapVertexBuffer.get(),
-										VertexHeapIndexOffset
-											* sizeof(Blam::LightmapVertex));
-								}
-
-								VertexHeapIndexOffset += CurVertexData.size();
-							}
-
-							//// Index Buffer data
-							{
-								const std::span<const std::byte> CurIndexData
-									= std::as_bytes(Surfaces.subspan(
-										CurMaterial.SurfacesIndexStart,
-										CurMaterial.SurfacesCount));
-
-								CurLightmapMesh.IndexCount
-									= CurMaterial.SurfacesCount * 3;
-
-								CurLightmapMesh.IndexOffset
-									= IndexHeapIndexOffset;
-
-								// Queue up staging buffer copy
-								StreamBuffer.QueueBufferUpload(
-									std::as_bytes(CurIndexData),
-									IndexBuffer.get(),
-									IndexHeapIndexOffset
-										* sizeof(std::uint16_t));
-
-								// Increment offsets
-								IndexHeapIndexOffset
-									+= CurMaterial.SurfacesCount * 3;
-							}
+							CurLightmapMesh.BitmapID
+								= ScenarioBSP.LightmapTexture.TagID;
+							CurLightmapMesh.BitmapIndex = LightmapTextureIndex;
 						}
+
+						//// Lightmap vertex buffer data
+						{
+							const std::span<const Blam::LightmapVertex>
+								CurLightmapVertexData
+								= CurMaterial.GetLightmapVertices(
+									BSPData.data(), CurBSPEntry.BSPVirtualBase);
+							// Queue up staging buffer copy
+							StreamBuffer.QueueBufferUpload(
+								std::as_bytes(CurLightmapVertexData),
+								LightmapVertexBuffer.get(),
+								VertexHeapIndexOffset
+									* sizeof(Blam::LightmapVertex));
+						}
+
+						VertexHeapIndexOffset += CurVertexData.size();
+					}
+
+					//// Index Buffer data
+					{
+						const std::span<const std::byte> CurIndexData
+							= std::as_bytes(Surfaces.subspan(
+								CurMaterial.SurfacesIndexStart,
+								CurMaterial.SurfacesCount));
+
+						CurLightmapMesh.IndexCount
+							= CurMaterial.SurfacesCount * 3;
+
+						CurLightmapMesh.IndexOffset = IndexHeapIndexOffset;
+
+						// Queue up staging buffer copy
+						StreamBuffer.QueueBufferUpload(
+							std::as_bytes(CurIndexData), IndexBuffer.get(),
+							IndexHeapIndexOffset * sizeof(std::uint16_t));
+
+						// Increment offsets
+						IndexHeapIndexOffset += CurMaterial.SurfacesCount * 3;
 					}
 				}
 			}
