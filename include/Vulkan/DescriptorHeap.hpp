@@ -21,6 +21,8 @@ private:
 
 	std::vector<vk::DescriptorSetLayoutBinding> Bindings;
 
+	std::vector<bool> AllocationMap;
+
 	DescriptorHeap() = default;
 
 public:
@@ -42,15 +44,18 @@ public:
 		return DescriptorSetLayout.get();
 	};
 
-	const vk::DescriptorSet& GetDescriptorSet(std::uint16_t Index) const
+	const std::span<const vk::UniqueDescriptorSet> GetDescriptorSets() const
 	{
-		return DescripterSets[Index].get();
+		return DescripterSets;
 	};
 
 	std::span<const vk::DescriptorSetLayoutBinding> GetBindings() const
 	{
 		return Bindings;
 	};
+
+	std::optional<vk::DescriptorSet> AllocateDescriptorSet();
+	bool                             FreeDescriptorSet(vk::DescriptorSet Set);
 
 	static std::optional<DescriptorHeap> Create(
 		vk::Device                                      LogicalDevice,

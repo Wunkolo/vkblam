@@ -1,12 +1,55 @@
 #include <Vulkan/DescriptorHeap.hpp>
 
+#include <algorithm>
 #include <optional>
 #include <unordered_map>
-#include <vulkan/vulkan_enums.hpp>
-#include <vulkan/vulkan_structs.hpp>
 
 namespace Vulkan
 {
+
+std::optional<vk::DescriptorSet> DescriptorHeap::AllocateDescriptorSet()
+{
+	// Find a free slot
+	const auto FreeSlot
+		= std::find(AllocationMap.begin(), AllocationMap.end(), false);
+
+	// If there is no free slot, return
+	if( FreeSlot == AllocationMap.end() )
+	{
+		return std::nullopt;
+	}
+
+	// Mark the slot as allocated
+	*FreeSlot = true;
+
+	const std::uint16_t Index = static_cast<std::uint16_t>(
+		std::distance(AllocationMap.begin(), FreeSlot));
+
+	return DescripterSets[Index].get();
+}
+
+bool DescriptorHeap::FreeDescriptorSet(vk::DescriptorSet Set)
+{
+	// Find the descriptor set
+	const auto Found = std::find_if(
+		DescripterSets.begin(), DescripterSets.end(),
+		[&Set](const auto& CurSet) -> bool { return CurSet.get() == Set; });
+
+	// If the descriptor set is not found, return
+	if( Found == DescripterSets.end() )
+	{
+		return false;
+	}
+
+	// Mark the slot as free
+	const std::uint16_t Index = static_cast<std::uint16_t>(
+		std::distance(DescripterSets.begin(), Found));
+
+	AllocationMap[Index] = false;
+
+	return true;
+}
+
 std::optional<DescriptorHeap> DescriptorHeap::Create(
 	vk::Device                                      LogicalDevice,
 	std::span<const vk::DescriptorSetLayoutBinding> Bindings,
@@ -77,12 +120,14 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 
 	// Create descriptor sets
 	{
+		NewDescriptorHeap.DescripterSets.resize(DescriptorHeapCount);
+		NewDescriptorHeap.AllocationMap.resize(DescriptorHeapCount);
+
 		vk::DescriptorSetAllocateInfo AllocateInfo;
 		AllocateInfo.descriptorPool = NewDescriptorHeap.DescriptorPool.get();
 		AllocateInfo.pSetLayouts = &NewDescriptorHeap.DescriptorSetLayout.get();
 		AllocateInfo.descriptorSetCount = 1;
 
-		NewDescriptorHeap.DescripterSets.resize(DescriptorHeapCount);
 		for( auto& CurDescriptorSet : NewDescriptorHeap.DescripterSets )
 		{
 			if( auto AllocateResult
