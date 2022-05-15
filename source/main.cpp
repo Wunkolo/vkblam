@@ -56,7 +56,7 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
 
 std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
-	vk::Device Device, const std::vector<vk::PushConstantRange>& PushConstants,
+	vk::Device Device, std::span<const vk::PushConstantRange> PushConstants,
 	std::span<const vk::DescriptorSetLayout> SetLayouts,
 	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
 	vk::RenderPass  RenderPass,
@@ -849,9 +849,9 @@ int main(int argc, char* argv[])
 
 	auto [DebugDrawPipeline, DebugDrawPipelineLayout] = CreateGraphicsPipeline(
 		Device.get(),
-		{vk::PushConstantRange(
+		{{vk::PushConstantRange(
 			vk::ShaderStageFlagBits::eAllGraphics, 0,
-			sizeof(vkBlam::CameraGlobals))},
+			sizeof(vkBlam::CameraGlobals))}},
 		{{DebugDrawDescriptorPool.GetDescriptorSetLayout()}},
 		DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
 		MainRenderPass.get());
@@ -865,9 +865,9 @@ int main(int argc, char* argv[])
 
 	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout] = CreateGraphicsPipeline(
 		Device.get(),
-		{vk::PushConstantRange(
+		{{vk::PushConstantRange(
 			vk::ShaderStageFlagBits::eAllGraphics, 0,
-			sizeof(vkBlam::CameraGlobals))},
+			sizeof(vkBlam::CameraGlobals))}},
 		{{UnlitDescriptorPool.GetDescriptorSetLayout()}},
 		DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
 		MainRenderPass.get(), vk::PolygonMode::eLine);
@@ -1558,7 +1558,7 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 }
 
 std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
-	vk::Device Device, const std::vector<vk::PushConstantRange>& PushConstants,
+	vk::Device Device, std::span<const vk::PushConstantRange> PushConstants,
 	std::span<const vk::DescriptorSetLayout> SetLayouts,
 	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
 	vk::RenderPass RenderPass, vk::PolygonMode PolygonMode)
