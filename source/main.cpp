@@ -15,6 +15,7 @@
 #include <Common/Literals.hpp>
 
 #include <Vulkan/Debug.hpp>
+#include <Vulkan/DescriptorHeap.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
@@ -46,8 +47,6 @@ static constexpr glm::uvec2              RenderSize = {1024, 1024};
 static constexpr vk::SampleCountFlagBits RenderSamples
 	= vk::SampleCountFlagBits::e4;
 
-vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device);
-
 vk::UniqueRenderPass CreateMainRenderPass(
 	vk::Device              Device,
 	vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1);
@@ -56,15 +55,12 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
 
-std::tuple<
-	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout>
-	CreateGraphicsPipeline(
-		vk::Device                                         Device,
-		const std::vector<vk::PushConstantRange>&          PushConstants,
-		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
-		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-		vk::RenderPass  RenderPass,
-		vk::PolygonMode PolygonMode = vk::PolygonMode::eFill);
+std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
+	vk::Device Device, const std::vector<vk::PushConstantRange>& PushConstants,
+	std::span<const vk::DescriptorSetLayout> SetLayouts,
+	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+	vk::RenderPass  RenderPass,
+	vk::PolygonMode PolygonMode = vk::PolygonMode::eFill);
 
 vk::UniqueShaderModule CreateShaderModule(
 	vk::Device Device, std::span<const std::uint32_t> ShaderCode)
@@ -266,10 +262,6 @@ int main(int argc, char* argv[])
 
 	// Main Rendering queue
 	vk::Queue RenderQueue = Device->getQueue(0, 0);
-
-	//// Create Descriptor Pool
-	vk::UniqueDescriptorPool MainDescriptorPool
-		= CreateMainDescriptorPool(Device.get());
 
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
@@ -848,31 +840,37 @@ int main(int argc, char* argv[])
 			reinterpret_cast<const std::uint32_t*>(UnlitFragShaderData.begin()),
 			UnlitFragShaderData.size() / sizeof(std::uint32_t)));
 
-	auto [DebugDrawPipeline, DebugDrawPipelineLayout, DebugDrawDescriptorLayout]
-		= CreateGraphicsPipeline(
-			Device.get(),
-			{vk::PushConstantRange(
-				vk::ShaderStageFlagBits::eAllGraphics, 0,
-				sizeof(vkBlam::CameraGlobals))},
-			{
-				vk::DescriptorSetLayoutBinding(
-					0, vk::DescriptorType::eCombinedImageSampler, 1,
-					vk::ShaderStageFlagBits::eFragment),
-			},
-			DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
-			MainRenderPass.get());
+	Vulkan::DescriptorHeap DebugDrawDescriptorPool
+		= Vulkan::DescriptorHeap::Create(
+			  Device.get(), {{vk::DescriptorSetLayoutBinding(
+								0, vk::DescriptorType::eCombinedImageSampler, 1,
+								vk::ShaderStageFlagBits::eFragment)}})
+			  .value();
 
-	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout, UnlitDrawDescriptorLayout]
-		= CreateGraphicsPipeline(
-			Device.get(),
-			{vk::PushConstantRange(
-				vk::ShaderStageFlagBits::eAllGraphics, 0,
-				sizeof(vkBlam::CameraGlobals))},
-			{vk::DescriptorSetLayoutBinding(
-				0, vk::DescriptorType::eCombinedImageSampler, 1,
-				vk::ShaderStageFlagBits::eFragment)},
-			DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
-			MainRenderPass.get(), vk::PolygonMode::eLine);
+	auto [DebugDrawPipeline, DebugDrawPipelineLayout] = CreateGraphicsPipeline(
+		Device.get(),
+		{vk::PushConstantRange(
+			vk::ShaderStageFlagBits::eAllGraphics, 0,
+			sizeof(vkBlam::CameraGlobals))},
+		{{DebugDrawDescriptorPool.GetDescriptorSetLayout()}},
+		DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
+		MainRenderPass.get());
+
+	Vulkan::DescriptorHeap UnlitDescriptorPool
+		= Vulkan::DescriptorHeap::Create(
+			  Device.get(), {{vk::DescriptorSetLayoutBinding(
+								0, vk::DescriptorType::eCombinedImageSampler, 1,
+								vk::ShaderStageFlagBits::eFragment)}})
+			  .value();
+
+	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout] = CreateGraphicsPipeline(
+		Device.get(),
+		{vk::PushConstantRange(
+			vk::ShaderStageFlagBits::eAllGraphics, 0,
+			sizeof(vkBlam::CameraGlobals))},
+		{{UnlitDescriptorPool.GetDescriptorSetLayout()}},
+		DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
+		MainRenderPass.get(), vk::PolygonMode::eLine);
 
 	//////// Stream in all images
 
@@ -883,7 +881,7 @@ int main(int argc, char* argv[])
 		std::uint32_t, std::map<std::uint16_t, vk::UniqueImageView>>
 		BitmapViews;
 	std::unordered_map<
-		std::uint32_t, std::map<std::uint16_t, vk::UniqueDescriptorSet>>
+		std::uint32_t, std::map<std::uint16_t, vk::DescriptorSet>>
 		BitmapSets;
 
 	// Queue up image uploads
@@ -1097,30 +1095,24 @@ int main(int argc, char* argv[])
 					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
 
 				// Create descriptor set
-				vk::UniqueDescriptorSet& TargetSet
+				vk::DescriptorSet& TargetSet
 					= BitmapSets[TagEntry.TagID][CurSubTextureIdx];
 
-				vk::DescriptorSetAllocateInfo AllocInfo{};
-				AllocInfo.descriptorPool     = MainDescriptorPool.get();
-				AllocInfo.pSetLayouts        = &DebugDrawDescriptorLayout.get();
-				AllocInfo.descriptorSetCount = 1;
-
-				if( auto AllocResult
-					= Device->allocateDescriptorSetsUnique(AllocInfo);
-					AllocResult.result == vk::Result::eSuccess )
+				if( auto NewSet
+					= DebugDrawDescriptorPool.AllocateDescriptorSet();
+					NewSet )
 				{
-					TargetSet = std::move(AllocResult.value[0]);
+					TargetSet = NewSet.value();
 				}
 				else
 				{
 					std::fprintf(
-						stderr, "Error allocating descriptor set: %s\n",
-						vk::to_string(AllocResult.result).c_str());
+						stderr, "Error allocating bitmap descriptor set\n");
 					return;
 				}
 
 				Vulkan::SetObjectName(
-					Device.get(), TargetSet.get(),
+					Device.get(), TargetSet,
 					"Bitmap Descriptor Set %08X[%2zu] | %s", TagEntry.TagID,
 					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
 
@@ -1131,7 +1123,7 @@ int main(int argc, char* argv[])
 					= vk::ImageLayout::eShaderReadOnlyOptimal;
 
 				vk::WriteDescriptorSet WriteDescriptorSet{};
-				WriteDescriptorSet.dstSet          = TargetSet.get();
+				WriteDescriptorSet.dstSet          = TargetSet;
 				WriteDescriptorSet.dstBinding      = 0;
 				WriteDescriptorSet.dstArrayElement = 0;
 				WriteDescriptorSet.descriptorCount = 1;
@@ -1323,8 +1315,7 @@ int main(int argc, char* argv[])
 						vk::PipelineBindPoint::eGraphics,
 						DebugDrawPipelineLayout.get(), 0,
 						{BitmapSets.at(CurLightmapMesh.BitmapID.value())
-							 .at(CurLightmapMesh.BitmapIndex.value())
-							 .get()},
+							 .at(CurLightmapMesh.BitmapIndex.value())},
 						{});
 				}
 				CommandBuffer->drawIndexed(
@@ -1462,39 +1453,6 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-vk::UniqueDescriptorPool CreateMainDescriptorPool(vk::Device Device)
-{
-	constexpr std::size_t MaxDescriptorType = 512;
-
-	const vk::DescriptorPoolSize PoolSizes[] = {
-		{vk::DescriptorType::eStorageBuffer, MaxDescriptorType},
-		{vk::DescriptorType::eSampler, MaxDescriptorType},
-		{vk::DescriptorType::eSampledImage, MaxDescriptorType},
-		{vk::DescriptorType::eCombinedImageSampler, MaxDescriptorType},
-	};
-
-	vk::DescriptorPoolCreateInfo DescriptorPoolInfo{};
-	DescriptorPoolInfo.flags
-		= vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-	DescriptorPoolInfo.poolSizeCount = std::extent<decltype(PoolSizes)>();
-	DescriptorPoolInfo.pPoolSizes    = PoolSizes;
-	DescriptorPoolInfo.maxSets       = 0xFFFF;
-
-	if( auto CreateResult
-		= Device.createDescriptorPoolUnique(DescriptorPoolInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		return std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating descriptor pool: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return {};
-	}
-}
-
 vk::UniqueRenderPass
 	CreateMainRenderPass(vk::Device Device, vk::SampleCountFlagBits SampleCount)
 {
@@ -1599,41 +1557,18 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	}
 }
 
-std::tuple<
-	vk::UniquePipeline, vk::UniquePipelineLayout, vk::UniqueDescriptorSetLayout>
-	CreateGraphicsPipeline(
-		vk::Device                                         Device,
-		const std::vector<vk::PushConstantRange>&          PushConstants,
-		const std::vector<vk::DescriptorSetLayoutBinding>& Bindings,
-		vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-		vk::RenderPass RenderPass, vk::PolygonMode PolygonMode)
+std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
+	vk::Device Device, const std::vector<vk::PushConstantRange>& PushConstants,
+	std::span<const vk::DescriptorSetLayout> SetLayouts,
+	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+	vk::RenderPass RenderPass, vk::PolygonMode PolygonMode)
 {
-	// Create Descriptor layout
-	vk::DescriptorSetLayoutCreateInfo GraphicsDescriptorLayoutInfo{};
-	GraphicsDescriptorLayoutInfo.bindingCount = Bindings.size();
-	GraphicsDescriptorLayoutInfo.pBindings    = Bindings.data();
-
-	vk::UniqueDescriptorSetLayout GraphicsDescriptorLayout = {};
-	if( auto CreateResult
-		= Device.createDescriptorSetLayoutUnique(GraphicsDescriptorLayoutInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		GraphicsDescriptorLayout = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating descriptor set layout: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return {};
-	}
-
 	// Create Pipeline Layout
 	vk::PipelineLayoutCreateInfo GraphicsPipelineLayoutInfo{};
-	GraphicsPipelineLayoutInfo.setLayoutCount = 1;
-	GraphicsPipelineLayoutInfo.pSetLayouts    = &GraphicsDescriptorLayout.get();
-	GraphicsPipelineLayoutInfo.pushConstantRangeCount = PushConstants.size();
+	GraphicsPipelineLayoutInfo.pSetLayouts            = SetLayouts.data();
+	GraphicsPipelineLayoutInfo.setLayoutCount         = SetLayouts.size();
 	GraphicsPipelineLayoutInfo.pPushConstantRanges    = PushConstants.data();
+	GraphicsPipelineLayoutInfo.pushConstantRangeCount = PushConstants.size();
 
 	vk::UniquePipelineLayout GraphicsPipelineLayout = {};
 	if( auto CreateResult
@@ -1820,8 +1755,7 @@ std::tuple<
 	vk::UniquePipeline Pipeline
 		= Device.createGraphicsPipelineUnique({}, RenderPipelineInfo).value;
 	return std::make_tuple(
-		std::move(Pipeline), std::move(GraphicsPipelineLayout),
-		std::move(GraphicsDescriptorLayout));
+		std::move(Pipeline), std::move(GraphicsPipelineLayout));
 }
 
 std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice)
