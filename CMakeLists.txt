@@ -128,6 +128,7 @@ add_executable(
 	source/main.cpp
 	source/stb_image_write.cpp
 	source/Vulkan/Debug.cpp
+	source/Vulkan/DescriptorHeap.cpp
 	source/Vulkan/Memory.cpp
 	source/Vulkan/StreamBuffer.cpp
 	source/Vulkan/VulkanAPI.cpp
