@@ -69,9 +69,18 @@ constexpr vk::Format BlamToVk(Blam::BitmapEntryFormat Value)
 
 struct CameraGlobals
 {
-	alignas(16) glm::mat4x4 View;
-	alignas(16) glm::mat4x4 Projection;
-	alignas(16) glm::mat4x4 ViewProjection;
+	alignas(16) glm::f32mat4x4 View;
+	alignas(16) glm::f32mat4x4 Projection;
+	alignas(16) glm::f32mat4x4 ViewProjection;
+};
+
+struct SimulationGlobals
+{
+	alignas(16) glm::float32_t Time;
+};
+struct PassGlobals
+{
+	alignas(16) glm::f32vec4 ScreenSize; // {width, height, 1/width, 1/height}
 };
 
 } // namespace vkBlam
