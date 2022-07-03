@@ -497,9 +497,11 @@ int main(int argc, char* argv[])
 		std::uint32_t IndexCount;
 		std::uint32_t IndexOffset;
 
+		std::optional<std::uint32_t> BasemapTag;
+
 		// Some lightmap meshes don't have a lightmap!
-		std::optional<std::uint32_t> BitmapID;
-		std::optional<std::uint32_t> BitmapIndex;
+		std::optional<std::uint32_t> LightmapTag;
+		std::optional<std::uint32_t> LightmapIndex;
 	};
 
 	std::vector<LightmapMesh> LightmapMeshs;
@@ -571,12 +573,23 @@ int main(int argc, char* argv[])
 						CurLightmapMesh.VertexIndexOffset
 							= VertexHeapIndexOffset;
 
+						if( CurMaterial.Shader.Class
+							== Blam::TagClass::ShaderEnvironment )
+						{
+							auto* BasemapTag = CurMap.GetTag<
+								Blam::TagClass::ShaderEnvironment>(
+								CurMaterial.Shader.TagID);
+							CurLightmapMesh.BasemapTag
+								= BasemapTag->BaseMap.TagID;
+						}
+
 						if( ScenarioBSP.LightmapTexture.TagID != -1
 							&& LightmapTextureIndex != -1 )
 						{
-							CurLightmapMesh.BitmapID
+							CurLightmapMesh.LightmapTag
 								= ScenarioBSP.LightmapTexture.TagID;
-							CurLightmapMesh.BitmapIndex = LightmapTextureIndex;
+							CurLightmapMesh.LightmapIndex
+								= LightmapTextureIndex;
 						}
 
 						//// Lightmap vertex buffer data
@@ -853,7 +866,8 @@ int main(int argc, char* argv[])
 		{{vk::PushConstantRange(
 			vk::ShaderStageFlagBits::eAllGraphics, 0,
 			sizeof(vkBlam::CameraGlobals))}},
-		{{DebugDrawDescriptorPool.GetDescriptorSetLayout()}},
+		{{DebugDrawDescriptorPool.GetDescriptorSetLayout(),
+		  DebugDrawDescriptorPool.GetDescriptorSetLayout()}},
 		DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
 		MainRenderPass.get());
 
@@ -869,7 +883,8 @@ int main(int argc, char* argv[])
 		{{vk::PushConstantRange(
 			vk::ShaderStageFlagBits::eAllGraphics, 0,
 			sizeof(vkBlam::CameraGlobals))}},
-		{{UnlitDescriptorPool.GetDescriptorSetLayout()}},
+		{{UnlitDescriptorPool.GetDescriptorSetLayout(),
+		  UnlitDescriptorPool.GetDescriptorSetLayout()}},
 		DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
 		MainRenderPass.get(), vk::PolygonMode::eLine);
 
@@ -1328,14 +1343,23 @@ int main(int argc, char* argv[])
 				Vulkan::InsertDebugLabel(
 					CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
 					i);
-				if( CurLightmapMesh.BitmapID.has_value()
-					&& CurLightmapMesh.BitmapIndex.has_value() )
+				if( CurLightmapMesh.LightmapTag.has_value()
+					&& CurLightmapMesh.LightmapIndex.has_value() )
 				{
 					CommandBuffer->bindDescriptorSets(
 						vk::PipelineBindPoint::eGraphics,
 						DebugDrawPipelineLayout.get(), 0,
-						{BitmapSets.at(CurLightmapMesh.BitmapID.value())
-							 .at(CurLightmapMesh.BitmapIndex.value())},
+						{BitmapSets.at(CurLightmapMesh.LightmapTag.value())
+							 .at(CurLightmapMesh.LightmapIndex.value())},
+						{});
+				}
+				if( CurLightmapMesh.BasemapTag.has_value() )
+				{
+					CommandBuffer->bindDescriptorSets(
+						vk::PipelineBindPoint::eGraphics,
+						DebugDrawPipelineLayout.get(), 1,
+						{BitmapSets.at(CurLightmapMesh.BasemapTag.value())
+							 .at(0)},
 						{});
 				}
 				CommandBuffer->drawIndexed(

@@ -20,6 +20,7 @@ layout( location = 6 ) in f32vec2 InLightmapUV;
 
 // Set 2: Material
 layout( set = 0, binding = 0 ) uniform sampler2D LightmapImage;
+layout( set = 1, binding = 0 ) uniform sampler2D BaseMapImage;
 
 //layout( set = 0, binding = 0 ) uniform sampler2D DiffuseImage;
 
@@ -32,7 +33,7 @@ void main()
 {
 	Attachment0 = f32vec4(
 		//dot(f32vec3(InNormal), vec3(0.0, 0.0, 1.0)).xxx,
-		texture(LightmapImage, InLightmapUV).rgb,
+		texture(LightmapImage, InLightmapUV).rgb * texture(BaseMapImage, InUV).rgb,
 		1.0
 	);
 }	
