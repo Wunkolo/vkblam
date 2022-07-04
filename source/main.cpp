@@ -1290,9 +1290,9 @@ int main(int argc, char* argv[])
 
 			vk::Viewport Viewport = {};
 			Viewport.width        = RenderSize.x;
-			Viewport.height       = RenderSize.y;
+			Viewport.height       = -float(RenderSize.y);
 			Viewport.x            = 0.0f;
-			Viewport.y            = 0.0f;
+			Viewport.y            = RenderSize.y;
 			Viewport.minDepth     = 0.0f;
 			Viewport.maxDepth     = 1.0f;
 			CommandBuffer->setViewport(0, {Viewport});
@@ -1327,7 +1327,7 @@ int main(int argc, char* argv[])
 					glm::radians(72.0f),
 					static_cast<float>(RenderSize.x) / RenderSize.y, 1.0f,
 					1000.0f);
-			CameraGlobals.Projection[1][1] *= -1.0f;
+			// CameraGlobals.Projection[1][1] *= -1.0f;
 
 			CameraGlobals.ViewProjection
 				= CameraGlobals.Projection * CameraGlobals.View;
