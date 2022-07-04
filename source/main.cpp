@@ -1290,9 +1290,9 @@ int main(int argc, char* argv[])
 
 			vk::Viewport Viewport = {};
 			Viewport.width        = RenderSize.x;
-			Viewport.height       = -float(RenderSize.y);
-			Viewport.x            = 0;
-			Viewport.y            = RenderSize.y;
+			Viewport.height       = RenderSize.y;
+			Viewport.x            = 0.0f;
+			Viewport.y            = 0.0f;
 			Viewport.minDepth     = 0.0f;
 			Viewport.maxDepth     = 1.0f;
 			CommandBuffer->setViewport(0, {Viewport});
@@ -1311,19 +1311,23 @@ int main(int argc, char* argv[])
 				= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
 
 			const glm::f32 MaxExtent
-				= glm::compMax(WorldBoundMax - WorldBoundMin) / 2.0f;
+				= glm::compMax(glm::xyz(WorldBoundMax - WorldBoundMin)) / 2.0f;
 
 			CameraGlobals.View = glm::lookAt<glm::f32>(
-				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
+				glm::vec3(WorldBoundMax.x, WorldBoundMax.y, MaxExtent) * 1.5f,
+				// glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
 				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
+				glm::vec3(0, 0, 1));
 
-				glm::vec3(0, 1, 0));
-			CameraGlobals.Projection = glm::ortho<glm::f32>(
-				-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
-				WorldBoundMax.z - WorldBoundMin.z);
-			// = glm::perspective<glm::f32>(
-			// 	glm::radians(60.0f),
-			// 	static_cast<float>(RenderSize.x) / RenderSize.y, 0.1f, 1000.0f);
+			CameraGlobals.Projection
+				// = glm::ortho<glm::f32>(
+				// 	-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
+				// 	WorldBoundMax.z - WorldBoundMin.z);
+				= glm::perspective<glm::f32>(
+					glm::radians(72.0f),
+					static_cast<float>(RenderSize.x) / RenderSize.y, 1.0f,
+					1000.0f);
+			CameraGlobals.Projection[1][1] *= -1.0f;
 
 			CameraGlobals.ViewProjection
 				= CameraGlobals.Projection * CameraGlobals.View;
@@ -1608,7 +1612,8 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	vk::RenderPass RenderPass, vk::PolygonMode PolygonMode)
 {
 	// Create Pipeline Layout
-	vk::PipelineLayoutCreateInfo GraphicsPipelineLayoutInfo{};
+	vk::PipelineLayoutCreateInfo GraphicsPipelineLayoutInfo = {};
+
 	GraphicsPipelineLayoutInfo.pSetLayouts            = SetLayouts.data();
 	GraphicsPipelineLayoutInfo.setLayoutCount         = SetLayouts.size();
 	GraphicsPipelineLayoutInfo.pPushConstantRanges    = PushConstants.data();
@@ -1714,6 +1719,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	InputAssemblyState.primitiveRestartEnable = false;
 
 	vk::PipelineViewportStateCreateInfo ViewportState = {};
+
 	static const vk::Viewport DefaultViewport = {0, 0, 16, 16, 0.0f, 1.0f};
 	static const vk::Rect2D   DefaultScissor  = {{0, 0}, {16, 16}};
 	ViewportState.viewportCount               = 1;
@@ -1722,28 +1728,31 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	ViewportState.pScissors                   = &DefaultScissor;
 
 	vk::PipelineRasterizationStateCreateInfo RasterizationState = {};
-	RasterizationState.depthClampEnable                         = false;
-	RasterizationState.rasterizerDiscardEnable                  = false;
-	RasterizationState.polygonMode                              = PolygonMode;
-	RasterizationState.cullMode        = vk::CullModeFlagBits::eBack;
-	RasterizationState.frontFace       = vk::FrontFace::eCounterClockwise;
-	RasterizationState.depthBiasEnable = false;
+
+	RasterizationState.depthClampEnable        = false;
+	RasterizationState.rasterizerDiscardEnable = false;
+	RasterizationState.polygonMode             = PolygonMode;
+	RasterizationState.cullMode                = vk::CullModeFlagBits::eBack;
+	RasterizationState.frontFace               = vk::FrontFace::eClockwise;
+	RasterizationState.depthBiasEnable         = false;
 	RasterizationState.depthBiasConstantFactor = 0.0f;
 	RasterizationState.depthBiasClamp          = 0.0f;
 	RasterizationState.depthBiasSlopeFactor    = 0.0;
 	RasterizationState.lineWidth               = 1.0f;
 
 	vk::PipelineMultisampleStateCreateInfo MultisampleState = {};
-	MultisampleState.rasterizationSamples                   = RenderSamples;
-	MultisampleState.sampleShadingEnable                    = true;
-	MultisampleState.minSampleShading                       = 1.0f;
-	MultisampleState.pSampleMask                            = nullptr;
-	MultisampleState.alphaToCoverageEnable                  = false;
-	MultisampleState.alphaToOneEnable                       = false;
+
+	MultisampleState.rasterizationSamples  = RenderSamples;
+	MultisampleState.sampleShadingEnable   = true;
+	MultisampleState.minSampleShading      = 1.0f;
+	MultisampleState.pSampleMask           = nullptr;
+	MultisampleState.alphaToCoverageEnable = false;
+	MultisampleState.alphaToOneEnable      = false;
 
 	vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {};
-	DepthStencilState.depthTestEnable                         = true;
-	DepthStencilState.depthWriteEnable                        = true;
+
+	DepthStencilState.depthTestEnable       = true;
+	DepthStencilState.depthWriteEnable      = true;
 	DepthStencilState.depthCompareOp        = vk::CompareOp::eLessOrEqual;
 	DepthStencilState.depthBoundsTestEnable = false;
 	DepthStencilState.stencilTestEnable     = false;
@@ -1753,12 +1762,14 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	DepthStencilState.maxDepthBounds        = 1.0f;
 
 	vk::PipelineColorBlendStateCreateInfo ColorBlendState = {};
-	ColorBlendState.logicOpEnable                         = false;
-	ColorBlendState.logicOp                               = vk::LogicOp::eClear;
-	ColorBlendState.attachmentCount                       = 1;
+
+	ColorBlendState.logicOpEnable   = false;
+	ColorBlendState.logicOp         = vk::LogicOp::eClear;
+	ColorBlendState.attachmentCount = 1;
 
 	vk::PipelineColorBlendAttachmentState BlendAttachmentState = {};
-	BlendAttachmentState.blendEnable                           = false;
+
+	BlendAttachmentState.blendEnable         = false;
 	BlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eZero;
 	BlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
 	BlendAttachmentState.colorBlendOp        = vk::BlendOp::eAdd;
@@ -1781,19 +1792,20 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	DynamicState.pDynamicStates    = DynamicStates;
 
 	vk::GraphicsPipelineCreateInfo RenderPipelineInfo = {};
-	RenderPipelineInfo.stageCount                     = 2; // Vert + Frag stages
-	RenderPipelineInfo.pStages                        = ShaderStagesInfo;
-	RenderPipelineInfo.pVertexInputState              = &VertexInputState;
-	RenderPipelineInfo.pInputAssemblyState            = &InputAssemblyState;
-	RenderPipelineInfo.pViewportState                 = &ViewportState;
-	RenderPipelineInfo.pRasterizationState            = &RasterizationState;
-	RenderPipelineInfo.pMultisampleState              = &MultisampleState;
-	RenderPipelineInfo.pDepthStencilState             = &DepthStencilState;
-	RenderPipelineInfo.pColorBlendState               = &ColorBlendState;
-	RenderPipelineInfo.pDynamicState                  = &DynamicState;
-	RenderPipelineInfo.subpass                        = 0;
-	RenderPipelineInfo.renderPass                     = RenderPass;
-	RenderPipelineInfo.layout = GraphicsPipelineLayout.get();
+
+	RenderPipelineInfo.stageCount          = 2; // Vert + Frag stages
+	RenderPipelineInfo.pStages             = ShaderStagesInfo;
+	RenderPipelineInfo.pVertexInputState   = &VertexInputState;
+	RenderPipelineInfo.pInputAssemblyState = &InputAssemblyState;
+	RenderPipelineInfo.pViewportState      = &ViewportState;
+	RenderPipelineInfo.pRasterizationState = &RasterizationState;
+	RenderPipelineInfo.pMultisampleState   = &MultisampleState;
+	RenderPipelineInfo.pDepthStencilState  = &DepthStencilState;
+	RenderPipelineInfo.pColorBlendState    = &ColorBlendState;
+	RenderPipelineInfo.pDynamicState       = &DynamicState;
+	RenderPipelineInfo.subpass             = 0;
+	RenderPipelineInfo.renderPass          = RenderPass;
+	RenderPipelineInfo.layout              = GraphicsPipelineLayout.get();
 
 	// Create Pipeline
 	vk::UniquePipeline Pipeline
