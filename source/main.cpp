@@ -1037,10 +1037,10 @@ int main(int argc, char* argv[])
 						for( std::size_t CurLayer = 0; CurLayer < LayerCount;
 							 ++CurLayer )
 						{
-							const std::array<std::uint32_t, 3> CurBlockCount
-								= {CurExtent.width / BlockExtent[0],
-								   CurExtent.height / BlockExtent[1],
-								   CurExtent.depth / BlockExtent[2]};
+							const std::array<std::uint32_t, 3> CurBlockCount = {
+								std::max(1u, CurExtent.width / BlockExtent[0]),
+								std::max(1u, CurExtent.height / BlockExtent[1]),
+								std::max(1u, CurExtent.depth / BlockExtent[2])};
 
 							const std::size_t CurPixelDataSize
 								= CurBlockCount[0] * CurBlockCount[1]
