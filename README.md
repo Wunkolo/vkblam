@@ -2,6 +2,12 @@
 
 **vkblam** is a re-implementation of the Halo 1 blam engine's graphics library in vulkan.
 
+Currently this is highly experimental and only generates static images and not a real-time interactable window.
+
+Derelict|Prisoner
+-|-
+![](media/carousel.png) | ![](media/prisoner.png)
+
 # Acknowledgements
 * [Reclaimers](https://c20.reclaimers.net/)
 * [Assembly](https://github.com/XboxChaos/Assembly)
