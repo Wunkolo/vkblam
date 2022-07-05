@@ -19,6 +19,7 @@
 #include <Vulkan/DescriptorHeap.hpp>
 #include <Vulkan/DescriptorUpdateBatch.hpp>
 #include <Vulkan/Memory.hpp>
+#include <Vulkan/Pipeline.hpp>
 #include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
@@ -27,9 +28,6 @@
 #include <mio/mmap.hpp>
 
 #include <cmrc/cmrc.hpp>
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_format_traits.hpp>
-#include <vulkan/vulkan_structs.hpp>
 
 CMRC_DECLARE(vkblam);
 auto DataFS = cmrc::vkblam::get_filesystem();
@@ -63,29 +61,6 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
 	vk::RenderPass  RenderPass,
 	vk::PolygonMode PolygonMode = vk::PolygonMode::eFill);
-
-vk::UniqueShaderModule CreateShaderModule(
-	vk::Device Device, std::span<const std::uint32_t> ShaderCode)
-{
-	vk::ShaderModuleCreateInfo ShaderInfo{};
-	ShaderInfo.pCode    = ShaderCode.data();
-	ShaderInfo.codeSize = ShaderCode.size_bytes();
-
-	vk::UniqueShaderModule ShaderModule{};
-	if( auto CreateResult = Device.createShaderModuleUnique(ShaderInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		ShaderModule = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Failed to create shader module: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return {};
-	}
-	return ShaderModule;
-}
 
 std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice);
 
@@ -838,23 +813,27 @@ int main(int argc, char* argv[])
 	const cmrc::file UnlitFragShaderData
 		= DataFS.open("shaders/Unlit.frag.spv");
 
-	vk::UniqueShaderModule DefaultVertexShaderModule = CreateShaderModule(
-		Device.get(),
-		std::span<const std::uint32_t>(
-			reinterpret_cast<const std::uint32_t*>(
-				DefaultVertShaderData.begin()),
-			DefaultVertShaderData.size() / sizeof(std::uint32_t)));
-	vk::UniqueShaderModule DefaultFragmentShaderModule = CreateShaderModule(
-		Device.get(),
-		std::span<const std::uint32_t>(
-			reinterpret_cast<const std::uint32_t*>(
-				DefaultFragShaderData.begin()),
-			DefaultFragShaderData.size() / sizeof(std::uint32_t)));
-	vk::UniqueShaderModule UnlitFragmentShaderModule = CreateShaderModule(
-		Device.get(),
-		std::span<const std::uint32_t>(
-			reinterpret_cast<const std::uint32_t*>(UnlitFragShaderData.begin()),
-			UnlitFragShaderData.size() / sizeof(std::uint32_t)));
+	vk::UniqueShaderModule DefaultVertexShaderModule
+		= Vulkan::CreateShaderModule(
+			Device.get(),
+			std::span<const std::uint32_t>(
+				reinterpret_cast<const std::uint32_t*>(
+					DefaultVertShaderData.begin()),
+				DefaultVertShaderData.size() / sizeof(std::uint32_t)));
+	vk::UniqueShaderModule DefaultFragmentShaderModule
+		= Vulkan::CreateShaderModule(
+			Device.get(),
+			std::span<const std::uint32_t>(
+				reinterpret_cast<const std::uint32_t*>(
+					DefaultFragShaderData.begin()),
+				DefaultFragShaderData.size() / sizeof(std::uint32_t)));
+	vk::UniqueShaderModule UnlitFragmentShaderModule
+		= Vulkan::CreateShaderModule(
+			Device.get(),
+			std::span<const std::uint32_t>(
+				reinterpret_cast<const std::uint32_t*>(
+					UnlitFragShaderData.begin()),
+				UnlitFragShaderData.size() / sizeof(std::uint32_t)));
 
 	Vulkan::DescriptorHeap DebugDrawDescriptorPool
 		= Vulkan::DescriptorHeap::Create(
