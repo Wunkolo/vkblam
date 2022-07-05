@@ -127,6 +127,7 @@ add_executable(
 	vkblam
 	source/main.cpp
 	source/stb_image_write.cpp
+	source/VkBlam/VkBlam.cpp
 	source/Vulkan/Debug.cpp
 	source/Vulkan/DescriptorHeap.cpp
 	source/Vulkan/DescriptorUpdateBatch.cpp
