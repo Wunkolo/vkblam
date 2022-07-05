@@ -17,6 +17,7 @@
 
 #include <Vulkan/Debug.hpp>
 #include <Vulkan/DescriptorHeap.hpp>
+#include <Vulkan/DescriptorUpdateBatch.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
@@ -177,7 +178,8 @@ int main(int argc, char* argv[])
 		{
 			// Just pick the first physical device
 			if( CurPhysicalDevice.getProperties().deviceType
-				== vk::PhysicalDeviceType::eDiscreteGpu )
+					== vk::PhysicalDeviceType::eDiscreteGpu
+				&& CurPhysicalDevice.getProperties().vendorID == 0x10DE )
 			{
 				PhysicalDevice = CurPhysicalDevice;
 				break;
@@ -990,10 +992,8 @@ int main(int argc, char* argv[])
 
 	// All images are now created and binded to memory
 	{
-		// ImageDescriptorInfos must be able to expand while keeping its
-		// pointers stable. Deque never invalidates its pointers
-		std::deque<vk::DescriptorImageInfo> ImageDescriptorInfos{};
-		std::vector<vk::WriteDescriptorSet> DescriptorWrites{};
+		Vulkan::DescriptorUpdateBatch DescriptorUpdateBatch
+			= Vulkan::DescriptorUpdateBatch::Create(Device.get()).value();
 
 		CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
 			[&](const Blam::TagIndexEntry&               TagEntry,
@@ -1146,28 +1146,13 @@ int main(int argc, char* argv[])
 						CurSubTextureIdx,
 						CurMap.GetTagName(TagEntry.TagID).data());
 
-					ImageDescriptorInfos.emplace_back(
-						vk::DescriptorImageInfo{});
-					vk::DescriptorImageInfo& ImageDescriptorInfo
-						= ImageDescriptorInfos.back();
-					ImageDescriptorInfo.sampler   = DefaultSampler.get();
-					ImageDescriptorInfo.imageView = BitmapImageView.get();
-					ImageDescriptorInfo.imageLayout
-						= vk::ImageLayout::eShaderReadOnlyOptimal;
-
-					DescriptorWrites.push_back(vk::WriteDescriptorSet{});
-					vk::WriteDescriptorSet& WriteDescriptorSet
-						= DescriptorWrites.back();
-					WriteDescriptorSet.dstSet          = TargetSet;
-					WriteDescriptorSet.dstBinding      = 0;
-					WriteDescriptorSet.dstArrayElement = 0;
-					WriteDescriptorSet.descriptorCount = 1;
-					WriteDescriptorSet.descriptorType
-						= vk::DescriptorType::eCombinedImageSampler;
-					WriteDescriptorSet.pImageInfo = &ImageDescriptorInfo;
+					DescriptorUpdateBatch.AddImageSampler(
+						TargetSet, 0, BitmapImageView.get(),
+						DefaultSampler.get(),
+						vk::ImageLayout::eShaderReadOnlyOptimal);
 				}
 			});
-		Device->updateDescriptorSets({DescriptorWrites}, {});
+		DescriptorUpdateBatch.Flush();
 	}
 
 	// Each shader creates a derived graphics pipeline as well as a

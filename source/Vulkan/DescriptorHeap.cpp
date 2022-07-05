@@ -55,7 +55,7 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 	std::span<const vk::DescriptorSetLayoutBinding> Bindings,
 	std::uint16_t                                   DescriptorHeapCount)
 {
-	DescriptorHeap NewDescriptorHeap;
+	DescriptorHeap NewDescriptorHeap = {};
 
 	// Create a histogram of each of the descriptor types and how many of each
 	// the pool should have
