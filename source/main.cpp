@@ -1619,15 +1619,9 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	vk::PipelineVertexInputStateCreateInfo VertexInputState = {};
 
 	static std::array<vk::VertexInputBindingDescription, 2>
-		VertexBindingDescriptions = {};
-
-	VertexBindingDescriptions[0].binding   = 0;
-	VertexBindingDescriptions[0].stride    = sizeof(Blam::Vertex);
-	VertexBindingDescriptions[0].inputRate = vk::VertexInputRate::eVertex;
-
-	VertexBindingDescriptions[1].binding   = 1;
-	VertexBindingDescriptions[1].stride    = sizeof(Blam::LightmapVertex);
-	VertexBindingDescriptions[1].inputRate = vk::VertexInputRate::eVertex;
+		VertexBindingDescriptions
+		= {Vulkan::CreateVertexInputBinding<Blam::Vertex>(0),
+		   Vulkan::CreateVertexInputBinding<Blam::LightmapVertex>(1)};
 
 	VertexInputState.vertexBindingDescriptionCount
 		= std::size(VertexBindingDescriptions);
