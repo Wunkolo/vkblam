@@ -23,6 +23,7 @@
 #include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
+#include <VkBlam/Shaders/ShaderEnvironment.hpp>
 #include <VkBlam/VkBlam.hpp>
 
 #include <mio/mmap.hpp>
@@ -872,14 +873,7 @@ int main(int argc, char* argv[])
 	//////// Stream in all images
 
 	// TagID -> BitmapTag[indexofimage] -> vulkan image
-	std::unordered_map<std::uint32_t, std::map<std::uint16_t, vk::UniqueImage>>
-		BitmapImages;
-	std::unordered_map<
-		std::uint32_t, std::map<std::uint16_t, vk::UniqueImageView>>
-		BitmapViews;
-	std::unordered_map<
-		std::uint32_t, std::map<std::uint16_t, vk::DescriptorSet>>
-		BitmapSets;
+	VkBlam::BitmapHeapT BitmapHeap;
 
 	// Queue up image uploads
 	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
@@ -922,7 +916,7 @@ int main(int argc, char* argv[])
 				}
 
 				auto& ImageDest
-					= BitmapImages[TagEntry.TagID][CurSubTextureIdx];
+					= BitmapHeap.Images[TagEntry.TagID][CurSubTextureIdx];
 
 				if( auto CreateResult = Device->createImageUnique(ImageInfo);
 					CreateResult.result == vk::Result::eSuccess )
@@ -947,7 +941,7 @@ int main(int argc, char* argv[])
 	vk::UniqueDeviceMemory BitmapHeapMemory = {};
 	{
 		std::vector<vk::Image> Bitmaps;
-		for( const auto& CurBitmap : BitmapImages )
+		for( const auto& CurBitmap : BitmapHeap.Images )
 		{
 			for( const auto& CurSubBitmap : CurBitmap.second )
 			{
@@ -970,9 +964,9 @@ int main(int argc, char* argv[])
 	}
 
 	// All images are now created and binded to memory
+	Vulkan::DescriptorUpdateBatch DescriptorUpdateBatch
+		= Vulkan::DescriptorUpdateBatch::Create(Device.get()).value();
 	{
-		Vulkan::DescriptorUpdateBatch DescriptorUpdateBatch
-			= Vulkan::DescriptorUpdateBatch::Create(Device.get()).value();
 
 		CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
 			[&](const Blam::TagIndexEntry&               TagEntry,
@@ -990,7 +984,7 @@ int main(int argc, char* argv[])
 						CurSubTexture.PixelDataSize);
 
 					auto& ImageDest
-						= BitmapImages[TagEntry.TagID][CurSubTextureIdx];
+						= BitmapHeap.Images[TagEntry.TagID][CurSubTextureIdx];
 
 					const std::size_t MipCount
 						= std::max<std::uint16_t>(CurSubTexture.MipmapCount, 1);
@@ -1080,7 +1074,7 @@ int main(int argc, char* argv[])
 						= LayerCount;
 
 					auto& BitmapImageView
-						= BitmapViews[TagEntry.TagID][CurSubTextureIdx];
+						= BitmapHeap.Views[TagEntry.TagID][CurSubTextureIdx];
 
 					if( auto CreateResult
 						= Device->createImageViewUnique(BitmapImageViewInfo);
@@ -1104,7 +1098,7 @@ int main(int argc, char* argv[])
 
 					// Create descriptor set
 					vk::DescriptorSet& TargetSet
-						= BitmapSets[TagEntry.TagID][CurSubTextureIdx];
+						= BitmapHeap.Sets[TagEntry.TagID][CurSubTextureIdx];
 
 					if( auto NewSet
 						= DebugDrawDescriptorPool.AllocateDescriptorSet();
@@ -1131,51 +1125,32 @@ int main(int argc, char* argv[])
 						vk::ImageLayout::eShaderReadOnlyOptimal);
 				}
 			});
-		DescriptorUpdateBatch.Flush();
 	}
 
-	// Each shader creates a derived graphics pipeline as well as a
-	// descriptor set+buffer that flattens out all of the material
-	// parameters that need to be passed onto the fragment shader
-	// itself
-	// There might possibly be some runtime overhead needed for the
-	// animated U/V functions and other animation phases but they might
-	// just be able to be derived at runtime from the current time
-	// without having to maintain a per-shader animation-state
-	// - Thu Apr 28 01:00:23 PM PDT 2022
+	// const auto CheckBitmapRef
+	// 	= [&CurMap, &(BitmapHeap.Images)](
+	// 		  std::uint32_t TagID, const char* Name) -> void {
+	// 	if( BitmapHeap.Images.contains(TagID) )
+	// 	{
+	// 		std::printf("\t-%s: %s\n", Name, CurMap.GetTagName(TagID).data());
+	// 	}
+	// 	else
+	// 	{
+	// 		std::printf("\t-%s: \e[31m%08X\e[0m\n", Name, TagID);
+	// 	}
+	// };
 
-	const auto CheckBitmapRef
-		= [&CurMap,
-		   &BitmapImages](std::uint32_t TagID, const char* Name) -> void {
-		if( BitmapImages.contains(TagID) )
-		{
-			std::printf("\t-%s: %s\n", Name, CurMap.GetTagName(TagID).data());
-		}
-		else
-		{
-			std::printf("\t-%s: \e[31m%08X\e[0m\n", Name, TagID);
-		}
-	};
+	VkBlam::ShaderEnvironment ShaderEnvironments(
+		Device.get(), BitmapHeap, DescriptorUpdateBatch);
 
 	CurMap.VisitTagClass<Blam::TagClass::ShaderEnvironment>(
 		[&](const Blam::TagIndexEntry& TagEntry,
 			const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
 				ShaderEnvironment) -> void {
-			std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
-
-			CheckBitmapRef(ShaderEnvironment.BaseMap.TagID, "BaseMap");
-			CheckBitmapRef(
-				ShaderEnvironment.PrimaryDetailMap.TagID, "PrimaryDetailMap");
-			CheckBitmapRef(
-				ShaderEnvironment.SecondaryDetailMap.TagID,
-				"SecondaryDetailMap");
-			CheckBitmapRef(
-				ShaderEnvironment.MicroDetailMap.TagID, "MicroDetailMap");
-			CheckBitmapRef(ShaderEnvironment.BumpMap.TagID, "BumpMap");
-			CheckBitmapRef(ShaderEnvironment.GlowMap.TagID, "GlowMap");
-			CheckBitmapRef(
-				ShaderEnvironment.ReflectionCubeMap.TagID, "ReflectionCubeMap");
+			ShaderEnvironments.RegisterShader(TagEntry, ShaderEnvironment);
 		});
+
+	DescriptorUpdateBatch.Flush();
 
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
@@ -1317,7 +1292,7 @@ int main(int argc, char* argv[])
 					CommandBuffer->bindDescriptorSets(
 						vk::PipelineBindPoint::eGraphics,
 						DebugDrawPipelineLayout.get(), 0,
-						{BitmapSets.at(CurLightmapMesh.LightmapTag.value())
+						{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
 							 .at(CurLightmapMesh.LightmapIndex.value())},
 						{});
 				}
@@ -1326,7 +1301,7 @@ int main(int argc, char* argv[])
 					CommandBuffer->bindDescriptorSets(
 						vk::PipelineBindPoint::eGraphics,
 						DebugDrawPipelineLayout.get(), 1,
-						{BitmapSets.at(CurLightmapMesh.BasemapTag.value())
+						{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value())
 							 .at(0)},
 						{});
 				}

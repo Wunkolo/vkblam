@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+#include <unordered_map>
+
 #include <Blam/Blam.hpp>
 #include <Blam/Enums.hpp>
 #include <Vulkan/VulkanAPI.hpp>
@@ -16,6 +19,19 @@
 
 namespace VkBlam
 {
+
+// Temporary structure so that the image heap can be passed around
+struct BitmapHeapT
+{
+	std::unordered_map<std::uint32_t, std::map<std::uint16_t, vk::UniqueImage>>
+		Images;
+	std::unordered_map<
+		std::uint32_t, std::map<std::uint16_t, vk::UniqueImageView>>
+		Views;
+	std::unordered_map<
+		std::uint32_t, std::map<std::uint16_t, vk::DescriptorSet>>
+		Sets;
+};
 
 vk::ImageType BlamToVk(Blam::BitmapEntryType Value);
 
