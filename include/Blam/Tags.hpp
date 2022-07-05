@@ -82,6 +82,152 @@ struct Tag<TagClass::Bitmap>
 static_assert(sizeof(Tag<TagClass::Bitmap>) == 0x6C);
 
 template<>
+struct Tag<TagClass::Globals>
+{
+	std::uint32_t Unknown0;
+	std::uint32_t Unknown4;
+	std::uint32_t Unknown8;
+	std::uint32_t UnknownC;
+	std::uint32_t Unknown10;
+	std::uint32_t Unknown14;
+	std::uint32_t Unknown18;
+	std::uint32_t Unknown1C;
+	std::uint32_t Unknown20;
+	std::uint32_t Unknown24;
+	std::uint32_t Unknown28;
+	std::uint32_t Unknown2C;
+	std::uint32_t Unknown30;
+	std::uint32_t Unknown34;
+	std::uint32_t Unknown38;
+	std::uint32_t Unknown3C;
+	std::uint32_t Unknown40;
+	std::uint32_t Unknown44;
+	std::uint32_t Unknown48;
+	std::uint32_t Unknown4C;
+	std::uint32_t Unknown50;
+	std::uint32_t Unknown54;
+	std::uint32_t Unknown58;
+	std::uint32_t Unknown5C;
+	std::uint32_t Unknown60;
+	std::uint32_t Unknown64;
+	std::uint32_t Unknown68;
+	std::uint32_t Unknown6C;
+	std::uint32_t Unknown70;
+	std::uint32_t Unknown74;
+	std::uint32_t Unknown78;
+	std::uint32_t Unknown7C;
+	std::uint32_t Unknown80;
+	std::uint32_t Unknown84;
+	std::uint32_t Unknown88;
+	std::uint32_t Unknown8C;
+	std::uint32_t Unknown90;
+	std::uint32_t Unknown94;
+	std::uint32_t Unknown98;
+	std::uint32_t Unknown9C;
+	std::uint32_t UnknownA0;
+	std::uint32_t UnknownA4;
+	std::uint32_t UnknownA8;
+	std::uint32_t UnknownAC;
+	std::uint32_t UnknownB0;
+	std::uint32_t UnknownB4;
+	std::uint32_t UnknownB8;
+	std::uint32_t UnknownBC;
+	std::uint32_t UnknownC0;
+	std::uint32_t UnknownC4;
+	std::uint32_t UnknownC8;
+	std::uint32_t UnknownCC;
+	std::uint32_t UnknownD0;
+	std::uint32_t UnknownD4;
+	std::uint32_t UnknownD8;
+	std::uint32_t UnknownDC;
+	std::uint32_t UnknownE0;
+	std::uint32_t UnknownE4;
+	std::uint32_t UnknownE8;
+	std::uint32_t UnknownEC;
+	std::uint32_t UnknownF0;
+	std::uint32_t UnknownF4;
+
+	struct SoundEntry
+	{
+		TagReference Sound;
+	};
+
+	TagBlock<SoundEntry> Sounds;
+
+	struct CameraEntry
+	{
+		TagReference DefaultUnitCameraTrack;
+	};
+	TagBlock<CameraEntry> Camera;
+
+	struct PlayerControlEntry
+	{
+	};
+	TagBlock<PlayerControlEntry> PlayerControl;
+
+	struct DifficultyEntry
+	{
+	};
+	TagBlock<DifficultyEntry> Difficulty;
+
+	struct GrenadesEntry
+	{
+	};
+	TagBlock<GrenadesEntry> Grenades;
+
+	struct RasterizerDataEntry
+	{
+	};
+	TagBlock<RasterizerDataEntry> RasterizerData;
+
+	struct InterfaceBitmapEntry
+	{
+	};
+	TagBlock<InterfaceBitmapEntry> InterfaceBitmaps;
+
+	struct WeaponListEntry
+	{
+	};
+	TagBlock<WeaponListEntry> WeaponList;
+
+	struct CheatPowerupEntry
+	{
+	};
+	TagBlock<CheatPowerupEntry> CheatPowerups;
+
+	struct MultiplayerInformationEntry
+	{
+	};
+	TagBlock<MultiplayerInformationEntry> MultiPlayerInformation;
+
+	struct PlayerInformationEntry
+	{
+	};
+	TagBlock<PlayerInformationEntry> PlayerInformation;
+
+	struct FirstPersonInterfaceEntry
+	{
+	};
+	TagBlock<FirstPersonInterfaceEntry> FirstPersonInterface;
+
+	struct FallDamageEntry
+	{
+	};
+	TagBlock<FallDamageEntry> FallDamage;
+
+	struct MaterialEntry
+	{
+	};
+	TagBlock<MaterialEntry> Materials;
+
+	struct PlaylistMemberEntry
+	{
+	};
+	TagBlock<PlaylistMemberEntry> PlaylistMembers;
+};
+static_assert(sizeof(Tag<TagClass::Globals>) == 0x1AC);
+
+template<>
 struct Tag<TagClass::Shader>
 {
 	// Radiocity properties
