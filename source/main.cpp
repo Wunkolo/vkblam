@@ -1,6 +1,3 @@
-#include "Blam/Enums.hpp"
-#include "Blam/Types.hpp"
-#include "Blam/Util.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -17,14 +14,14 @@
 
 #include <Vulkan/Debug.hpp>
 #include <Vulkan/DescriptorHeap.hpp>
-#include <Vulkan/DescriptorUpdateBatch.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/Pipeline.hpp>
-#include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
+#include <VkBlam/Renderer.hpp>
 #include <VkBlam/Shaders/ShaderEnvironment.hpp>
 #include <VkBlam/VkBlam.hpp>
+#include <VkBlam/World.hpp>
 
 #include <mio/mmap.hpp>
 
@@ -96,17 +93,16 @@ int main(int argc, char* argv[])
 
 	std::filesystem::path CurPath(argv[1]);
 	std::filesystem::path BitmapPath(argv[2]);
-	auto                  MapFile    = mio::mmap_source(CurPath.c_str());
-	auto                  BitmapFile = mio::mmap_source(BitmapPath.c_str());
+	auto                  MapFile = mio::mmap_source(CurPath.c_str());
 
 	Blam::MapFile CurMap(std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
 
-	std::fputs(Blam::ToString(CurMap.MapHeader).c_str(), stdout);
-	std::fputs(Blam::ToString(CurMap.TagIndexHeader).c_str(), stdout);
+	VkBlam::World CurWorld = VkBlam::World::Create(CurMap, argv[2]).value();
 
-	glm::f32vec3 WorldBoundMax(std::numeric_limits<float>::min());
-	glm::f32vec3 WorldBoundMin(std::numeric_limits<float>::max());
+	std::fputs(Blam::ToString(CurWorld.GetMapFile().MapHeader).c_str(), stdout);
+	std::fputs(
+		Blam::ToString(CurWorld.GetMapFile().TagIndexHeader).c_str(), stdout);
 
 	//// Create Instance
 	vk::InstanceCreateInfo InstanceInfo = {};
@@ -241,14 +237,17 @@ int main(int argc, char* argv[])
 
 	// Main Rendering queue
 	vk::Queue RenderQueue = Device->getQueue(0, 0);
+	// Todo: Pick the fastest transfer queue here
+	vk::Queue TransferQueue = Device->getQueue(0, 0);
+
+	const Vulkan::Context VulkanContext{
+		Device.get(), PhysicalDevice, RenderQueue, 0, TransferQueue, 0};
+
+	VkBlam::Renderer Renderer = VkBlam::Renderer::Create(VulkanContext).value();
 
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), RenderSamples);
-
-	// Buffers
-	Vulkan::StreamBuffer StreamBuffer(
-		Device.get(), PhysicalDevice, RenderQueue, 0, 64_MiB);
 
 	//// Create Default Sampler
 	vk::SamplerCreateInfo SamplerInfo{};
@@ -490,32 +489,20 @@ int main(int argc, char* argv[])
 		std::uint32_t IndexHeapIndexOffset  = 0;
 
 		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
-				 CurBSPEntry : CurMap.GetScenarioBSPs() )
+				 CurBSPEntry : CurWorld.GetMapFile().GetScenarioBSPs() )
 		{
-			const std::span<const std::byte> BSPData
-				= CurBSPEntry.GetSBSPData(MapFile.data());
+			const std::span<const std::byte> BSPData = CurBSPEntry.GetSBSPData(
+				CurWorld.GetMapFile().GetMapData().data());
 			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-				= CurBSPEntry.GetSBSP(MapFile.data());
+				= CurBSPEntry.GetSBSP(
+					CurWorld.GetMapFile().GetMapData().data());
 
-			WorldBoundMin.x
-				= glm::min(WorldBoundMin.x, ScenarioBSP.WorldBoundsX[0]);
-			WorldBoundMin.y
-				= glm::min(WorldBoundMin.y, ScenarioBSP.WorldBoundsY[0]);
-			WorldBoundMin.z
-				= glm::min(WorldBoundMin.z, ScenarioBSP.WorldBoundsZ[0]);
-
-			WorldBoundMax.x
-				= glm::max(WorldBoundMax.x, ScenarioBSP.WorldBoundsX[1]);
-			WorldBoundMax.y
-				= glm::max(WorldBoundMax.y, ScenarioBSP.WorldBoundsY[1]);
-			WorldBoundMax.z
-				= glm::max(WorldBoundMax.z, ScenarioBSP.WorldBoundsZ[1]);
 			// Lightmap
 			for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
 					 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
 			{
 				const auto& LightmapTextureTag
-					= CurMap.GetTag<Blam::TagClass::Bitmap>(
+					= CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(
 						ScenarioBSP.LightmapTexture.TagID);
 				const std::int16_t LightmapTextureIndex
 					= CurLightmap.LightmapIndex;
@@ -529,7 +516,9 @@ int main(int argc, char* argv[])
 					std::printf(
 						"Shader(%s): %s | Permutation: %04X\n",
 						Blam::FormatTagClass(CurMaterial.Shader.Class).c_str(),
-						CurMap.GetTagName(CurMaterial.Shader.TagID).data(),
+						CurWorld.GetMapFile()
+							.GetTagName(CurMaterial.Shader.TagID)
+							.data(),
 						CurMaterial.ShaderPermutation);
 
 					auto& CurLightmapMesh = LightmapMeshs.emplace_back();
@@ -541,7 +530,7 @@ int main(int argc, char* argv[])
 								BSPData.data(), CurBSPEntry.BSPVirtualBase);
 
 						// Queue up staging buffer copy
-						StreamBuffer.QueueBufferUpload(
+						Renderer.GetStreamBuffer().QueueBufferUpload(
 							std::as_bytes(CurVertexData), VertexBuffer.get(),
 							VertexHeapIndexOffset * sizeof(Blam::Vertex));
 
@@ -554,9 +543,11 @@ int main(int argc, char* argv[])
 						if( CurMaterial.Shader.Class
 							== Blam::TagClass::ShaderEnvironment )
 						{
-							auto* BasemapTag = CurMap.GetTag<
-								Blam::TagClass::ShaderEnvironment>(
-								CurMaterial.Shader.TagID);
+							auto* BasemapTag
+								= CurWorld.GetMapFile()
+									  .GetTag<
+										  Blam::TagClass::ShaderEnvironment>(
+										  CurMaterial.Shader.TagID);
 							if( BasemapTag->BaseMap.TagID != -1 )
 							{
 								CurLightmapMesh.BasemapTag
@@ -580,7 +571,7 @@ int main(int argc, char* argv[])
 								= CurMaterial.GetLightmapVertices(
 									BSPData.data(), CurBSPEntry.BSPVirtualBase);
 							// Queue up staging buffer copy
-							StreamBuffer.QueueBufferUpload(
+							Renderer.GetStreamBuffer().QueueBufferUpload(
 								std::as_bytes(CurLightmapVertexData),
 								LightmapVertexBuffer.get(),
 								VertexHeapIndexOffset
@@ -603,7 +594,7 @@ int main(int argc, char* argv[])
 						CurLightmapMesh.IndexOffset = IndexHeapIndexOffset;
 
 						// Queue up staging buffer copy
-						StreamBuffer.QueueBufferUpload(
+						Renderer.GetStreamBuffer().QueueBufferUpload(
 							std::as_bytes(CurIndexData), IndexBuffer.get(),
 							IndexHeapIndexOffset * sizeof(std::uint16_t));
 
@@ -841,9 +832,9 @@ int main(int argc, char* argv[])
 
 	Vulkan::DescriptorHeap DebugDrawDescriptorPool
 		= Vulkan::DescriptorHeap::Create(
-			  Device.get(), {{vk::DescriptorSetLayoutBinding(
-								0, vk::DescriptorType::eCombinedImageSampler, 1,
-								vk::ShaderStageFlagBits::eFragment)}})
+			  VulkanContext, {{vk::DescriptorSetLayoutBinding(
+								 0, vk::DescriptorType::eCombinedImageSampler,
+								 1, vk::ShaderStageFlagBits::eFragment)}})
 			  .value();
 
 	auto [DebugDrawPipeline, DebugDrawPipelineLayout] = CreateGraphicsPipeline(
@@ -858,9 +849,9 @@ int main(int argc, char* argv[])
 
 	Vulkan::DescriptorHeap UnlitDescriptorPool
 		= Vulkan::DescriptorHeap::Create(
-			  Device.get(), {{vk::DescriptorSetLayoutBinding(
-								0, vk::DescriptorType::eCombinedImageSampler, 1,
-								vk::ShaderStageFlagBits::eFragment)}})
+			  VulkanContext, {{vk::DescriptorSetLayoutBinding(
+								 0, vk::DescriptorType::eCombinedImageSampler,
+								 1, vk::ShaderStageFlagBits::eFragment)}})
 			  .value();
 
 	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout] = CreateGraphicsPipeline(
@@ -926,12 +917,14 @@ int main(int argc, char* argv[])
 	const auto CreateBitmap
 		= [&](const Blam::TagIndexEntry&               TagEntry,
 			  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-		// std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
+		// std::printf("%s\n",
+		// CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 		for( std::size_t CurSubTextureIdx = 0;
 			 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 		{
 			const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-				MapFile.data(), CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
+				CurWorld.GetMapFile().GetMapData().data(),
+				CurWorld.GetMapFile().TagHeapVirtualBase)[CurSubTextureIdx];
 
 			auto& BitmapDest
 				= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
@@ -941,18 +934,19 @@ int main(int argc, char* argv[])
 			Vulkan::SetObjectName(
 				Device.get(), BitmapDest.Image.get(), "Bitmap %08X[%2zu] | %s",
 				TagEntry.TagID, CurSubTextureIdx,
-				CurMap.GetTagName(TagEntry.TagID).data());
+				CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 		}
 	};
 
-	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(CreateBitmap);
+	CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(CreateBitmap);
 
-	CurMap.VisitTagClass<Blam::TagClass::Globals>(
+	CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Globals>(
 		[&](const Blam::TagIndexEntry&                TagEntry,
 			const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
 			const auto& CurGlobal = Globals;
 			for( const auto& RasterData : CurGlobal.RasterizerData.GetSpan(
-					 MapFile.data(), CurMap.TagHeapVirtualBase) )
+					 CurWorld.GetMapFile().GetMapData().data(),
+					 CurWorld.GetMapFile().TagHeapVirtualBase) )
 			{
 				BitmapHeap.Default2D   = RasterData.Default2D.TagID;
 				BitmapHeap.Default3D   = RasterData.Default3D.TagID;
@@ -988,13 +982,11 @@ int main(int argc, char* argv[])
 	}
 
 	// All images are now created and binded to memory
-	Vulkan::DescriptorUpdateBatch DescriptorUpdateBatch
-		= Vulkan::DescriptorUpdateBatch::Create(Device.get()).value();
 	{
 		// Todo: This would be the draft of a bitmap manager's stream
 		// function
 		const auto StreamBitmapImage
-			= [&StreamBuffer, &Device](
+			= [&Renderer, &Device](
 				  VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
 				  Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry,
 				  std::span<const std::byte> PixelData) -> bool {
@@ -1027,7 +1019,7 @@ int main(int argc, char* argv[])
 						= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
 						* BlockSize;
 
-					StreamBuffer.QueueImageUpload(
+					Renderer.GetStreamBuffer().QueueImageUpload(
 						PixelData.subspan(PixelDataOff, CurPixelDataSize),
 						TargetBitmap.Image.get(), vk::Offset3D(0, 0, 0),
 						CurExtent,
@@ -1101,10 +1093,11 @@ int main(int argc, char* argv[])
 				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 			{
 				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-					MapFile.data(),
-					CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
+					CurWorld.GetMapFile().GetMapData().data(),
+					CurWorld.GetMapFile().TagHeapVirtualBase)[CurSubTextureIdx];
 				const auto PixelData = std::span<const std::byte>(
-					reinterpret_cast<const std::byte*>(BitmapFile.data())
+					reinterpret_cast<const std::byte*>(
+						CurWorld.GetMapFile().GetMapData().data())
 						+ CurSubTexture.PixelDataOffset,
 					CurSubTexture.PixelDataSize);
 
@@ -1116,7 +1109,8 @@ int main(int argc, char* argv[])
 				Vulkan::SetObjectName(
 					Device.get(), BitmapDest.View.get(),
 					"Bitmap View %08X[%2zu] | %s", TagEntry.TagID,
-					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
+					CurSubTextureIdx,
+					CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 
 				// Create descriptor set
 				vk::DescriptorSet& TargetSet
@@ -1138,34 +1132,36 @@ int main(int argc, char* argv[])
 				Vulkan::SetObjectName(
 					Device.get(), TargetSet,
 					"Bitmap Descriptor Set %08X[%2zu] | %s", TagEntry.TagID,
-					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
+					CurSubTextureIdx,
+					CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 
-				DescriptorUpdateBatch.AddImageSampler(
+				Renderer.GetDescriptorUpdateBatch().AddImageSampler(
 					TargetSet, 0, BitmapDest.View.get(), DefaultSampler.get(),
 					vk::ImageLayout::eShaderReadOnlyOptimal);
 			}
 		};
 
-		CurMap.VisitTagClass<Blam::TagClass::Bitmap>(StreamBitmap);
+		CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
+			StreamBitmap);
 
 		// StreamBitmap(
-		// 	*CurMap.GetTagIndexEntry(BitmapHeap.Default2D),
-		// 	*CurMap.GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default2D));
+		// 	*CurWorld.GetMapFile().GetTagIndexEntry(BitmapHeap.Default2D),
+		// 	*CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default2D));
 		// StreamBitmap(
-		// 	*CurMap.GetTagIndexEntry(BitmapHeap.Default3D),
-		// 	*CurMap.GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default3D));
+		// 	*CurWorld.GetMapFile().GetTagIndexEntry(BitmapHeap.Default3D),
+		// 	*CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default3D));
 		// StreamBitmap(
-		// 	*CurMap.GetTagIndexEntry(BitmapHeap.DefaultCube),
-		// 	*CurMap.GetTag<Blam::TagClass::Bitmap>(BitmapHeap.DefaultCube));
+		// 	*CurWorld.GetMapFile().GetTagIndexEntry(BitmapHeap.DefaultCube),
+		// 	*CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(BitmapHeap.DefaultCube));
 	}
 
 	// const auto CheckBitmapRef
-	// 	= [&CurMap, &(BitmapHeap.Images)](
+	// 	= [&CurWorld, &(BitmapHeap.Images)](
 	// 		  std::uint32_t TagID, const char* Name) -> void {
 	// 	if( BitmapHeap.Images.contains(TagID) )
 	// 	{
 	// 		std::printf("\t-%s: %s\n", Name,
-	// CurMap.GetTagName(TagID).data());
+	// CurWorld.GetMapFile().GetTagName(TagID).data());
 	// 	}
 	// 	else
 	// 	{
@@ -1174,16 +1170,16 @@ int main(int argc, char* argv[])
 	// };
 
 	VkBlam::ShaderEnvironment ShaderEnvironments(
-		Device.get(), BitmapHeap, DescriptorUpdateBatch);
+		VulkanContext, BitmapHeap, Renderer.GetDescriptorUpdateBatch());
 
-	CurMap.VisitTagClass<Blam::TagClass::ShaderEnvironment>(
+	CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::ShaderEnvironment>(
 		[&](const Blam::TagIndexEntry& TagEntry,
 			const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
 				ShaderEnvironment) -> void {
 			ShaderEnvironments.RegisterShader(TagEntry, ShaderEnvironment);
 		});
 
-	DescriptorUpdateBatch.Flush();
+	Renderer.GetDescriptorUpdateBatch().Flush();
 
 	//// Create Command Pool
 	vk::CommandPoolCreateInfo CommandPoolInfo = {};
@@ -1279,16 +1275,19 @@ int main(int argc, char* argv[])
 
 			VkBlam::CameraGlobals CameraGlobals = {};
 
+			const auto WorldBounds = CurWorld.GetWorldBounds();
+
 			const glm::vec3 WorldCenter
-				= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
+				= glm::mix(WorldBounds[0], WorldBounds[1], 0.5);
 
 			const glm::f32 MaxExtent
-				= glm::compMax(glm::xyz(WorldBoundMax - WorldBoundMin)) / 2.0f;
+				= glm::compMax(glm::xyz(WorldBounds[1] - WorldBounds[0]))
+				/ 2.0f;
 
 			CameraGlobals.View = glm::lookAt<glm::f32>(
-				glm::vec3(WorldBoundMax.x, WorldBoundMax.y, MaxExtent) * 1.5f,
+				glm::vec3(WorldBounds[1].x, WorldBounds[1].y, MaxExtent) * 1.5f,
 				// glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
-				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMin.z),
+				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBounds[0].z),
 				glm::vec3(0, 0, 1));
 
 			CameraGlobals.Projection
@@ -1420,7 +1419,7 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	const std::uint64_t UploadTick = StreamBuffer.Flush();
+	const std::uint64_t UploadTick = Renderer.GetStreamBuffer().Flush();
 
 	// Submit work
 	vk::UniqueFence Fence = {};
@@ -1446,7 +1445,7 @@ int main(int argc, char* argv[])
 	SubmitInfo.pCommandBuffers    = &CommandBuffer.get();
 
 	SubmitInfo.waitSemaphoreCount = 1;
-	SubmitInfo.pWaitSemaphores    = &StreamBuffer.GetSemaphore();
+	SubmitInfo.pWaitSemaphores    = &Renderer.GetStreamBuffer().GetSemaphore();
 
 	static const vk::PipelineStageFlags WaitStage
 		= vk::PipelineStageFlagBits::eTransfer;
@@ -1485,8 +1484,9 @@ int main(int argc, char* argv[])
 
 	stbi_write_png_compression_level = 0;
 	stbi_write_png(
-		("./" + CurPath.stem().string() + ".png").c_str(), RenderSize.x,
-		RenderSize.y, 4, StagingBufferData.data(), 0);
+		("./" + std::filesystem::path(argv[2]).stem().string() + ".png")
+			.c_str(),
+		RenderSize.x, RenderSize.y, 4, StagingBufferData.data(), 0);
 
 	return EXIT_SUCCESS;
 }

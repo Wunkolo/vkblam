@@ -16,6 +16,7 @@
 namespace Blam
 {
 
+// Encapsulates a halo map-cache file
 class MapFile
 {
 private:
@@ -27,6 +28,11 @@ public:
 	const Blam::MapHeader&      MapHeader;
 	const Blam::TagIndexHeader& TagIndexHeader;
 	const std::uint32_t         TagHeapVirtualBase;
+
+	std::span<const std::byte> GetMapData() const
+	{
+		return MapData;
+	}
 
 	std::span<const Blam::TagIndexEntry> GetTagIndexArray() const;
 
