@@ -177,7 +177,68 @@ struct Tag<TagClass::Globals>
 
 	struct RasterizerDataEntry
 	{
+		TagReference  DistanceAttenuation;
+		TagReference  VectorNormalization;
+		TagReference  AtmosphericFogDensity;
+		TagReference  PlanarFogDensity;
+		TagReference  LinearCornerFade;
+		TagReference  ActiveCamouflageDistortion;
+		TagReference  Glow;
+		std::uint32_t Unknown70;
+		std::uint32_t Unknown74;
+		std::uint32_t Unknown78;
+		std::uint32_t Unknown7C;
+		std::uint32_t Unknown80;
+		std::uint32_t Unknown84;
+		std::uint32_t Unknown88;
+		std::uint32_t Unknown8C;
+		std::uint32_t Unknown90;
+		std::uint32_t Unknown94;
+		std::uint32_t Unknown98;
+		std::uint32_t Unknown9C;
+		std::uint32_t UnknownA0;
+		std::uint32_t UnknownA4;
+		std::uint32_t UnknownA8;
+
+		TagReference Default2D;
+		TagReference Default3D;
+		TagReference DefaultCube;
+
+		TagReference Test0;
+		TagReference Test1;
+		TagReference Test2;
+		TagReference Test3;
+
+		TagReference VideoScanlineMap;
+		TagReference VideoNoiseMap;
+
+		std::uint32_t Unknown13C;
+		std::uint32_t Unknown140;
+		std::uint32_t Unknown144;
+		std::uint32_t Unknown148;
+		std::uint32_t Unknown14C;
+		std::uint32_t Unknown150;
+		std::uint32_t Unknown154;
+		std::uint32_t Unknown158;
+		std::uint32_t Unknown15C;
+		std::uint32_t Unknown160;
+		std::uint32_t Unknown164;
+		std::uint32_t Unknown168;
+		std::uint32_t Unknown16C;
+
+		// Active Camo
+		std::uint16_t ActiveCamoflageFlags;
+		std::uint16_t Unknown172;
+
+		float          RefractionAmount;
+		float          DistanceFalloff;
+		Blam::Vector3f TintColor;
+		float          HyperStealthRefraction;
+		float          HyperStealthDistanceFalloff;
+		Blam::Vector3f HyperStealthTintColor;
+		TagReference   DistanceAttenuation2D;
 	};
+	static_assert(sizeof(RasterizerDataEntry) == 0x1AC);
 	TagBlock<RasterizerDataEntry> RasterizerData;
 
 	struct InterfaceBitmapEntry
