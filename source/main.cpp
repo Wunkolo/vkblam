@@ -876,7 +876,6 @@ int main(int argc, char* argv[])
 	VkBlam::BitmapHeapT BitmapHeap;
 
 	// Create image handles
-
 	const auto CreateBitmapImage
 		= [&Device](
 			  VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
@@ -921,26 +920,40 @@ int main(int argc, char* argv[])
 		return true;
 	};
 
-	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
-		[&](const Blam::TagIndexEntry&               TagEntry,
-			const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-			// std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
-			for( std::size_t CurSubTextureIdx = 0;
-				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
+	const auto CreateBitmap
+		= [&](const Blam::TagIndexEntry&               TagEntry,
+			  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+		// std::printf("%s\n", CurMap.GetTagName(TagEntry.TagID).data());
+		for( std::size_t CurSubTextureIdx = 0;
+			 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
+		{
+			const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
+				MapFile.data(), CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
+
+			auto& BitmapDest
+				= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
+
+			CreateBitmapImage(BitmapDest, CurSubTexture);
+
+			Vulkan::SetObjectName(
+				Device.get(), BitmapDest.Image.get(), "Bitmap %08X[%2zu] | %s",
+				TagEntry.TagID, CurSubTextureIdx,
+				CurMap.GetTagName(TagEntry.TagID).data());
+		}
+	};
+
+	CurMap.VisitTagClass<Blam::TagClass::Bitmap>(CreateBitmap);
+
+	CurMap.VisitTagClass<Blam::TagClass::Globals>(
+		[&](const Blam::TagIndexEntry&                TagEntry,
+			const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
+			const auto& CurGlobal = Globals;
+			for( const auto& RasterData : CurGlobal.RasterizerData.GetSpan(
+					 MapFile.data(), CurMap.TagHeapVirtualBase) )
 			{
-				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-					MapFile.data(),
-					CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
-
-				auto& BitmapDest
-					= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
-
-				CreateBitmapImage(BitmapDest, CurSubTexture);
-
-				Vulkan::SetObjectName(
-					Device.get(), BitmapDest.Image.get(),
-					"Bitmap %08X[%2zu] | %s", TagEntry.TagID, CurSubTextureIdx,
-					CurMap.GetTagName(TagEntry.TagID).data());
+				BitmapHeap.Default2D   = RasterData.Default2D.TagID;
+				BitmapHeap.Default3D   = RasterData.Default3D.TagID;
+				BitmapHeap.DefaultCube = RasterData.DefaultCube.TagID;
 			}
 		});
 
@@ -975,8 +988,9 @@ int main(int argc, char* argv[])
 	Vulkan::DescriptorUpdateBatch DescriptorUpdateBatch
 		= Vulkan::DescriptorUpdateBatch::Create(Device.get()).value();
 	{
-		// Todo: This would be the draft of a bitmap manager's stream function
-		const auto StreamBitmap
+		// Todo: This would be the draft of a bitmap manager's stream
+		// function
+		const auto StreamBitmapImage
 			= [&StreamBuffer, &Device](
 				  VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
 				  Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry,
@@ -1077,61 +1091,69 @@ int main(int argc, char* argv[])
 			return true;
 		};
 
-		CurMap.VisitTagClass<Blam::TagClass::Bitmap>(
-			[&](const Blam::TagIndexEntry&               TagEntry,
-				const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-				for( std::size_t CurSubTextureIdx = 0;
-					 CurSubTextureIdx < Bitmap.Bitmaps.Count;
-					 ++CurSubTextureIdx )
+		const auto StreamBitmap
+			= [&](const Blam::TagIndexEntry&               TagEntry,
+				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+			for( std::size_t CurSubTextureIdx = 0;
+				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
+			{
+				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
+					MapFile.data(),
+					CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
+				const auto PixelData = std::span<const std::byte>(
+					reinterpret_cast<const std::byte*>(BitmapFile.data())
+						+ CurSubTexture.PixelDataOffset,
+					CurSubTexture.PixelDataSize);
+
+				auto& BitmapDest
+					= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
+
+				StreamBitmapImage(BitmapDest, CurSubTexture, PixelData);
+
+				Vulkan::SetObjectName(
+					Device.get(), BitmapDest.View.get(),
+					"Bitmap View %08X[%2zu] | %s", TagEntry.TagID,
+					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
+
+				// Create descriptor set
+				vk::DescriptorSet& TargetSet
+					= BitmapHeap.Sets[TagEntry.TagID][CurSubTextureIdx];
+
+				if( auto NewSet
+					= DebugDrawDescriptorPool.AllocateDescriptorSet();
+					NewSet )
 				{
-					const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-						MapFile.data(),
-						CurMap.TagHeapVirtualBase)[CurSubTextureIdx];
-					const auto PixelData = std::span<const std::byte>(
-						reinterpret_cast<const std::byte*>(BitmapFile.data())
-							+ CurSubTexture.PixelDataOffset,
-						CurSubTexture.PixelDataSize);
-
-					auto& BitmapDest
-						= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
-
-					StreamBitmap(BitmapDest, CurSubTexture, PixelData);
-
-					Vulkan::SetObjectName(
-						Device.get(), BitmapDest.View.get(),
-						"Bitmap View %08X[%2zu] | %s", TagEntry.TagID,
-						CurSubTextureIdx,
-						CurMap.GetTagName(TagEntry.TagID).data());
-
-					// Create descriptor set
-					vk::DescriptorSet& TargetSet
-						= BitmapHeap.Sets[TagEntry.TagID][CurSubTextureIdx];
-
-					if( auto NewSet
-						= DebugDrawDescriptorPool.AllocateDescriptorSet();
-						NewSet )
-					{
-						TargetSet = NewSet.value();
-					}
-					else
-					{
-						std::fprintf(
-							stderr, "Error allocating bitmap descriptor set\n");
-						return;
-					}
-
-					Vulkan::SetObjectName(
-						Device.get(), TargetSet,
-						"Bitmap Descriptor Set %08X[%2zu] | %s", TagEntry.TagID,
-						CurSubTextureIdx,
-						CurMap.GetTagName(TagEntry.TagID).data());
-
-					DescriptorUpdateBatch.AddImageSampler(
-						TargetSet, 0, BitmapDest.View.get(),
-						DefaultSampler.get(),
-						vk::ImageLayout::eShaderReadOnlyOptimal);
+					TargetSet = NewSet.value();
 				}
-			});
+				else
+				{
+					std::fprintf(
+						stderr, "Error allocating bitmap descriptor set\n");
+					return;
+				}
+
+				Vulkan::SetObjectName(
+					Device.get(), TargetSet,
+					"Bitmap Descriptor Set %08X[%2zu] | %s", TagEntry.TagID,
+					CurSubTextureIdx, CurMap.GetTagName(TagEntry.TagID).data());
+
+				DescriptorUpdateBatch.AddImageSampler(
+					TargetSet, 0, BitmapDest.View.get(), DefaultSampler.get(),
+					vk::ImageLayout::eShaderReadOnlyOptimal);
+			}
+		};
+
+		CurMap.VisitTagClass<Blam::TagClass::Bitmap>(StreamBitmap);
+
+		// StreamBitmap(
+		// 	*CurMap.GetTagIndexEntry(BitmapHeap.Default2D),
+		// 	*CurMap.GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default2D));
+		// StreamBitmap(
+		// 	*CurMap.GetTagIndexEntry(BitmapHeap.Default3D),
+		// 	*CurMap.GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default3D));
+		// StreamBitmap(
+		// 	*CurMap.GetTagIndexEntry(BitmapHeap.DefaultCube),
+		// 	*CurMap.GetTag<Blam::TagClass::Bitmap>(BitmapHeap.DefaultCube));
 	}
 
 	// const auto CheckBitmapRef
@@ -1139,7 +1161,8 @@ int main(int argc, char* argv[])
 	// 		  std::uint32_t TagID, const char* Name) -> void {
 	// 	if( BitmapHeap.Images.contains(TagID) )
 	// 	{
-	// 		std::printf("\t-%s: %s\n", Name, CurMap.GetTagName(TagID).data());
+	// 		std::printf("\t-%s: %s\n", Name,
+	// CurMap.GetTagName(TagID).data());
 	// 	}
 	// 	else
 	// 	{
@@ -1326,11 +1349,10 @@ int main(int argc, char* argv[])
 			// for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
 			// {
 			// 	Vulkan::InsertDebugLabel(
-			// 		CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
-			// 		i);
-			// 	CommandBuffer->drawIndexed(
-			// 		IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i],
-			// 		0);
+			// 		CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw:
+			// %zu", 		i); 	CommandBuffer->drawIndexed(
+			// IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i],
+			// 0);
 			// }
 
 			CommandBuffer->endRenderPass();

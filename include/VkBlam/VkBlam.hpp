@@ -32,9 +32,9 @@ struct BitmapHeapT
 	std::unordered_map<std::uint32_t, std::map<std::uint16_t, Bitmap>> Bitmaps;
 
 	// From the globals tag
-	Bitmap Default2D;
-	Bitmap Default3D;
-	Bitmap DefaultCube;
+	std::uint32_t Default2D;
+	std::uint32_t Default3D;
+	std::uint32_t DefaultCube;
 
 	// Remove me
 	std::unordered_map<
