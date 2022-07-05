@@ -1,4 +1,6 @@
-#include "VulkanAPI.hpp"
+#pragma once
+
+#include <Vulkan/VulkanAPI.hpp>
 
 #include <type_traits>
 #include <utility>

@@ -1,7 +1,8 @@
-#include "VulkanAPI.hpp"
+#pragma once
+
+#include <Vulkan/VulkanAPI.hpp>
 
 #include <span>
-#include <vulkan/vulkan_enums.hpp>
 
 namespace Vulkan
 {

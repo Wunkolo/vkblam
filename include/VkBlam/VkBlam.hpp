@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Blam/Blam.hpp>
 #include <Blam/Enums.hpp>
 #include <Vulkan/VulkanAPI.hpp>
@@ -11,8 +13,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/component_wise.hpp>
 #include <glm/gtx/vec_swizzle.hpp>
-
-#pragma once
 
 namespace VkBlam
 {
