@@ -67,6 +67,10 @@ ShaderEnvironment::ShaderEnvironment(
 		"Shader Environment Descriptor Set Layout");
 }
 
+ShaderEnvironment::~ShaderEnvironment()
+{
+}
+
 bool ShaderEnvironment::RegisterShader(
 	const Blam::TagIndexEntry&               TagEntry,
 	const Blam::Tag<Blam::TagClass::Shader>& Shader)
@@ -79,7 +83,20 @@ bool ShaderEnvironment::RegisterShader(
 		= reinterpret_cast<const Blam::Tag<Blam::TagClass::ShaderEnvironment>*>(
 			&Shader);
 
-	vk::DescriptorSet NewSet = DescriptorHeap->AllocateDescriptorSet().value();
+	vk::DescriptorSet NewSet = {};
+
+	if( auto AllocResult = DescriptorHeap->AllocateDescriptorSet();
+		AllocResult.has_value() )
+	{
+		NewSet = AllocResult.value();
+	}
+	else
+	{
+		// Error allocating new descriptor set
+		return false;
+	}
+
+	ShaderEnvironmentBindings[TagEntry.TagID] = NewSet;
 
 	const auto WriteImageTag
 		= [&](std::uint8_t Binding, std::uint32_t TagID,
