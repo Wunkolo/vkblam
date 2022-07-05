@@ -7,6 +7,7 @@
 #include <Blam/Enums.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 #include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_handles.hpp>
 
 #define GLM_FORCE_RADIANS
 //#define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -23,11 +24,19 @@ namespace VkBlam
 // Temporary structure so that the image heap can be passed around
 struct BitmapHeapT
 {
-	std::unordered_map<std::uint32_t, std::map<std::uint16_t, vk::UniqueImage>>
-		Images;
-	std::unordered_map<
-		std::uint32_t, std::map<std::uint16_t, vk::UniqueImageView>>
-		Views;
+	struct Bitmap
+	{
+		vk::UniqueImage     Image;
+		vk::UniqueImageView View;
+	};
+	std::unordered_map<std::uint32_t, std::map<std::uint16_t, Bitmap>> Bitmaps;
+
+	// From the globals tag
+	Bitmap Default2D;
+	Bitmap Default3D;
+	Bitmap DefaultCube;
+
+	// Remove me
 	std::unordered_map<
 		std::uint32_t, std::map<std::uint16_t, vk::DescriptorSet>>
 		Sets;

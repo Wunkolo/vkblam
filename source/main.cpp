@@ -916,7 +916,8 @@ int main(int argc, char* argv[])
 				}
 
 				auto& ImageDest
-					= BitmapHeap.Images[TagEntry.TagID][CurSubTextureIdx];
+					= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx]
+						  .Image;
 
 				if( auto CreateResult = Device->createImageUnique(ImageInfo);
 					CreateResult.result == vk::Result::eSuccess )
@@ -941,11 +942,11 @@ int main(int argc, char* argv[])
 	vk::UniqueDeviceMemory BitmapHeapMemory = {};
 	{
 		std::vector<vk::Image> Bitmaps;
-		for( const auto& CurBitmap : BitmapHeap.Images )
+		for( const auto& CurBitmap : BitmapHeap.Bitmaps )
 		{
 			for( const auto& CurSubBitmap : CurBitmap.second )
 			{
-				Bitmaps.emplace_back(CurSubBitmap.second.get());
+				Bitmaps.emplace_back(CurSubBitmap.second.Image.get());
 			}
 		}
 		if( auto [Result, Value]
@@ -984,7 +985,8 @@ int main(int argc, char* argv[])
 						CurSubTexture.PixelDataSize);
 
 					auto& ImageDest
-						= BitmapHeap.Images[TagEntry.TagID][CurSubTextureIdx];
+						= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx]
+							  .Image;
 
 					const std::size_t MipCount
 						= std::max<std::uint16_t>(CurSubTexture.MipmapCount, 1);
@@ -1074,7 +1076,8 @@ int main(int argc, char* argv[])
 						= LayerCount;
 
 					auto& BitmapImageView
-						= BitmapHeap.Views[TagEntry.TagID][CurSubTextureIdx];
+						= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx]
+							  .View;
 
 					if( auto CreateResult
 						= Device->createImageViewUnique(BitmapImageViewInfo);
