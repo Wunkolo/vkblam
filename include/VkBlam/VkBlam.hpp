@@ -1,6 +1,6 @@
-#include "Blam/Blam.hpp"
-#include "Blam/Enums.hpp"
-#include "Vulkan/VulkanAPI.hpp"
+#include <Blam/Blam.hpp>
+#include <Blam/Enums.hpp>
+#include <Vulkan/VulkanAPI.hpp>
 #include <vulkan/vulkan_enums.hpp>
 
 #define GLM_FORCE_RADIANS
@@ -14,7 +14,7 @@
 
 #pragma once
 
-namespace vkBlam
+namespace VkBlam
 {
 
 constexpr vk::ImageType BlamToVk(Blam::BitmapEntryType Value)
@@ -85,4 +85,4 @@ struct PassGlobals
 	alignas(16) glm::f32vec4 ScreenSize; // {width, height, 1/width, 1/height}
 };
 
-} // namespace vkBlam
+} // namespace VkBlam

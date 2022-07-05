@@ -23,7 +23,7 @@
 #include <Vulkan/StreamBuffer.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
-#include <vkBlam.hpp>
+#include <VkBlam/VkBlam.hpp>
 
 #include <mio/mmap.hpp>
 
@@ -113,10 +113,10 @@ int main(int argc, char* argv[])
 	vk::ApplicationInfo ApplicationInfo = {};
 	ApplicationInfo.apiVersion          = VK_API_VERSION_1_1;
 
-	ApplicationInfo.pEngineName   = "vkblam";
+	ApplicationInfo.pEngineName   = "VkBlam";
 	ApplicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 
-	ApplicationInfo.pApplicationName   = "vkblam";
+	ApplicationInfo.pApplicationName   = "VkBlam";
 	ApplicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 
 	InstanceInfo.pApplicationInfo = &ApplicationInfo;
@@ -846,7 +846,7 @@ int main(int argc, char* argv[])
 		Device.get(),
 		{{vk::PushConstantRange(
 			vk::ShaderStageFlagBits::eAllGraphics, 0,
-			sizeof(vkBlam::CameraGlobals))}},
+			sizeof(VkBlam::CameraGlobals))}},
 		{{DebugDrawDescriptorPool.GetDescriptorSetLayout(),
 		  DebugDrawDescriptorPool.GetDescriptorSetLayout()}},
 		DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
@@ -863,7 +863,7 @@ int main(int argc, char* argv[])
 		Device.get(),
 		{{vk::PushConstantRange(
 			vk::ShaderStageFlagBits::eAllGraphics, 0,
-			sizeof(vkBlam::CameraGlobals))}},
+			sizeof(VkBlam::CameraGlobals))}},
 		{{UnlitDescriptorPool.GetDescriptorSetLayout(),
 		  UnlitDescriptorPool.GetDescriptorSetLayout()}},
 		DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
@@ -898,8 +898,8 @@ int main(int argc, char* argv[])
 					CurSubTexture.PixelDataSize);
 
 				vk::ImageCreateInfo ImageInfo = {};
-				ImageInfo.imageType = vkBlam::BlamToVk(CurSubTexture.Type);
-				ImageInfo.format    = vkBlam::BlamToVk(CurSubTexture.Format);
+				ImageInfo.imageType = VkBlam::BlamToVk(CurSubTexture.Type);
+				ImageInfo.format    = VkBlam::BlamToVk(CurSubTexture.Format);
 				ImageInfo.extent    = vk::Extent3D(
 					   CurSubTexture.Width, CurSubTexture.Height,
 					   CurSubTexture.Depth);
@@ -1001,10 +1001,10 @@ int main(int argc, char* argv[])
 
 					// Upload image data
 					const std::size_t BlockSize
-						= vk::blockSize(vkBlam::BlamToVk(CurSubTexture.Format));
+						= vk::blockSize(VkBlam::BlamToVk(CurSubTexture.Format));
 					const std::array<std::uint8_t, 3> BlockExtent
 						= vk::blockExtent(
-							vkBlam::BlamToVk(CurSubTexture.Format));
+							VkBlam::BlamToVk(CurSubTexture.Format));
 
 					std::size_t PixelDataOff = 0;
 
@@ -1065,7 +1065,7 @@ int main(int argc, char* argv[])
 					}
 					}
 					BitmapImageViewInfo.format
-						= vkBlam::BlamToVk(CurSubTexture.Format);
+						= VkBlam::BlamToVk(CurSubTexture.Format);
 					;
 					BitmapImageViewInfo.components.r = vk::ComponentSwizzle::eR;
 					BitmapImageViewInfo.components.g = vk::ComponentSwizzle::eG;
@@ -1269,7 +1269,7 @@ int main(int argc, char* argv[])
 			CommandBuffer->bindPipeline(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
-			vkBlam::CameraGlobals CameraGlobals = {};
+			VkBlam::CameraGlobals CameraGlobals = {};
 
 			const glm::vec3 WorldCenter
 				= glm::mix(WorldBoundMin, WorldBoundMax, 0.5);
@@ -1296,7 +1296,7 @@ int main(int argc, char* argv[])
 			CameraGlobals.ViewProjection
 				= CameraGlobals.Projection * CameraGlobals.View;
 
-			CommandBuffer->pushConstants<vkBlam::CameraGlobals>(
+			CommandBuffer->pushConstants<VkBlam::CameraGlobals>(
 				DebugDrawPipelineLayout.get(),
 				vk::ShaderStageFlagBits::eAllGraphics, 0, {CameraGlobals});
 
