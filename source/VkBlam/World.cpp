@@ -39,9 +39,9 @@ std::optional<World> World::Create(
 		 NewMap.MapFile.GetScenarioBSPs() )
 	{
 		const std::span<const std::byte> BSPData
-			= CurBSPEntry.GetSBSPData(NewMap.GetMapFile().GetMapData().data());
+			= CurBSPEntry.GetSBSPData(NewMap.MapFile.GetMapData().data());
 		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-			= CurBSPEntry.GetSBSP(NewMap.GetMapFile().GetMapData().data());
+			= CurBSPEntry.GetSBSP(NewMap.MapFile.GetMapData().data());
 
 		NewMap.WorldBoundMin.x
 			= glm::min(NewMap.WorldBoundMin.x, ScenarioBSP.WorldBoundsX[0]);

@@ -1097,7 +1097,7 @@ int main(int argc, char* argv[])
 					CurWorld.GetMapFile().TagHeapVirtualBase)[CurSubTextureIdx];
 				const auto PixelData = std::span<const std::byte>(
 					reinterpret_cast<const std::byte*>(
-						CurWorld.GetMapFile().GetMapData().data())
+						CurWorld.GetBitmapData().data())
 						+ CurSubTexture.PixelDataOffset,
 					CurSubTexture.PixelDataSize);
 
