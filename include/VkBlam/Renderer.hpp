@@ -58,6 +58,11 @@ public:
 		return *DescriptorUpdateBatch.get();
 	}
 
+	const vk::Sampler& GetDefaultSampler() const
+	{
+		return DefaultSampler.get();
+	}
+
 	static std::optional<Renderer> Create(
 		const Vulkan::Context& VulkanContext,
 		const RendererConfig&  Config = {});

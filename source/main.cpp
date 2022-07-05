@@ -255,40 +255,6 @@ int main(int argc, char* argv[])
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), RenderSamples);
 
-	//// Create Default Sampler
-	vk::SamplerCreateInfo SamplerInfo{};
-	SamplerInfo.magFilter               = vk::Filter::eLinear;
-	SamplerInfo.minFilter               = vk::Filter::eLinear;
-	SamplerInfo.mipmapMode              = vk::SamplerMipmapMode::eLinear;
-	SamplerInfo.addressModeU            = vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.addressModeV            = vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.addressModeW            = vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.mipLodBias              = 0.0f;
-	SamplerInfo.anisotropyEnable        = VK_FALSE;
-	SamplerInfo.maxAnisotropy           = 1.0f;
-	SamplerInfo.compareEnable           = VK_FALSE;
-	SamplerInfo.compareOp               = vk::CompareOp::eAlways;
-	SamplerInfo.minLod                  = 0.0f;
-	SamplerInfo.maxLod                  = VK_LOD_CLAMP_NONE;
-	SamplerInfo.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
-	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-	vk::UniqueSampler DefaultSampler = {};
-	if( auto CreateResult = Device->createSamplerUnique(SamplerInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		DefaultSampler = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating default sampler: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-	Vulkan::SetObjectName(
-		Device.get(), DefaultSampler.get(), "Default Sampler");
-
 	vk::UniqueBuffer       StagingBuffer              = {};
 	vk::UniqueDeviceMemory StagingBufferMemory        = {};
 	std::size_t            StagingBufferWritePosition = 0;
@@ -1142,7 +1108,8 @@ int main(int argc, char* argv[])
 					CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 
 				Renderer.GetDescriptorUpdateBatch().AddImageSampler(
-					TargetSet, 0, BitmapDest.View.get(), DefaultSampler.get(),
+					TargetSet, 0, BitmapDest.View.get(),
+					Renderer.GetDefaultSampler(),
 					vk::ImageLayout::eShaderReadOnlyOptimal);
 			}
 		};
