@@ -14,7 +14,8 @@ namespace Vulkan
 class DescriptorUpdateBatch
 {
 private:
-	const vk::Device  LogicalDevice;
+	const Vulkan::Context VulkanContext;
+
 	const std::size_t DescriptorWriteMax;
 	const std::size_t DescriptorCopyMax;
 
@@ -31,9 +32,9 @@ private:
 	std::size_t DescriptorCopyEnd  = 0;
 
 	DescriptorUpdateBatch(
-		vk::Device LogicalDevice, std::size_t DescriptorWriteMax,
+		const Vulkan::Context& VulkanContext, std::size_t DescriptorWriteMax,
 		std::size_t DescriptorCopyMax)
-		: LogicalDevice(LogicalDevice), DescriptorWriteMax(DescriptorWriteMax),
+		: VulkanContext(VulkanContext), DescriptorWriteMax(DescriptorWriteMax),
 		  DescriptorCopyMax(DescriptorCopyMax)
 	{
 	}
@@ -69,7 +70,8 @@ public:
 		std::uint8_t TargetArrayElement = 0, std::uint8_t DescriptorCount = 1);
 
 	static std::optional<DescriptorUpdateBatch> Create(
-		vk::Device LogicalDevice, std::size_t DescriptorWriteMax = 256,
-		std::size_t DescriptorCopyMax = 256);
+		const Vulkan::Context& VulkanContext,
+		std::size_t            DescriptorWriteMax = 256,
+		std::size_t            DescriptorCopyMax  = 256);
 };
 } // namespace Vulkan

@@ -8,7 +8,7 @@ namespace Vulkan
 
 void DescriptorUpdateBatch::Flush()
 {
-	LogicalDevice.updateDescriptorSets(
+	VulkanContext.LogicalDevice.updateDescriptorSets(
 		{std::span(DescriptorWrites.get(), DescriptorWriteEnd)},
 		{std::span(DescriptorCopies.get(), DescriptorCopyEnd)});
 
@@ -116,12 +116,12 @@ void DescriptorUpdateBatch::CopyBinding(
 }
 
 std::optional<DescriptorUpdateBatch> DescriptorUpdateBatch::Create(
-	vk::Device LogicalDevice, std::size_t DescriptorWriteMax,
+	const Vulkan::Context& VulkanContext, std::size_t DescriptorWriteMax,
 	std::size_t DescriptorCopyMax)
 
 {
 	DescriptorUpdateBatch NewDescriptorUpdateBatch(
-		LogicalDevice, DescriptorWriteMax, DescriptorCopyMax);
+		VulkanContext, DescriptorWriteMax, DescriptorCopyMax);
 
 	NewDescriptorUpdateBatch.DescriptorInfos
 		= std::make_unique<DescriptorInfoUnion[]>(DescriptorWriteMax);
