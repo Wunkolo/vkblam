@@ -30,11 +30,7 @@ private:
 public:
 	~DescriptorHeap() = default;
 
-	// Move-only
-	DescriptorHeap(DescriptorHeap&&)                 = default;
-	DescriptorHeap& operator=(DescriptorHeap&&)      = default;
-	DescriptorHeap(const DescriptorHeap&)            = delete;
-	DescriptorHeap& operator=(const DescriptorHeap&) = delete;
+	DescriptorHeap(DescriptorHeap&&) = default;
 
 	const vk::DescriptorPool& GetDescriptorPool() const
 	{

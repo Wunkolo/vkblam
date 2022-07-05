@@ -41,11 +41,7 @@ private:
 public:
 	~DescriptorUpdateBatch() = default;
 
-	// Move-only
-	DescriptorUpdateBatch(DescriptorUpdateBatch&&)                 = default;
-	DescriptorUpdateBatch& operator=(DescriptorUpdateBatch&&)      = default;
-	DescriptorUpdateBatch(const DescriptorUpdateBatch&)            = delete;
-	DescriptorUpdateBatch& operator=(const DescriptorUpdateBatch&) = delete;
+	DescriptorUpdateBatch(DescriptorUpdateBatch&&) = default;
 
 	void Flush();
 
