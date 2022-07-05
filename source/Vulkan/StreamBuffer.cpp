@@ -9,13 +9,9 @@
 namespace Vulkan
 {
 StreamBuffer::StreamBuffer(
-	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
-	vk::Queue TransferQueue, std::uint8_t TransferQueueFamilyIndex,
-	vk::DeviceSize BufferSize)
-	: Device(Device), PhysicalDevice(PhysicalDevice),
-	  TransferQueue(TransferQueue),
-	  TransferQueueFamilyIndex(TransferQueueFamilyIndex),
-	  BufferSize(BufferSize), FlushTick(0), RingOffset(0)
+	const Vulkan::Context& VulkanContext, vk::DeviceSize BufferSize)
+	: VulkanContext(VulkanContext), BufferSize(BufferSize), FlushTick(0),
+	  RingOffset(0)
 {
 	//// Create Semaphore
 	{
@@ -34,7 +30,8 @@ StreamBuffer::StreamBuffer(
 		FlushSemaphoreTypeInfo.semaphoreType = vk::SemaphoreType::eTimeline;
 
 		if( auto CreateResult
-			= Device.createSemaphoreUnique(FlushSemaphoreInfoChain.get());
+			= VulkanContext.LogicalDevice.createSemaphoreUnique(
+				FlushSemaphoreInfoChain.get());
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			FlushSemaphore = std::move(CreateResult.value);
@@ -47,7 +44,8 @@ StreamBuffer::StreamBuffer(
 			/// ??? should we exit the program
 		}
 		Vulkan::SetObjectName(
-			Device, FlushSemaphore.get(), "Staging Ring Buffer Semaphore");
+			VulkanContext.LogicalDevice, FlushSemaphore.get(),
+			"Staging Ring Buffer Semaphore");
 	}
 
 	//// Create buffer
@@ -57,7 +55,8 @@ StreamBuffer::StreamBuffer(
 		RingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferSrc
 							 | vk::BufferUsageFlagBits::eTransferDst;
 
-		if( auto CreateResult = Device.createBufferUnique(RingBufferInfo);
+		if( auto CreateResult
+			= VulkanContext.LogicalDevice.createBufferUnique(RingBufferInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			RingBuffer = std::move(CreateResult.value);
@@ -70,21 +69,24 @@ StreamBuffer::StreamBuffer(
 			/// ??? should we exit the program
 		}
 		Vulkan::SetObjectName(
-			Device, RingBuffer.get(), "Staging Ring Buffer( %s )",
+			VulkanContext.LogicalDevice, RingBuffer.get(),
+			"Staging Ring Buffer( %s )",
 			Common::FormatByteCount(BufferSize).c_str());
 	}
 
 	//// Allocate memory for staging ring buffer
 	{
 		const vk::MemoryRequirements RingBufferMemoryRequirements
-			= Device.getBufferMemoryRequirements(RingBuffer.get());
+			= VulkanContext.LogicalDevice.getBufferMemoryRequirements(
+				RingBuffer.get());
 
 		vk::MemoryAllocateInfo RingBufferAllocInfo = {};
 		RingBufferAllocInfo.allocationSize = RingBufferMemoryRequirements.size;
 
 		// Try to get some shared memory
 		std::int32_t RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
-			PhysicalDevice, RingBufferMemoryRequirements.memoryTypeBits,
+			VulkanContext.PhysicalDevice,
+			RingBufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eHostVisible
 				| vk::MemoryPropertyFlagBits::eHostCoherent
 				| vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -93,14 +95,16 @@ StreamBuffer::StreamBuffer(
 		if( RingBufferHeapIndex < 0 )
 		{
 			RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
-				PhysicalDevice, RingBufferMemoryRequirements.memoryTypeBits,
+				VulkanContext.PhysicalDevice,
+				RingBufferMemoryRequirements.memoryTypeBits,
 				vk::MemoryPropertyFlagBits::eHostVisible
 					| vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
 
 		RingBufferAllocInfo.memoryTypeIndex = RingBufferHeapIndex;
 
-		if( auto AllocResult = Device.allocateMemoryUnique(RingBufferAllocInfo);
+		if( auto AllocResult = VulkanContext.LogicalDevice.allocateMemoryUnique(
+				RingBufferAllocInfo);
 			AllocResult.result == vk::Result::eSuccess )
 		{
 			RingBufferMemory = std::move(AllocResult.value);
@@ -113,10 +117,11 @@ StreamBuffer::StreamBuffer(
 			/// ??? should we exit the program
 		}
 		Vulkan::SetObjectName(
-			Device, RingBufferMemory.get(), "Staging Ring Buffer Memory( %s )",
+			VulkanContext.LogicalDevice, RingBufferMemory.get(),
+			"Staging Ring Buffer Memory( %s )",
 			Common::FormatByteCount(BufferSize).c_str());
 
-		if( auto BindResult = Device.bindBufferMemory(
+		if( auto BindResult = VulkanContext.LogicalDevice.bindBufferMemory(
 				RingBuffer.get(), RingBufferMemory.get(), 0);
 			BindResult == vk::Result::eSuccess )
 		{
@@ -132,8 +137,8 @@ StreamBuffer::StreamBuffer(
 	}
 
 	//// Map the device memory
-	if( auto MapResult
-		= Device.mapMemory(RingBufferMemory.get(), 0, BufferSize);
+	if( auto MapResult = VulkanContext.LogicalDevice.mapMemory(
+			RingBufferMemory.get(), 0, BufferSize);
 		MapResult.result == vk::Result::eSuccess )
 	{
 		RingMemoryMapped = std::span<std::byte>(
@@ -152,9 +157,12 @@ StreamBuffer::StreamBuffer(
 		vk::CommandPoolCreateInfo CommandPoolInfo;
 		CommandPoolInfo.flags
 			= vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		CommandPoolInfo.queueFamilyIndex = TransferQueueFamilyIndex;
+		CommandPoolInfo.queueFamilyIndex
+			= VulkanContext.TransferQueueFamilyIndex;
 
-		if( auto CreateResult = Device.createCommandPoolUnique(CommandPoolInfo);
+		if( auto CreateResult
+			= VulkanContext.LogicalDevice.createCommandPoolUnique(
+				CommandPoolInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			CommandPool = std::move(CreateResult.value);
@@ -171,7 +179,7 @@ StreamBuffer::StreamBuffer(
 
 StreamBuffer::~StreamBuffer()
 {
-	Device.unmapMemory(RingBufferMemory.get());
+	VulkanContext.LogicalDevice.unmapMemory(RingBufferMemory.get());
 }
 
 std::uint64_t StreamBuffer::QueueBufferUpload(
@@ -204,7 +212,8 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 		WaitInfo.semaphoreCount = 1;
 		WaitInfo.pSemaphores    = &GetSemaphore();
 		WaitInfo.pValues        = &FlushTick;
-		if( auto WaitResult = Device.waitSemaphores(WaitInfo, ~0ULL);
+		if( auto WaitResult
+			= VulkanContext.LogicalDevice.waitSemaphores(WaitInfo, ~0ULL);
 			WaitResult != vk::Result::eSuccess )
 		{
 			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
@@ -259,7 +268,8 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		WaitInfo.semaphoreCount = 1;
 		WaitInfo.pSemaphores    = &GetSemaphore();
 		WaitInfo.pValues        = &FlushTick;
-		if( Device.waitSemaphores(WaitInfo, ~0ULL) != vk::Result::eSuccess )
+		if( VulkanContext.LogicalDevice.waitSemaphores(WaitInfo, ~0ULL)
+			!= vk::Result::eSuccess )
 		{
 			std::fprintf(stderr, "Error waiting on Stream buffer semaphore \n");
 		}
@@ -307,7 +317,8 @@ std::uint64_t StreamBuffer::Flush()
 
 	// Get where the GPU is at in our submit-timeline
 	std::uint64_t GpuFlushTick = 0;
-	if( auto GetResult = Device.getSemaphoreCounterValue(FlushSemaphore.get());
+	if( auto GetResult = VulkanContext.LogicalDevice.getSemaphoreCounterValue(
+			FlushSemaphore.get());
 		GetResult.result == vk::Result::eSuccess )
 	{
 		GpuFlushTick = GetResult.value;
@@ -342,7 +353,8 @@ std::uint64_t StreamBuffer::Flush()
 		CommandBufferInfo.commandBufferCount = 1;
 
 		if( auto AllocateResult
-			= Device.allocateCommandBuffersUnique(CommandBufferInfo);
+			= VulkanContext.LogicalDevice.allocateCommandBuffersUnique(
+				CommandBufferInfo);
 			AllocateResult.result == vk::Result::eSuccess )
 		{
 			FlushCommandBuffer = AllocateResult.value[0].get();
@@ -431,7 +443,8 @@ std::uint64_t StreamBuffer::Flush()
 	SubmitTimelineInfo.signalSemaphoreValueCount = 1;
 	SubmitTimelineInfo.pSignalSemaphoreValues    = &FlushTick;
 
-	if( auto SubmitResult = TransferQueue.submit(SubmitInfoChain.get());
+	if( auto SubmitResult
+		= VulkanContext.TransferQueue.submit(SubmitInfoChain.get());
 		SubmitResult != vk::Result::eSuccess )
 	{
 		// Error submitting

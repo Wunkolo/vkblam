@@ -16,11 +16,8 @@ namespace Vulkan
 class StreamBuffer
 {
 private:
-	const vk::Device         Device;
-	const vk::PhysicalDevice PhysicalDevice;
-	const vk::Queue          TransferQueue;
-	const std::uint8_t       TransferQueueFamilyIndex;
-	const vk::DeviceSize     BufferSize;
+	const Vulkan::Context& VulkanContext;
+	const vk::DeviceSize   BufferSize;
 
 	// This is a timeline semaphore with a value that increases with each flush.
 	vk::UniqueSemaphore FlushSemaphore;
@@ -46,9 +43,7 @@ private:
 
 public:
 	StreamBuffer(
-		vk::Device Device, vk::PhysicalDevice PhysicalDevice,
-		vk::Queue TransferQueue, std::uint8_t TransferQueueFamilyIndex,
-		vk::DeviceSize BufferSize);
+		const Vulkan::Context& VulkanContext, vk::DeviceSize BufferSize);
 
 	~StreamBuffer();
 
