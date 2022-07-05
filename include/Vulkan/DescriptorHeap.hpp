@@ -15,7 +15,7 @@ namespace Vulkan
 class DescriptorHeap
 {
 private:
-	vk::Device LogicalDevice;
+	const Vulkan::Context& VulkanContext;
 
 	vk::UniqueDescriptorPool             DescriptorPool;
 	vk::UniqueDescriptorSetLayout        DescriptorSetLayout;
@@ -25,7 +25,7 @@ private:
 
 	std::vector<bool> AllocationMap;
 
-	DescriptorHeap() = default;
+	DescriptorHeap(const Vulkan::Context& VulkanContext);
 
 public:
 	~DescriptorHeap() = default;
@@ -60,7 +60,7 @@ public:
 	bool                             FreeDescriptorSet(vk::DescriptorSet Set);
 
 	static std::optional<DescriptorHeap> Create(
-		vk::Device                                      LogicalDevice,
+		Vulkan::Context                                 VulkanContext,
 		std::span<const vk::DescriptorSetLayoutBinding> Bindings,
 		std::uint16_t DescriptorHeapCount = 1024);
 };

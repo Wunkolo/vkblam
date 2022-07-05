@@ -7,6 +7,11 @@
 namespace Vulkan
 {
 
+DescriptorHeap::DescriptorHeap(const Vulkan::Context& VulkanContext)
+	: VulkanContext(VulkanContext)
+{
+}
+
 std::optional<vk::DescriptorSet> DescriptorHeap::AllocateDescriptorSet()
 {
 	// Find a free slot
@@ -51,11 +56,11 @@ bool DescriptorHeap::FreeDescriptorSet(vk::DescriptorSet Set)
 }
 
 std::optional<DescriptorHeap> DescriptorHeap::Create(
-	vk::Device                                      LogicalDevice,
+	Vulkan::Context                                 VulkanContext,
 	std::span<const vk::DescriptorSetLayoutBinding> Bindings,
 	std::uint16_t                                   DescriptorHeapCount)
 {
-	DescriptorHeap NewDescriptorHeap = {};
+	DescriptorHeap NewDescriptorHeap(VulkanContext);
 
 	// Create a histogram of each of the descriptor types and how many of each
 	// the pool should have
@@ -88,7 +93,7 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 		PoolInfo.pPoolSizes    = PoolSizes.data();
 		PoolInfo.poolSizeCount = PoolSizes.size();
 		if( auto CreateResult
-			= LogicalDevice.createDescriptorPoolUnique(PoolInfo);
+			= VulkanContext.LogicalDevice.createDescriptorPoolUnique(PoolInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			NewDescriptorHeap.DescriptorPool = std::move(CreateResult.value);
@@ -106,7 +111,8 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 		LayoutInfo.bindingCount = Bindings.size();
 
 		if( auto CreateResult
-			= LogicalDevice.createDescriptorSetLayoutUnique(LayoutInfo);
+			= VulkanContext.LogicalDevice.createDescriptorSetLayoutUnique(
+				LayoutInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			NewDescriptorHeap.DescriptorSetLayout
@@ -131,7 +137,8 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 		for( auto& CurDescriptorSet : NewDescriptorHeap.DescripterSets )
 		{
 			if( auto AllocateResult
-				= LogicalDevice.allocateDescriptorSetsUnique(AllocateInfo);
+				= VulkanContext.LogicalDevice.allocateDescriptorSetsUnique(
+					AllocateInfo);
 				AllocateResult.result == vk::Result::eSuccess )
 			{
 				CurDescriptorSet = std::move(AllocateResult.value[0]);
