@@ -22,8 +22,10 @@ int main(int argc, char* argv[])
 	}
 	auto MapFile = mio::mmap_source(argv[1]);
 
-	Blam::MapFile CurMap(std::span<const std::byte>(
-		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
+	Blam::MapFile CurMap(
+		std::span<const std::byte>(
+			reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()),
+		{});
 
 	if( const auto BaseTagPtr
 		= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);

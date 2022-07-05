@@ -20,10 +20,13 @@ namespace Blam
 class MapFile
 {
 private:
-	std::span<const std::byte> MapData;
+	std::span<const std::byte> MapFileData;
+	std::span<const std::byte> BitmapFileData;
 
 public:
-	MapFile(std::span<const std::byte> MapFileData);
+	MapFile(
+		std::span<const std::byte> MapFileData,
+		std::span<const std::byte> BitmapFileData);
 
 	const Blam::MapHeader&      MapHeader;
 	const Blam::TagIndexHeader& TagIndexHeader;
@@ -31,7 +34,12 @@ public:
 
 	std::span<const std::byte> GetMapData() const
 	{
-		return MapData;
+		return MapFileData;
+	}
+
+	std::span<const std::byte> GetBitmapData() const
+	{
+		return BitmapFileData;
 	}
 
 	std::span<const Blam::TagIndexEntry> GetTagIndexArray() const;
@@ -50,7 +58,7 @@ public:
 			{
 				const auto& CurTag
 					= *reinterpret_cast<const Blam::Tag<TagClassT>*>(
-						MapData.data()
+						MapFileData.data()
 						+ (CurTagEntry.TagDataVirtualOffset
 						   - TagHeapVirtualBase));
 				Func(CurTagEntry, CurTag);
@@ -75,7 +83,7 @@ public:
 		}
 
 		return reinterpret_cast<const Blam::Tag<TagClassT>*>(
-			MapData.data()
+			MapFileData.data()
 			+ (TagIndexEntryPtr->TagDataVirtualOffset - TagHeapVirtualBase));
 	}
 
@@ -88,7 +96,7 @@ public:
 		}
 
 		return std::string_view(
-			reinterpret_cast<const char*>(MapData.data())
+			reinterpret_cast<const char*>(MapFileData.data())
 			+ (TagIndexEntryPtr->TagPathVirtualOffset - TagHeapVirtualBase));
 	}
 
@@ -104,7 +112,7 @@ public:
 		if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
 		{
 			return ScenarioTag->StructureBSPs.GetSpan(
-				MapData.data(), TagHeapVirtualBase);
+				MapFileData.data(), TagHeapVirtualBase);
 		}
 		return {};
 	}

@@ -37,13 +37,6 @@ public:
 		return MapFile;
 	}
 
-	const std::span<const std::byte> GetBitmapData() const
-	{
-		return std::span<const std::byte>(
-			reinterpret_cast<const std::byte*>(BitmapFileData.data()),
-			BitmapFileData.size());
-	}
-
 	const Blam::MapHeader& GetMapHeader() const
 	{
 		return MapFile.MapHeader;
@@ -54,7 +47,6 @@ public:
 		return glm::f32mat2x3(WorldBoundMin, WorldBoundMax);
 	}
 
-	static std::optional<World>
-		Create(const Blam::MapFile& MapFile, std::filesystem::path BitmapPath);
+	static std::optional<World> Create(const Blam::MapFile& MapFile);
 };
 } // namespace VkBlam

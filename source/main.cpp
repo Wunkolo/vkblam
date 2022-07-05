@@ -91,14 +91,20 @@ int main(int argc, char* argv[])
 	}
 #endif
 
-	std::filesystem::path CurPath(argv[1]);
+	std::filesystem::path MapPath(argv[1]);
 	std::filesystem::path BitmapPath(argv[2]);
-	auto                  MapFile = mio::mmap_source(CurPath.c_str());
 
-	Blam::MapFile CurMap(std::span<const std::byte>(
-		reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()));
+	auto MapFile    = mio::mmap_source(MapPath.c_str());
+	auto BitmapFile = mio::mmap_source(BitmapPath.c_str());
 
-	VkBlam::World CurWorld = VkBlam::World::Create(CurMap, argv[2]).value();
+	Blam::MapFile CurMap(
+		std::span<const std::byte>(
+			reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()),
+		std::span<const std::byte>(
+			reinterpret_cast<const std::byte*>(BitmapFile.data()),
+			BitmapFile.size()));
+
+	VkBlam::World CurWorld = VkBlam::World::Create(CurMap).value();
 
 	std::fputs(Blam::ToString(CurWorld.GetMapFile().MapHeader).c_str(), stdout);
 	std::fputs(
@@ -1097,7 +1103,7 @@ int main(int argc, char* argv[])
 					CurWorld.GetMapFile().TagHeapVirtualBase)[CurSubTextureIdx];
 				const auto PixelData = std::span<const std::byte>(
 					reinterpret_cast<const std::byte*>(
-						CurWorld.GetBitmapData().data())
+						CurMap.GetBitmapData().data())
 						+ CurSubTexture.PixelDataOffset,
 					CurSubTexture.PixelDataSize);
 
