@@ -13,3 +13,4 @@ Derelict|Prisoner
 * [Assembly](https://github.com/XboxChaos/Assembly)
 * [Sparkedit](https://github.com/HaloMods/SparkEdit)
 * [Swordedit](https://github.com/ChadSki/Swordedit)
+* [Prometheus](https://github.com/HaloMods/Prometheus)
