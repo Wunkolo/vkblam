@@ -20,13 +20,13 @@ namespace VkBlam
 class Shader
 {
 protected:
-	const vk::Device   LogicalDevice;
-	const BitmapHeapT& BitmapHeap;
+	const Vulkan::Context& VulkanContext;
+	const BitmapHeapT&     BitmapHeap;
 
 	Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch;
 
 	Shader(
-		vk::Device LogicalDevice, const BitmapHeapT& BitmapHeap,
+		const Vulkan::Context& VulkanContext, const BitmapHeapT& BitmapHeap,
 		Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch);
 
 public:

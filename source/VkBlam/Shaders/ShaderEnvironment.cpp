@@ -52,18 +52,18 @@ namespace VkBlam
 {
 
 ShaderEnvironment::ShaderEnvironment(
-	vk::Device LogicalDevice, const BitmapHeapT& BitmapHeap,
+	const Vulkan::Context& VulkanContext, const BitmapHeapT& BitmapHeap,
 	Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch)
-	: Shader(LogicalDevice, BitmapHeap, DescriptorUpdateBatch)
+	: Shader(VulkanContext, BitmapHeap, DescriptorUpdateBatch)
 {
 	DescriptorHeap = std::make_unique<Vulkan::DescriptorHeap>(
-		Vulkan::DescriptorHeap::Create(LogicalDevice, Bindings).value());
+		Vulkan::DescriptorHeap::Create(VulkanContext, Bindings).value());
 
 	Vulkan::SetObjectName(
-		LogicalDevice, DescriptorHeap->GetDescriptorPool(),
+		VulkanContext.LogicalDevice, DescriptorHeap->GetDescriptorPool(),
 		"Shader Environment Descriptor Pool");
 	Vulkan::SetObjectName(
-		LogicalDevice, DescriptorHeap->GetDescriptorSetLayout(),
+		VulkanContext.LogicalDevice, DescriptorHeap->GetDescriptorSetLayout(),
 		"Shader Environment Descriptor Set Layout");
 }
 

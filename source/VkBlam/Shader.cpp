@@ -3,9 +3,9 @@
 namespace VkBlam
 {
 Shader::Shader(
-	vk::Device LogicalDevice, const BitmapHeapT& BitmapHeap,
+	const Vulkan::Context& VulkanContext, const BitmapHeapT& BitmapHeap,
 	Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch)
-	: LogicalDevice(LogicalDevice), BitmapHeap(BitmapHeap),
+	: VulkanContext(VulkanContext), BitmapHeap(BitmapHeap),
 	  DescriptorUpdateBatch(DescriptorUpdateBatch)
 {
 }
