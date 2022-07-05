@@ -11,5 +11,17 @@
 
 namespace Vulkan
 {
+// Lightweight object to encapsulate everything minimally needed to interface
+// with a fully initialized vulkan context
+struct Context
+{
+	vk::Device         LogicalDevice;
+	vk::PhysicalDevice PhysicalDevice;
 
+	vk::Queue    RenderQueue;
+	std::uint8_t RenderQueueFamilyIndex;
+
+	vk::Queue    TransferQueue;
+	std::uint8_t TransferQueueFamilyIndex;
+};
 } // namespace Vulkan
