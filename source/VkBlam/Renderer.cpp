@@ -39,12 +39,11 @@ std::optional<Renderer> Renderer::Create(
 		SamplerInfo.borderColor      = vk::BorderColor::eFloatOpaqueWhite;
 		SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-		vk::UniqueSampler DefaultSampler = {};
 		if( auto CreateResult
 			= VulkanContext.LogicalDevice.createSamplerUnique(SamplerInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
-			DefaultSampler = std::move(CreateResult.value);
+			NewRenderer.DefaultSampler = std::move(CreateResult.value);
 		}
 		else
 		{
@@ -54,7 +53,7 @@ std::optional<Renderer> Renderer::Create(
 			return {};
 		}
 		Vulkan::SetObjectName(
-			VulkanContext.LogicalDevice, DefaultSampler.get(),
+			VulkanContext.LogicalDevice, NewRenderer.DefaultSampler.get(),
 			"VkBlam: Default Sampler");
 	}
 
