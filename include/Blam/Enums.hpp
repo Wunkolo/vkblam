@@ -81,6 +81,14 @@ enum class BitmapFlags : std::uint16_t
 	FilthySpriteBugFix          = 3,
 };
 
+enum class DefaultTextureIndex : std::uint16_t
+{
+	Additive       = 0,
+	Multiplicative = 1,
+	SignedAdditive = 2,
+	Vector         = 3,
+};
+
 enum class BitmapEntryType : std::uint16_t
 {
 	Texture2D = 0x00,

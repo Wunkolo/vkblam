@@ -557,8 +557,11 @@ int main(int argc, char* argv[])
 							auto* BasemapTag = CurMap.GetTag<
 								Blam::TagClass::ShaderEnvironment>(
 								CurMaterial.Shader.TagID);
-							CurLightmapMesh.BasemapTag
-								= BasemapTag->BaseMap.TagID;
+							if( BasemapTag->BaseMap.TagID != -1 )
+							{
+								CurLightmapMesh.BasemapTag
+									= BasemapTag->BaseMap.TagID;
+							}
 						}
 
 						if( ScenarioBSP.LightmapTexture.TagID != -1
@@ -1293,10 +1296,9 @@ int main(int argc, char* argv[])
 				// 	-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
 				// 	WorldBoundMax.z - WorldBoundMin.z);
 				= glm::perspective<glm::f32>(
-					glm::radians(72.0f),
+					glm::radians(60.0f),
 					static_cast<float>(RenderSize.x) / RenderSize.y, 1.0f,
 					1000.0f);
-			// CameraGlobals.Projection[1][1] *= -1.0f;
 
 			CameraGlobals.ViewProjection
 				= CameraGlobals.Projection * CameraGlobals.View;
@@ -1326,6 +1328,16 @@ int main(int argc, char* argv[])
 							 .at(CurLightmapMesh.LightmapIndex.value())},
 						{});
 				}
+				else
+				{
+					CommandBuffer->bindDescriptorSets(
+						vk::PipelineBindPoint::eGraphics,
+						DebugDrawPipelineLayout.get(), 0,
+						{BitmapHeap.Sets.at(BitmapHeap.Default2D)
+							 .at(std::uint32_t(
+								 Blam::DefaultTextureIndex::Multiplicative))},
+						{});
+				}
 				if( CurLightmapMesh.BasemapTag.has_value() )
 				{
 					CommandBuffer->bindDescriptorSets(
@@ -1333,6 +1345,16 @@ int main(int argc, char* argv[])
 						DebugDrawPipelineLayout.get(), 1,
 						{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value())
 							 .at(0)},
+						{});
+				}
+				else
+				{
+					CommandBuffer->bindDescriptorSets(
+						vk::PipelineBindPoint::eGraphics,
+						DebugDrawPipelineLayout.get(), 1,
+						{BitmapHeap.Sets.at(BitmapHeap.Default2D)
+							 .at(std::uint32_t(
+								 Blam::DefaultTextureIndex::Additive))},
 						{});
 				}
 				CommandBuffer->drawIndexed(
