@@ -1,5 +1,10 @@
 #include <VkBlam/VkBlam.hpp>
 
+#include <cmrc/cmrc.hpp>
+
+CMRC_DECLARE(vkblam);
+static cmrc::embedded_filesystem DataFS = cmrc::vkblam::get_filesystem();
+
 namespace VkBlam
 {
 
@@ -52,4 +57,16 @@ vk::Format BlamToVk(Blam::BitmapEntryFormat Value)
 	}
 	return vk::Format::eUndefined;
 }
+
+std::optional<std::span<const std::byte>> OpenResource(const std::string& Path)
+{
+	if( !DataFS.exists(Path) )
+	{
+		return {};
+	}
+	const cmrc::file File = DataFS.open(Path);
+	return std::span<const std::byte>(
+		reinterpret_cast<const std::byte*>(File.cbegin()), File.size());
+}
+
 } // namespace VkBlam

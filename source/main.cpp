@@ -26,11 +26,6 @@
 
 #include <mio/mmap.hpp>
 
-#include <cmrc/cmrc.hpp>
-
-CMRC_DECLARE(vkblam);
-auto DataFS = cmrc::vkblam::get_filesystem();
-
 #include <Blam/Blam.hpp>
 
 #include "stb_image_write.h"
@@ -42,9 +37,7 @@ auto DataFS = cmrc::vkblam::get_filesystem();
 RENDERDOC_API_1_4_1* rdoc_api = NULL;
 #endif
 
-static constexpr glm::uvec2              RenderSize = {1024, 1024};
-static constexpr vk::SampleCountFlagBits RenderSamples
-	= vk::SampleCountFlagBits::e4;
+static constexpr glm::uvec2 RenderSize = {1024, 1024};
 
 vk::UniqueRenderPass CreateMainRenderPass(
 	vk::Device              Device,
@@ -53,13 +46,6 @@ vk::UniqueRenderPass CreateMainRenderPass(
 vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
-
-std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
-	vk::Device Device, std::span<const vk::PushConstantRange> PushConstants,
-	std::span<const vk::DescriptorSetLayout> SetLayouts,
-	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-	vk::RenderPass  RenderPass,
-	vk::PolygonMode PolygonMode = vk::PolygonMode::eFill);
 
 std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice);
 
@@ -180,11 +166,6 @@ int main(int argc, char* argv[])
 		"---\n",
 		FormatDeviceCaps(PhysicalDevice).c_str());
 
-	// We're putting images/buffers right after each other, so we need to
-	// ensure they are far apart enough to not be considered aliasing
-	const std::size_t BufferImageGranularity
-		= PhysicalDevice.getProperties().limits.bufferImageGranularity;
-
 	//// Create Device
 	vk::DeviceCreateInfo DeviceInfo = {};
 
@@ -256,7 +237,7 @@ int main(int argc, char* argv[])
 
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
-		= CreateMainRenderPass(Device.get(), RenderSamples);
+		= CreateMainRenderPass(Device.get(), VkBlam::RenderSamples);
 
 	vk::UniqueBuffer       StagingBuffer              = {};
 	vk::UniqueDeviceMemory StagingBufferMemory        = {};
@@ -344,247 +325,6 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	std::unordered_map<vk::Image, vk::BufferImageCopy> ImageUploads;
-
-	vk::UniqueBuffer VertexBuffer;
-	//// Create Vertex buffer heap
-	vk::BufferCreateInfo VertexBufferInfo = {};
-	// VertexBufferInfo.size  = VertexHeapIndexOffset * sizeof(Blam::Vertex);
-	VertexBufferInfo.size  = 32_MiB;
-	VertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
-						   | vk::BufferUsageFlagBits::eTransferDst;
-
-	if( auto CreateResult = Device->createBufferUnique(VertexBufferInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		VertexBuffer = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating vertex buffer: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-
-	Vulkan::SetObjectName(
-		Device.get(), VertexBuffer.get(), "Vertex Buffer( %s )",
-		Common::FormatByteCount(VertexBufferInfo.size).c_str());
-
-	vk::UniqueBuffer LightmapVertexBuffer;
-	//// Create Vertex buffer heap
-	vk::BufferCreateInfo LightmapVertexBufferInfo = {};
-	LightmapVertexBufferInfo.size                 = 32_MiB;
-	//= VertexHeapIndexOffset * sizeof(Blam::LightmapVertex);
-	LightmapVertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
-								   | vk::BufferUsageFlagBits::eTransferDst;
-
-	if( auto CreateResult
-		= Device->createBufferUnique(LightmapVertexBufferInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		LightmapVertexBuffer = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating lightmap vertex buffer: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-
-	Vulkan::SetObjectName(
-		Device.get(), LightmapVertexBuffer.get(),
-		"Lightmap Vertex Buffer( %s )",
-		Common::FormatByteCount(LightmapVertexBufferInfo.size).c_str());
-
-	vk::UniqueBuffer IndexBuffer;
-	//// Create Index buffer heap
-	vk::BufferCreateInfo IndexBufferInfo = {};
-	// IndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
-	IndexBufferInfo.size  = 16_MiB;
-	IndexBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer
-						  | vk::BufferUsageFlagBits::eTransferDst;
-
-	if( auto CreateResult = Device->createBufferUnique(IndexBufferInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		IndexBuffer = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating Index buffer: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return EXIT_FAILURE;
-	}
-	Vulkan::SetObjectName(
-		Device.get(), IndexBuffer.get(), "Index Buffer( %s )",
-		Common::FormatByteCount(IndexBufferInfo.size).c_str());
-
-	// Contains _both_ the vertex buffer and the index buffer
-	vk::UniqueDeviceMemory GeometryBufferHeapMemory = {};
-
-	if( auto [Result, Value] = Vulkan::CommitBufferHeap(
-			Device.get(), PhysicalDevice,
-			std::array{
-				VertexBuffer.get(), IndexBuffer.get(),
-				LightmapVertexBuffer.get()});
-		Result == vk::Result::eSuccess )
-	{
-		GeometryBufferHeapMemory = std::move(Value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error committing vertex/index memory: %s\n",
-			vk::to_string(Result).c_str());
-		return EXIT_FAILURE;
-	}
-
-	// Parameters used for drawing
-	struct LightmapMesh
-	{
-		std::uint32_t VertexIndexOffset;
-		std::uint32_t IndexCount;
-		std::uint32_t IndexOffset;
-
-		std::optional<std::uint32_t> BasemapTag;
-
-		// Some lightmap meshes don't have a lightmap!
-		std::optional<std::uint32_t> LightmapTag;
-		std::optional<std::uint32_t> LightmapIndex;
-	};
-
-	std::vector<LightmapMesh> LightmapMeshs;
-
-	{
-		// Offset is in elements, not bytes
-		std::uint32_t VertexHeapIndexOffset = 0;
-		std::uint32_t IndexHeapIndexOffset  = 0;
-
-		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
-				 CurBSPEntry : CurWorld.GetMapFile().GetScenarioBSPs() )
-		{
-			const std::span<const std::byte> BSPData = CurBSPEntry.GetSBSPData(
-				CurWorld.GetMapFile().GetMapData().data());
-			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-				= CurBSPEntry.GetSBSP(
-					CurWorld.GetMapFile().GetMapData().data());
-
-			// Lightmap
-			for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
-					 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
-			{
-				const auto& LightmapTextureTag
-					= CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(
-						ScenarioBSP.LightmapTexture.TagID);
-				const std::int16_t LightmapTextureIndex
-					= CurLightmap.LightmapIndex;
-
-				const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
-					BSPData.data(), CurBSPEntry.BSPVirtualBase);
-				for( const auto& CurMaterial : CurLightmap.Materials.GetSpan(
-						 BSPData.data(), CurBSPEntry.BSPVirtualBase) )
-				{
-
-					std::printf(
-						"Shader(%s): %s | Permutation: %04X\n",
-						Blam::FormatTagClass(CurMaterial.Shader.Class).c_str(),
-						CurWorld.GetMapFile()
-							.GetTagName(CurMaterial.Shader.TagID)
-							.data(),
-						CurMaterial.ShaderPermutation);
-
-					auto& CurLightmapMesh = LightmapMeshs.emplace_back();
-					//// Vertex Buffer data
-					{
-						// Copy vertex data into the staging buffer
-						const std::span<const Blam::Vertex> CurVertexData
-							= CurMaterial.GetVertices(
-								BSPData.data(), CurBSPEntry.BSPVirtualBase);
-
-						// Queue up staging buffer copy
-						Renderer.GetStreamBuffer().QueueBufferUpload(
-							std::as_bytes(CurVertexData), VertexBuffer.get(),
-							VertexHeapIndexOffset * sizeof(Blam::Vertex));
-
-						// Add the offset needed to begin indexing into
-						// this particular part of the vertex buffer,
-						// used when drawing
-						CurLightmapMesh.VertexIndexOffset
-							= VertexHeapIndexOffset;
-
-						if( CurMaterial.Shader.Class
-							== Blam::TagClass::ShaderEnvironment )
-						{
-							auto* BasemapTag
-								= CurWorld.GetMapFile()
-									  .GetTag<
-										  Blam::TagClass::ShaderEnvironment>(
-										  CurMaterial.Shader.TagID);
-							if( BasemapTag->BaseMap.TagID != -1 )
-							{
-								CurLightmapMesh.BasemapTag
-									= BasemapTag->BaseMap.TagID;
-							}
-						}
-
-						if( ScenarioBSP.LightmapTexture.TagID != -1
-							&& LightmapTextureIndex != -1 )
-						{
-							CurLightmapMesh.LightmapTag
-								= ScenarioBSP.LightmapTexture.TagID;
-							CurLightmapMesh.LightmapIndex
-								= LightmapTextureIndex;
-						}
-
-						//// Lightmap vertex buffer data
-						{
-							const std::span<const Blam::LightmapVertex>
-								CurLightmapVertexData
-								= CurMaterial.GetLightmapVertices(
-									BSPData.data(), CurBSPEntry.BSPVirtualBase);
-							// Queue up staging buffer copy
-							Renderer.GetStreamBuffer().QueueBufferUpload(
-								std::as_bytes(CurLightmapVertexData),
-								LightmapVertexBuffer.get(),
-								VertexHeapIndexOffset
-									* sizeof(Blam::LightmapVertex));
-						}
-
-						VertexHeapIndexOffset += CurVertexData.size();
-					}
-
-					//// Index Buffer data
-					{
-						const std::span<const std::byte> CurIndexData
-							= std::as_bytes(Surfaces.subspan(
-								CurMaterial.SurfacesIndexStart,
-								CurMaterial.SurfacesCount));
-
-						CurLightmapMesh.IndexCount
-							= CurMaterial.SurfacesCount * 3;
-
-						CurLightmapMesh.IndexOffset = IndexHeapIndexOffset;
-
-						// Queue up staging buffer copy
-						Renderer.GetStreamBuffer().QueueBufferUpload(
-							std::as_bytes(CurIndexData), IndexBuffer.get(),
-							IndexHeapIndexOffset * sizeof(std::uint16_t));
-
-						// Increment offsets
-						IndexHeapIndexOffset += CurMaterial.SurfacesCount * 3;
-					}
-				}
-			}
-		}
-
-		Vulkan::SetObjectName(
-			Device.get(), GeometryBufferHeapMemory.get(),
-			"Geometry Buffer Memory");
-	}
-
 	// Render Target images
 	vk::UniqueImage RenderImage;
 
@@ -610,7 +350,7 @@ int main(int argc, char* argv[])
 	vk::ImageCreateInfo RenderImageAAInfo = {};
 	RenderImageAAInfo.imageType           = vk::ImageType::e2D;
 	RenderImageAAInfo.format              = vk::Format::eR8G8B8A8Srgb;
-	RenderImageAAInfo.samples             = RenderSamples;
+	RenderImageAAInfo.samples             = VkBlam::RenderSamples;
 	RenderImageAAInfo.extent      = vk::Extent3D(RenderSize.x, RenderSize.y, 1);
 	RenderImageAAInfo.mipLevels   = 1;
 	RenderImageAAInfo.arrayLayers = 1;
@@ -623,7 +363,7 @@ int main(int argc, char* argv[])
 	vk::ImageCreateInfo RenderImageDepthInfo = {};
 	RenderImageDepthInfo.imageType           = vk::ImageType::e2D;
 	RenderImageDepthInfo.format              = vk::Format::eD32Sfloat;
-	RenderImageDepthInfo.samples             = RenderSamples;
+	RenderImageDepthInfo.samples             = VkBlam::RenderSamples;
 	RenderImageDepthInfo.extent = vk::Extent3D(RenderSize.x, RenderSize.y, 1);
 	RenderImageDepthInfo.mipLevels   = 1;
 	RenderImageDepthInfo.arrayLayers = 1;
@@ -775,361 +515,15 @@ int main(int argc, char* argv[])
 		Device.get(), RenderImageView.get(), RenderImageDepthView.get(),
 		RenderImageAAView.get(), RenderSize, MainRenderPass.get());
 
-	// Main Shader modules
-	const cmrc::file DefaultVertShaderData
-		= DataFS.open("shaders/Default.vert.spv");
-	const cmrc::file DefaultFragShaderData
-		= DataFS.open("shaders/Default.frag.spv");
-	const cmrc::file UnlitFragShaderData
-		= DataFS.open("shaders/Unlit.frag.spv");
+	// VkBlam::ShaderEnvironment ShaderEnvironments(
+	// 	VulkanContext, BitmapHeap, Renderer.GetDescriptorUpdateBatch());
 
-	vk::UniqueShaderModule DefaultVertexShaderModule
-		= Vulkan::CreateShaderModule(
-			Device.get(),
-			std::span<const std::uint32_t>(
-				reinterpret_cast<const std::uint32_t*>(
-					DefaultVertShaderData.begin()),
-				DefaultVertShaderData.size() / sizeof(std::uint32_t)));
-	vk::UniqueShaderModule DefaultFragmentShaderModule
-		= Vulkan::CreateShaderModule(
-			Device.get(),
-			std::span<const std::uint32_t>(
-				reinterpret_cast<const std::uint32_t*>(
-					DefaultFragShaderData.begin()),
-				DefaultFragShaderData.size() / sizeof(std::uint32_t)));
-	vk::UniqueShaderModule UnlitFragmentShaderModule
-		= Vulkan::CreateShaderModule(
-			Device.get(),
-			std::span<const std::uint32_t>(
-				reinterpret_cast<const std::uint32_t*>(
-					UnlitFragShaderData.begin()),
-				UnlitFragShaderData.size() / sizeof(std::uint32_t)));
-
-	Vulkan::DescriptorHeap DebugDrawDescriptorPool
-		= Vulkan::DescriptorHeap::Create(
-			  VulkanContext, {{vk::DescriptorSetLayoutBinding(
-								 0, vk::DescriptorType::eCombinedImageSampler,
-								 1, vk::ShaderStageFlagBits::eFragment)}})
-			  .value();
-
-	auto [DebugDrawPipeline, DebugDrawPipelineLayout] = CreateGraphicsPipeline(
-		Device.get(),
-		{{vk::PushConstantRange(
-			vk::ShaderStageFlagBits::eAllGraphics, 0,
-			sizeof(VkBlam::CameraGlobals))}},
-		{{DebugDrawDescriptorPool.GetDescriptorSetLayout(),
-		  DebugDrawDescriptorPool.GetDescriptorSetLayout()}},
-		DefaultVertexShaderModule.get(), DefaultFragmentShaderModule.get(),
-		MainRenderPass.get());
-
-	Vulkan::DescriptorHeap UnlitDescriptorPool
-		= Vulkan::DescriptorHeap::Create(
-			  VulkanContext, {{vk::DescriptorSetLayoutBinding(
-								 0, vk::DescriptorType::eCombinedImageSampler,
-								 1, vk::ShaderStageFlagBits::eFragment)}})
-			  .value();
-
-	auto [UnlitDrawPipeline, UnlitDrawPipelineLayout] = CreateGraphicsPipeline(
-		Device.get(),
-		{{vk::PushConstantRange(
-			vk::ShaderStageFlagBits::eAllGraphics, 0,
-			sizeof(VkBlam::CameraGlobals))}},
-		{{UnlitDescriptorPool.GetDescriptorSetLayout(),
-		  UnlitDescriptorPool.GetDescriptorSetLayout()}},
-		DefaultVertexShaderModule.get(), UnlitFragmentShaderModule.get(),
-		MainRenderPass.get(), vk::PolygonMode::eLine);
-
-	//////// Stream in all images
-
-	// TagID -> BitmapTag[indexofimage] -> vulkan image
-	VkBlam::BitmapHeapT BitmapHeap;
-
-	// Create image handles
-	const auto CreateBitmapImage
-		= [&Device](
-			  VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
-			  Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry)
-		-> bool {
-		vk::ImageCreateInfo ImageInfo = {};
-		ImageInfo.imageType           = VkBlam::BlamToVk(BitmapEntry.Type);
-		ImageInfo.format              = VkBlam::BlamToVk(BitmapEntry.Format);
-		ImageInfo.extent              = vk::Extent3D(
-						 BitmapEntry.Width, BitmapEntry.Height, BitmapEntry.Depth);
-		ImageInfo.mipLevels
-			= std::max<std::uint16_t>(BitmapEntry.MipmapCount, 1);
-		ImageInfo.arrayLayers
-			= BitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6 : 1;
-		ImageInfo.samples = vk::SampleCountFlagBits::e1;
-		ImageInfo.tiling  = vk::ImageTiling::eOptimal;
-		ImageInfo.usage   = vk::ImageUsageFlagBits::eSampled
-						| vk::ImageUsageFlagBits::eTransferDst
-						| vk::ImageUsageFlagBits::eTransferSrc;
-		ImageInfo.sharingMode   = vk::SharingMode::eExclusive;
-		ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
-
-		if( BitmapEntry.Type == Blam::BitmapEntryType::CubeMap )
-		{
-			ImageInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
-		}
-
-		auto& ImageDest = TargetBitmap.Image;
-
-		if( auto CreateResult = Device->createImageUnique(ImageInfo);
-			CreateResult.result == vk::Result::eSuccess )
-		{
-			ImageDest = std::move(CreateResult.value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error creating image: %s\n",
-				vk::to_string(CreateResult.result).c_str());
-			return false;
-		}
-		return true;
-	};
-
-	const auto CreateBitmap
-		= [&](const Blam::TagIndexEntry&               TagEntry,
-			  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-		// std::printf("%s\n",
-		// CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
-		for( std::size_t CurSubTextureIdx = 0;
-			 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
-		{
-			const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-				CurWorld.GetMapFile().GetMapData().data(),
-				CurWorld.GetMapFile().TagHeapVirtualBase)[CurSubTextureIdx];
-
-			auto& BitmapDest
-				= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
-
-			CreateBitmapImage(BitmapDest, CurSubTexture);
-
-			Vulkan::SetObjectName(
-				Device.get(), BitmapDest.Image.get(), "Bitmap %08X[%2zu] | %s",
-				TagEntry.TagID, CurSubTextureIdx,
-				CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
-		}
-	};
-
-	CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(CreateBitmap);
-
-	CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Globals>(
-		[&](const Blam::TagIndexEntry&                TagEntry,
-			const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
-			const auto& CurGlobal = Globals;
-			for( const auto& RasterData : CurGlobal.RasterizerData.GetSpan(
-					 CurWorld.GetMapFile().GetMapData().data(),
-					 CurWorld.GetMapFile().TagHeapVirtualBase) )
-			{
-				BitmapHeap.Default2D   = RasterData.Default2D.TagID;
-				BitmapHeap.Default3D   = RasterData.Default3D.TagID;
-				BitmapHeap.DefaultCube = RasterData.DefaultCube.TagID;
-			}
-		});
-
-	// Allocate and bind memory for all bitmaps
-	vk::UniqueDeviceMemory BitmapHeapMemory = {};
-	{
-		std::vector<vk::Image> Bitmaps;
-		for( const auto& CurBitmap : BitmapHeap.Bitmaps )
-		{
-			for( const auto& CurSubBitmap : CurBitmap.second )
-			{
-				Bitmaps.emplace_back(CurSubBitmap.second.Image.get());
-			}
-		}
-
-		if( auto [Result, Value]
-			= Vulkan::CommitImageHeap(Device.get(), PhysicalDevice, Bitmaps);
-			Result == vk::Result::eSuccess )
-		{
-			BitmapHeapMemory = std::move(Value);
-		}
-		else
-		{
-			std::fprintf(
-				stderr, "Error committing bitmap memory: %s\n",
-				vk::to_string(Result).c_str());
-			return EXIT_FAILURE;
-		}
-	}
-
-	// All images are now created and binded to memory
-	{
-		// Todo: This would be the draft of a bitmap manager's stream
-		// function
-		const auto StreamBitmapImage
-			= [&Renderer, &Device](
-				  VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
-				  Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry,
-				  std::span<const std::byte> PixelData) -> bool {
-			// Upload image data
-			const std::size_t MipCount
-				= std::max<std::uint16_t>(BitmapEntry.MipmapCount, 1);
-			const std::size_t LayerCount
-				= BitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6 : 1;
-
-			const std::size_t BlockSize
-				= vk::blockSize(VkBlam::BlamToVk(BitmapEntry.Format));
-			const std::array<std::uint8_t, 3> BlockExtent
-				= vk::blockExtent(VkBlam::BlamToVk(BitmapEntry.Format));
-
-			std::size_t PixelDataOff = 0;
-
-			auto CurExtent = vk::Extent3D(
-				BitmapEntry.Width, BitmapEntry.Height, BitmapEntry.Depth);
-			for( std::size_t CurMip = 0; CurMip < MipCount; ++CurMip )
-			{
-				for( std::size_t CurLayer = 0; CurLayer < LayerCount;
-					 ++CurLayer )
-				{
-					const std::array<std::uint32_t, 3> CurBlockCount
-						= {std::max(1u, CurExtent.width / BlockExtent[0]),
-						   std::max(1u, CurExtent.height / BlockExtent[1]),
-						   std::max(1u, CurExtent.depth / BlockExtent[2])};
-
-					const std::size_t CurPixelDataSize
-						= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
-						* BlockSize;
-
-					Renderer.GetStreamBuffer().QueueImageUpload(
-						PixelData.subspan(PixelDataOff, CurPixelDataSize),
-						TargetBitmap.Image.get(), vk::Offset3D(0, 0, 0),
-						CurExtent,
-						vk::ImageSubresourceLayers(
-							vk::ImageAspectFlagBits::eColor, CurMip, CurLayer,
-							1));
-
-					PixelDataOff += CurPixelDataSize;
-				}
-
-				CurExtent.width  = std::max(1u, CurExtent.width / 2);
-				CurExtent.height = std::max(1u, CurExtent.height / 2);
-				CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
-			}
-
-			// Create image view
-			vk::ImageViewCreateInfo BitmapImageViewInfo = {};
-			BitmapImageViewInfo.image = TargetBitmap.Image.get();
-			switch( BitmapEntry.Type )
-			{
-			default:
-			case Blam::BitmapEntryType::Texture2D:
-			{
-				BitmapImageViewInfo.viewType = vk::ImageViewType::e2D;
-				break;
-			}
-			case Blam::BitmapEntryType::Texture3D:
-			{
-				BitmapImageViewInfo.viewType = vk::ImageViewType::e3D;
-				break;
-			}
-			case Blam::BitmapEntryType::CubeMap:
-			{
-				BitmapImageViewInfo.viewType = vk::ImageViewType::eCube;
-				break;
-			}
-			}
-			BitmapImageViewInfo.format = VkBlam::BlamToVk(BitmapEntry.Format);
-			;
-			BitmapImageViewInfo.components.r = vk::ComponentSwizzle::eR;
-			BitmapImageViewInfo.components.g = vk::ComponentSwizzle::eG;
-			BitmapImageViewInfo.components.b = vk::ComponentSwizzle::eB;
-			BitmapImageViewInfo.components.a = vk::ComponentSwizzle::eA;
-			BitmapImageViewInfo.subresourceRange.aspectMask
-				= vk::ImageAspectFlagBits::eColor;
-			BitmapImageViewInfo.subresourceRange.baseMipLevel   = 0;
-			BitmapImageViewInfo.subresourceRange.levelCount     = MipCount;
-			BitmapImageViewInfo.subresourceRange.baseArrayLayer = 0;
-			BitmapImageViewInfo.subresourceRange.layerCount     = LayerCount;
-
-			if( auto CreateResult
-				= Device->createImageViewUnique(BitmapImageViewInfo);
-				CreateResult.result == vk::Result::eSuccess )
-			{
-				TargetBitmap.View = std::move(CreateResult.value);
-			}
-			else
-			{
-				std::fprintf(
-					stderr, "Error bitmap view: %s\n",
-					vk::to_string(CreateResult.result).c_str());
-				return false;
-			}
-			return true;
-		};
-
-		const auto StreamBitmap
-			= [&](const Blam::TagIndexEntry&               TagEntry,
-				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
-			for( std::size_t CurSubTextureIdx = 0;
-				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
-			{
-				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-					CurWorld.GetMapFile().GetMapData().data(),
-					CurWorld.GetMapFile().TagHeapVirtualBase)[CurSubTextureIdx];
-				const auto PixelData = std::span<const std::byte>(
-					reinterpret_cast<const std::byte*>(
-						CurMap.GetBitmapData().data())
-						+ CurSubTexture.PixelDataOffset,
-					CurSubTexture.PixelDataSize);
-
-				auto& BitmapDest
-					= BitmapHeap.Bitmaps[TagEntry.TagID][CurSubTextureIdx];
-
-				StreamBitmapImage(BitmapDest, CurSubTexture, PixelData);
-
-				Vulkan::SetObjectName(
-					Device.get(), BitmapDest.View.get(),
-					"Bitmap View %08X[%2zu] | %s", TagEntry.TagID,
-					CurSubTextureIdx,
-					CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
-
-				// Create descriptor set
-				vk::DescriptorSet& TargetSet
-					= BitmapHeap.Sets[TagEntry.TagID][CurSubTextureIdx];
-
-				if( auto NewSet
-					= DebugDrawDescriptorPool.AllocateDescriptorSet();
-					NewSet )
-				{
-					TargetSet = NewSet.value();
-				}
-				else
-				{
-					std::fprintf(
-						stderr, "Error allocating bitmap descriptor set\n");
-					return;
-				}
-
-				Vulkan::SetObjectName(
-					Device.get(), TargetSet,
-					"Bitmap Descriptor Set %08X[%2zu] | %s", TagEntry.TagID,
-					CurSubTextureIdx,
-					CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
-
-				Renderer.GetDescriptorUpdateBatch().AddImageSampler(
-					TargetSet, 0, BitmapDest.View.get(),
-					Renderer.GetDefaultSampler(),
-					vk::ImageLayout::eShaderReadOnlyOptimal);
-			}
-		};
-
-		CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
-			StreamBitmap);
-	}
-
-	VkBlam::ShaderEnvironment ShaderEnvironments(
-		VulkanContext, BitmapHeap, Renderer.GetDescriptorUpdateBatch());
-
-	CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::ShaderEnvironment>(
-		[&](const Blam::TagIndexEntry& TagEntry,
-			const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
-				ShaderEnvironment) -> void {
-			ShaderEnvironments.RegisterShader(TagEntry, ShaderEnvironment);
-		});
+	// CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::ShaderEnvironment>(
+	// 	[&](const Blam::TagIndexEntry& TagEntry,
+	// 		const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
+	// 			ShaderEnvironment) -> void {
+	// 		ShaderEnvironments.RegisterShader(TagEntry, ShaderEnvironment);
+	// 	});
 
 	Renderer.GetDescriptorUpdateBatch().Flush();
 
@@ -1208,24 +602,7 @@ int main(int argc, char* argv[])
 			CommandBuffer->beginRenderPass(
 				RenderBeginInfo, vk::SubpassContents::eInline);
 
-			vk::Viewport Viewport = {};
-			Viewport.width        = RenderSize.x;
-			Viewport.height       = -float(RenderSize.y);
-			Viewport.x            = 0.0f;
-			Viewport.y            = RenderSize.y;
-			Viewport.minDepth     = 0.0f;
-			Viewport.maxDepth     = 1.0f;
-			CommandBuffer->setViewport(0, {Viewport});
-			// Scissor
-			vk::Rect2D Scissor    = {};
-			Scissor.extent.width  = RenderSize.x;
-			Scissor.extent.height = RenderSize.y;
-			CommandBuffer->setScissor(0, {Scissor});
 			// Draw
-			CommandBuffer->bindPipeline(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
-
-			VkBlam::CameraGlobals CameraGlobals = {};
 
 			const auto WorldBounds = CurWorld.GetWorldBounds();
 
@@ -1236,13 +613,13 @@ int main(int argc, char* argv[])
 				= glm::compMax(glm::xyz(WorldBounds[1] - WorldBounds[0]))
 				/ 2.0f;
 
-			CameraGlobals.View = glm::lookAt<glm::f32>(
+			const auto View = glm::lookAt<glm::f32>(
 				glm::vec3(WorldBounds[1].x, WorldBounds[1].y, MaxExtent) * 1.5f,
 				// glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
 				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBounds[0].z),
 				glm::vec3(0, 0, 1));
 
-			CameraGlobals.Projection
+			const auto Projection
 				// = glm::ortho<glm::f32>(
 				// 	-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
 				// 	WorldBoundMax.z - WorldBoundMin.z);
@@ -1251,67 +628,9 @@ int main(int argc, char* argv[])
 					static_cast<float>(RenderSize.x) / RenderSize.y, 1.0f,
 					1000.0f);
 
-			CameraGlobals.ViewProjection
-				= CameraGlobals.Projection * CameraGlobals.View;
+			VkBlam::SceneView SceneView(View, Projection, RenderSize);
 
-			CommandBuffer->pushConstants<VkBlam::CameraGlobals>(
-				DebugDrawPipelineLayout.get(),
-				vk::ShaderStageFlagBits::eAllGraphics, 0, {CameraGlobals});
-
-			CommandBuffer->bindVertexBuffers(
-				0, {VertexBuffer.get(), LightmapVertexBuffer.get()}, {0, 0});
-			CommandBuffer->bindIndexBuffer(
-				IndexBuffer.get(), 0, vk::IndexType::eUint16);
-
-			for( std::size_t i = 0; i < LightmapMeshs.size(); ++i )
-			{
-				const auto& CurLightmapMesh = LightmapMeshs[i];
-				Vulkan::InsertDebugLabel(
-					CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu",
-					i);
-				if( CurLightmapMesh.LightmapTag.has_value()
-					&& CurLightmapMesh.LightmapIndex.has_value() )
-				{
-					CommandBuffer->bindDescriptorSets(
-						vk::PipelineBindPoint::eGraphics,
-						DebugDrawPipelineLayout.get(), 0,
-						{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
-							 .at(CurLightmapMesh.LightmapIndex.value())},
-						{});
-				}
-				else
-				{
-					CommandBuffer->bindDescriptorSets(
-						vk::PipelineBindPoint::eGraphics,
-						DebugDrawPipelineLayout.get(), 0,
-						{BitmapHeap.Sets.at(BitmapHeap.Default2D)
-							 .at(std::uint32_t(
-								 Blam::DefaultTextureIndex::Multiplicative))},
-						{});
-				}
-				if( CurLightmapMesh.BasemapTag.has_value() )
-				{
-					CommandBuffer->bindDescriptorSets(
-						vk::PipelineBindPoint::eGraphics,
-						DebugDrawPipelineLayout.get(), 1,
-						{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value())
-							 .at(0)},
-						{});
-				}
-				else
-				{
-					CommandBuffer->bindDescriptorSets(
-						vk::PipelineBindPoint::eGraphics,
-						DebugDrawPipelineLayout.get(), 1,
-						{BitmapHeap.Sets.at(BitmapHeap.Default2D)
-							 .at(std::uint32_t(
-								 Blam::DefaultTextureIndex::Additive))},
-						{});
-				}
-				CommandBuffer->drawIndexed(
-					CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
-					CurLightmapMesh.VertexIndexOffset, 0);
-			}
+			CurScene.Render(SceneView, CommandBuffer.get());
 
 			// CommandBuffer->bindPipeline(
 			// 	vk::PipelineBindPoint::eGraphics, UnlitDrawPipeline.get());
@@ -1443,81 +762,6 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-vk::UniqueRenderPass
-	CreateMainRenderPass(vk::Device Device, vk::SampleCountFlagBits SampleCount)
-{
-	vk::RenderPassCreateInfo RenderPassInfo = {};
-
-	const vk::AttachmentDescription Attachments[] = {
-		// Color Attachment
-		// We just care about it storing its color data
-		vk::AttachmentDescription(
-			vk::AttachmentDescriptionFlags(), vk::Format::eR8G8B8A8Srgb,
-			vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare,
-			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eTransferSrcOptimal),
-		// Depth Attachment
-		// Dont care about reading or storing it
-		vk::AttachmentDescription(
-			vk::AttachmentDescriptionFlags(), vk::Format::eD32Sfloat,
-			SampleCount, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eDepthStencilAttachmentOptimal),
-		// Color Attachment(MSAA)
-		// We just care about it storing its color data
-		vk::AttachmentDescription(
-			vk::AttachmentDescriptionFlags(), vk::Format::eR8G8B8A8Srgb,
-			SampleCount, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare,
-			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eColorAttachmentOptimal)};
-
-	const vk::AttachmentReference AttachmentRefs[] = {
-		vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
-		vk::AttachmentReference(
-			1, vk::ImageLayout::eDepthStencilAttachmentOptimal),
-		vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal),
-	};
-
-	RenderPassInfo.attachmentCount = std::size(Attachments);
-	RenderPassInfo.pAttachments    = Attachments;
-
-	vk::SubpassDescription Subpasses[1] = {{}};
-
-	// First subpass
-	Subpasses[0].colorAttachmentCount    = 1;
-	Subpasses[0].pColorAttachments       = &AttachmentRefs[2];
-	Subpasses[0].pDepthStencilAttachment = &AttachmentRefs[1];
-	Subpasses[0].pResolveAttachments     = &AttachmentRefs[0];
-
-	RenderPassInfo.subpassCount = std::size(Subpasses);
-	RenderPassInfo.pSubpasses   = Subpasses;
-
-	const vk::SubpassDependency SubpassDependencies[] = {vk::SubpassDependency(
-		VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eTransfer,
-		vk::PipelineStageFlagBits::eVertexInput,
-		vk::AccessFlagBits::eTransferWrite,
-		vk::AccessFlagBits::eVertexAttributeRead, vk::DependencyFlags())};
-
-	RenderPassInfo.dependencyCount = std::size(SubpassDependencies);
-	RenderPassInfo.pDependencies   = SubpassDependencies;
-
-	if( auto CreateResult = Device.createRenderPassUnique(RenderPassInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		return std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating render pass: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return {};
-	}
-}
-
 vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass)
@@ -1545,209 +789,6 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 			vk::to_string(CreateResult.result).c_str());
 		return {};
 	}
-}
-
-std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
-	vk::Device Device, std::span<const vk::PushConstantRange> PushConstants,
-	std::span<const vk::DescriptorSetLayout> SetLayouts,
-	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
-	vk::RenderPass RenderPass, vk::PolygonMode PolygonMode)
-{
-	// Create Pipeline Layout
-	vk::PipelineLayoutCreateInfo GraphicsPipelineLayoutInfo = {};
-
-	GraphicsPipelineLayoutInfo.pSetLayouts            = SetLayouts.data();
-	GraphicsPipelineLayoutInfo.setLayoutCount         = SetLayouts.size();
-	GraphicsPipelineLayoutInfo.pPushConstantRanges    = PushConstants.data();
-	GraphicsPipelineLayoutInfo.pushConstantRangeCount = PushConstants.size();
-
-	vk::UniquePipelineLayout GraphicsPipelineLayout = {};
-	if( auto CreateResult
-		= Device.createPipelineLayoutUnique(GraphicsPipelineLayoutInfo);
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		GraphicsPipelineLayout = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating pipeline layout: %s\n",
-			vk::to_string(CreateResult.result).c_str());
-		return {};
-	}
-
-	// Describe the stage and entry point of each shader
-	const vk::PipelineShaderStageCreateInfo ShaderStagesInfo[2] = {
-		vk::PipelineShaderStageCreateInfo(
-			{},                               // Flags
-			vk::ShaderStageFlagBits::eVertex, // Shader Stage
-			VertModule,                       // Shader Module
-			"main", // Shader entry point function name
-			{}      // Shader specialization info
-			),
-		vk::PipelineShaderStageCreateInfo(
-			{},                                 // Flags
-			vk::ShaderStageFlagBits::eFragment, // Shader Stage
-			FragModule,                         // Shader Module
-			"main", // Shader entry point function name
-			{}      // Shader specialization info
-			),
-	};
-
-	vk::PipelineVertexInputStateCreateInfo VertexInputState = {};
-
-	static std::array<vk::VertexInputBindingDescription, 2>
-		VertexBindingDescriptions
-		= {Vulkan::CreateVertexInputBinding<Blam::Vertex>(0),
-		   Vulkan::CreateVertexInputBinding<Blam::LightmapVertex>(1)};
-
-	VertexInputState.vertexBindingDescriptionCount
-		= std::size(VertexBindingDescriptions);
-	VertexInputState.pVertexBindingDescriptions
-		= VertexBindingDescriptions.data();
-
-	static std::array<vk::VertexInputAttributeDescription, 7>
-		AttributeDescriptions = {};
-	// Position
-	AttributeDescriptions[0].binding  = 0;
-	AttributeDescriptions[0].location = 0;
-	AttributeDescriptions[0].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[0].offset   = offsetof(Blam::Vertex, Position);
-	// Normal
-	AttributeDescriptions[1].binding  = 0;
-	AttributeDescriptions[1].location = 1;
-	AttributeDescriptions[1].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[1].offset   = offsetof(Blam::Vertex, Normal);
-	// Binormal
-	AttributeDescriptions[2].binding  = 0;
-	AttributeDescriptions[2].location = 2;
-	AttributeDescriptions[2].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[2].offset   = offsetof(Blam::Vertex, Binormal);
-	// Tangent
-	AttributeDescriptions[3].binding  = 0;
-	AttributeDescriptions[3].location = 3;
-	AttributeDescriptions[3].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[3].offset   = offsetof(Blam::Vertex, Tangent);
-	// UV
-	AttributeDescriptions[4].binding  = 0;
-	AttributeDescriptions[4].location = 4;
-	AttributeDescriptions[4].format   = vk::Format::eR32G32Sfloat;
-	AttributeDescriptions[4].offset   = offsetof(Blam::Vertex, UV);
-
-	// Normal-Lightmap
-	AttributeDescriptions[5].binding  = 1;
-	AttributeDescriptions[5].location = 5;
-	AttributeDescriptions[5].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[5].offset   = offsetof(Blam::LightmapVertex, Normal);
-	// UV-Lightmap
-	AttributeDescriptions[6].binding  = 1;
-	AttributeDescriptions[6].location = 6;
-	AttributeDescriptions[6].format   = vk::Format::eR32G32Sfloat;
-	AttributeDescriptions[6].offset   = offsetof(Blam::LightmapVertex, UV);
-
-	VertexInputState.vertexAttributeDescriptionCount
-		= AttributeDescriptions.size();
-	VertexInputState.pVertexAttributeDescriptions
-		= AttributeDescriptions.data();
-
-	vk::PipelineInputAssemblyStateCreateInfo InputAssemblyState = {};
-	InputAssemblyState.topology = vk::PrimitiveTopology::eTriangleList;
-	InputAssemblyState.primitiveRestartEnable = false;
-
-	vk::PipelineViewportStateCreateInfo ViewportState = {};
-
-	static const vk::Viewport DefaultViewport = {0, 0, 16, 16, 0.0f, 1.0f};
-	static const vk::Rect2D   DefaultScissor  = {{0, 0}, {16, 16}};
-	ViewportState.viewportCount               = 1;
-	ViewportState.pViewports                  = &DefaultViewport;
-	ViewportState.scissorCount                = 1;
-	ViewportState.pScissors                   = &DefaultScissor;
-
-	vk::PipelineRasterizationStateCreateInfo RasterizationState = {};
-
-	RasterizationState.depthClampEnable        = false;
-	RasterizationState.rasterizerDiscardEnable = false;
-	RasterizationState.polygonMode             = PolygonMode;
-	RasterizationState.cullMode                = vk::CullModeFlagBits::eBack;
-	RasterizationState.frontFace               = vk::FrontFace::eClockwise;
-	RasterizationState.depthBiasEnable         = false;
-	RasterizationState.depthBiasConstantFactor = 0.0f;
-	RasterizationState.depthBiasClamp          = 0.0f;
-	RasterizationState.depthBiasSlopeFactor    = 0.0;
-	RasterizationState.lineWidth               = 1.0f;
-
-	vk::PipelineMultisampleStateCreateInfo MultisampleState = {};
-
-	MultisampleState.rasterizationSamples  = RenderSamples;
-	MultisampleState.sampleShadingEnable   = true;
-	MultisampleState.minSampleShading      = 1.0f;
-	MultisampleState.pSampleMask           = nullptr;
-	MultisampleState.alphaToCoverageEnable = false;
-	MultisampleState.alphaToOneEnable      = false;
-
-	vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {};
-
-	DepthStencilState.depthTestEnable       = true;
-	DepthStencilState.depthWriteEnable      = true;
-	DepthStencilState.depthCompareOp        = vk::CompareOp::eLessOrEqual;
-	DepthStencilState.depthBoundsTestEnable = false;
-	DepthStencilState.stencilTestEnable     = false;
-	DepthStencilState.front                 = vk::StencilOp::eKeep;
-	DepthStencilState.back                  = vk::StencilOp::eKeep;
-	DepthStencilState.minDepthBounds        = 0.0f;
-	DepthStencilState.maxDepthBounds        = 1.0f;
-
-	vk::PipelineColorBlendStateCreateInfo ColorBlendState = {};
-
-	ColorBlendState.logicOpEnable   = false;
-	ColorBlendState.logicOp         = vk::LogicOp::eClear;
-	ColorBlendState.attachmentCount = 1;
-
-	vk::PipelineColorBlendAttachmentState BlendAttachmentState = {};
-
-	BlendAttachmentState.blendEnable         = false;
-	BlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eZero;
-	BlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
-	BlendAttachmentState.colorBlendOp        = vk::BlendOp::eAdd;
-	BlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eZero;
-	BlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-	BlendAttachmentState.alphaBlendOp        = vk::BlendOp::eAdd;
-	BlendAttachmentState.colorWriteMask
-		= vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
-		| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-
-	ColorBlendState.pAttachments = &BlendAttachmentState;
-
-	vk::PipelineDynamicStateCreateInfo DynamicState = {};
-	vk::DynamicState                   DynamicStates[]
-		= {// The viewport and scissor of the framebuffer will be dynamic at
-		   // run-time
-		   // so we definately add these
-		   vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-	DynamicState.dynamicStateCount = std::size(DynamicStates);
-	DynamicState.pDynamicStates    = DynamicStates;
-
-	vk::GraphicsPipelineCreateInfo RenderPipelineInfo = {};
-
-	RenderPipelineInfo.stageCount          = 2; // Vert + Frag stages
-	RenderPipelineInfo.pStages             = ShaderStagesInfo;
-	RenderPipelineInfo.pVertexInputState   = &VertexInputState;
-	RenderPipelineInfo.pInputAssemblyState = &InputAssemblyState;
-	RenderPipelineInfo.pViewportState      = &ViewportState;
-	RenderPipelineInfo.pRasterizationState = &RasterizationState;
-	RenderPipelineInfo.pMultisampleState   = &MultisampleState;
-	RenderPipelineInfo.pDepthStencilState  = &DepthStencilState;
-	RenderPipelineInfo.pColorBlendState    = &ColorBlendState;
-	RenderPipelineInfo.pDynamicState       = &DynamicState;
-	RenderPipelineInfo.subpass             = 0;
-	RenderPipelineInfo.renderPass          = RenderPass;
-	RenderPipelineInfo.layout              = GraphicsPipelineLayout.get();
-
-	// Create Pipeline
-	vk::UniquePipeline Pipeline
-		= Device.createGraphicsPipelineUnique({}, RenderPipelineInfo).value;
-	return std::make_tuple(
-		std::move(Pipeline), std::move(GraphicsPipelineLayout));
 }
 
 std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice)

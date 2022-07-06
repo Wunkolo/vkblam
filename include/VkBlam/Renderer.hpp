@@ -33,6 +33,10 @@ private:
 
 	vk::UniqueSampler DefaultSampler = {};
 
+	// Temporary
+	std::unordered_map<vk::SampleCountFlagBits, vk::UniqueRenderPass>
+		DefaultRenderPasses = {};
+
 	std::unique_ptr<Vulkan::StreamBuffer>          StreamBuffer;
 	std::unique_ptr<Vulkan::DescriptorUpdateBatch> DescriptorUpdateBatch;
 
@@ -62,6 +66,9 @@ public:
 	{
 		return DefaultSampler.get();
 	}
+
+	const vk::RenderPass&
+		GetDefaultRenderPass(vk::SampleCountFlagBits SampleCount);
 
 	static std::optional<Renderer> Create(
 		const Vulkan::Context& VulkanContext,

@@ -3,6 +3,7 @@
 #include <optional>
 
 #include <VkBlam/Renderer.hpp>
+#include <VkBlam/SceneView.hpp>
 #include <VkBlam/World.hpp>
 
 #include <Vulkan/DescriptorHeap.hpp>
@@ -20,7 +21,19 @@ private:
 	Scene(Renderer& TargetRenderer, const World& TargetWorld);
 
 	// Temporary
-	std::unique_ptr<Vulkan::DescriptorHeap> TrivialDescriptorPool;
+	std::unique_ptr<Vulkan::DescriptorHeap> DebugDrawDescriptorPool;
+
+	vk::UniquePipeline       DebugDrawPipeline       = {};
+	vk::UniquePipelineLayout DebugDrawPipelineLayout = {};
+
+	std::unique_ptr<Vulkan::DescriptorHeap> UnlitDescriptorPool;
+
+	vk::UniquePipeline       UnlitDrawPipeline       = {};
+	vk::UniquePipelineLayout UnlitDrawPipelineLayout = {};
+
+	vk::UniqueShaderModule DefaultVertexShaderModule;
+	vk::UniqueShaderModule DefaultFragmentShaderModule;
+	vk::UniqueShaderModule UnlitFragmentShaderModule;
 
 	// Contains _both_ the vertex buffers and the index buffer
 	vk::UniqueDeviceMemory BSPGeometryMemory = {};
@@ -39,6 +52,8 @@ private:
 		std::span<const Blam::LightmapVertex> LightmapVertexData;
 		std::span<const std::byte>            IndexData;
 
+		std::optional<std::uint32_t> BasemapTag;
+
 		// Some lightmap meshes don't have a lightmap!
 		std::optional<std::uint32_t> LightmapTag;
 		std::optional<std::uint32_t> LightmapIndex;
@@ -52,6 +67,8 @@ public:
 	~Scene();
 
 	Scene(Scene&&) = default;
+
+	void Render(const SceneView& View, vk::CommandBuffer CommandBuffer);
 
 	static std::optional<Scene>
 		Create(Renderer& TargetRenderer, const World& TargetWorld);

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <map>
+#include <optional>
+#include <span>
+#include <string_view>
 #include <unordered_map>
 
 #include <Blam/Blam.hpp>
@@ -18,6 +21,9 @@
 
 namespace VkBlam
 {
+
+// Remove me
+constexpr vk::SampleCountFlagBits RenderSamples = vk::SampleCountFlagBits::e4;
 
 // Temporary structure so that the image heap can be passed around
 struct BitmapHeapT
@@ -43,6 +49,8 @@ struct BitmapHeapT
 vk::ImageType BlamToVk(Blam::BitmapEntryType Value);
 
 vk::Format BlamToVk(Blam::BitmapEntryFormat Value);
+
+std::optional<std::span<const std::byte>> OpenResource(const std::string& Path);
 
 //// Must match vkBlam.glsl structures
 
