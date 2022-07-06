@@ -22,7 +22,18 @@ std::optional<Scene>
 
 	const Vulkan::Context& VulkanContext = TargetRenderer.GetVulkanContext();
 
-	// Load Scenario
+	{
+		NewScene.TrivialDescriptorPool
+			= std::make_unique<Vulkan::DescriptorHeap>(
+				Vulkan::DescriptorHeap::Create(
+					VulkanContext,
+					{{vk::DescriptorSetLayoutBinding(
+						0, vk::DescriptorType::eCombinedImageSampler, 1,
+						vk::ShaderStageFlagBits::eFragment)}})
+					.value());
+	}
+
+	// Load BSP
 	{
 		// Offset is in elements, not bytes
 		std::uint32_t VertexHeapIndexOffset = 0;
@@ -255,6 +266,303 @@ std::optional<Scene>
 				std::as_bytes(CurLightmapMesh.IndexData),
 				NewScene.BSPIndexBuffer.get(),
 				CurLightmapMesh.IndexOffset * sizeof(std::uint16_t));
+		}
+	}
+
+	// Load bitmaps
+	{
+
+		// Create image handles
+		const auto CreateBitmapImage
+			= [&](VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
+				  Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry)
+			-> bool {
+			vk::ImageCreateInfo ImageInfo = {};
+			ImageInfo.imageType           = VkBlam::BlamToVk(BitmapEntry.Type);
+			ImageInfo.format = VkBlam::BlamToVk(BitmapEntry.Format);
+			ImageInfo.extent = vk::Extent3D(
+				BitmapEntry.Width, BitmapEntry.Height, BitmapEntry.Depth);
+			ImageInfo.mipLevels
+				= std::max<std::uint16_t>(BitmapEntry.MipmapCount, 1);
+			ImageInfo.arrayLayers
+				= BitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6 : 1;
+			ImageInfo.samples = vk::SampleCountFlagBits::e1;
+			ImageInfo.tiling  = vk::ImageTiling::eOptimal;
+			ImageInfo.usage   = vk::ImageUsageFlagBits::eSampled
+							| vk::ImageUsageFlagBits::eTransferDst
+							| vk::ImageUsageFlagBits::eTransferSrc;
+			ImageInfo.sharingMode   = vk::SharingMode::eExclusive;
+			ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
+
+			if( BitmapEntry.Type == Blam::BitmapEntryType::CubeMap )
+			{
+				ImageInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+			}
+
+			auto& ImageDest = TargetBitmap.Image;
+
+			if( auto CreateResult
+				= VulkanContext.LogicalDevice.createImageUnique(ImageInfo);
+				CreateResult.result == vk::Result::eSuccess )
+			{
+				ImageDest = std::move(CreateResult.value);
+			}
+			else
+			{
+				std::fprintf(
+					stderr, "Error creating image: %s\n",
+					vk::to_string(CreateResult.result).c_str());
+				return false;
+			}
+			return true;
+		};
+
+		const auto CreateBitmap
+			= [&](const Blam::TagIndexEntry&               TagEntry,
+				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+			// std::printf("%s\n",
+			// CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
+			for( std::size_t CurSubTextureIdx = 0;
+				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
+			{
+				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
+					TargetWorld.GetMapFile().GetMapData().data(),
+					TargetWorld.GetMapFile()
+						.TagHeapVirtualBase)[CurSubTextureIdx];
+
+				auto& BitmapDest
+					= NewScene.BitmapHeap
+						  .Bitmaps[TagEntry.TagID][CurSubTextureIdx];
+
+				CreateBitmapImage(BitmapDest, CurSubTexture);
+
+				Vulkan::SetObjectName(
+					VulkanContext.LogicalDevice, BitmapDest.Image.get(),
+					"VkBlam::Scene: Bitmap %08X[%2zu] | %s", TagEntry.TagID,
+					CurSubTextureIdx,
+					TargetWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
+			}
+		};
+
+		TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
+			CreateBitmap);
+
+		TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Globals>(
+			[&](const Blam::TagIndexEntry&                TagEntry,
+				const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
+				const auto& CurGlobal = Globals;
+				for( const auto& RasterData : CurGlobal.RasterizerData.GetSpan(
+						 TargetWorld.GetMapFile().GetMapData().data(),
+						 TargetWorld.GetMapFile().TagHeapVirtualBase) )
+				{
+					NewScene.BitmapHeap.Default2D = RasterData.Default2D.TagID;
+					NewScene.BitmapHeap.Default3D = RasterData.Default3D.TagID;
+					NewScene.BitmapHeap.DefaultCube
+						= RasterData.DefaultCube.TagID;
+				}
+			});
+
+		// Allocate and bind memory for all bitmaps
+
+		{
+			std::vector<vk::Image> Bitmaps;
+			for( const auto& CurBitmap : NewScene.BitmapHeap.Bitmaps )
+			{
+				for( const auto& CurSubBitmap : CurBitmap.second )
+				{
+					Bitmaps.emplace_back(CurSubBitmap.second.Image.get());
+				}
+			}
+
+			if( auto [Result, Value] = Vulkan::CommitImageHeap(
+					VulkanContext.LogicalDevice, VulkanContext.PhysicalDevice,
+					Bitmaps);
+				Result == vk::Result::eSuccess )
+			{
+				NewScene.BitmapHeapMemory = std::move(Value);
+			}
+			else
+			{
+				std::fprintf(
+					stderr, "Error committing bitmap memory: %s\n",
+					vk::to_string(Result).c_str());
+				return {};
+			}
+		}
+
+		// All images are now created and binded to memory
+		{
+			// Todo: This would be the draft of a bitmap manager's stream
+			// function
+			const auto StreamBitmapImage =
+				[&](VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
+					Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry,
+					std::span<const std::byte> PixelData) -> bool {
+				// Upload image data
+				const std::size_t MipCount
+					= std::max<std::uint16_t>(BitmapEntry.MipmapCount, 1);
+				const std::size_t LayerCount
+					= BitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6
+																		 : 1;
+
+				const std::size_t BlockSize
+					= vk::blockSize(VkBlam::BlamToVk(BitmapEntry.Format));
+				const std::array<std::uint8_t, 3> BlockExtent
+					= vk::blockExtent(VkBlam::BlamToVk(BitmapEntry.Format));
+
+				std::size_t PixelDataOff = 0;
+
+				auto CurExtent = vk::Extent3D(
+					BitmapEntry.Width, BitmapEntry.Height, BitmapEntry.Depth);
+				for( std::size_t CurMip = 0; CurMip < MipCount; ++CurMip )
+				{
+					for( std::size_t CurLayer = 0; CurLayer < LayerCount;
+						 ++CurLayer )
+					{
+						const std::array<std::uint32_t, 3> CurBlockCount
+							= {std::max(1u, CurExtent.width / BlockExtent[0]),
+							   std::max(1u, CurExtent.height / BlockExtent[1]),
+							   std::max(1u, CurExtent.depth / BlockExtent[2])};
+
+						const std::size_t CurPixelDataSize
+							= CurBlockCount[0] * CurBlockCount[1]
+							* CurBlockCount[2] * BlockSize;
+
+						TargetRenderer.GetStreamBuffer().QueueImageUpload(
+							PixelData.subspan(PixelDataOff, CurPixelDataSize),
+							TargetBitmap.Image.get(), vk::Offset3D(0, 0, 0),
+							CurExtent,
+							vk::ImageSubresourceLayers(
+								vk::ImageAspectFlagBits::eColor, CurMip,
+								CurLayer, 1));
+
+						PixelDataOff += CurPixelDataSize;
+					}
+
+					CurExtent.width  = std::max(1u, CurExtent.width / 2);
+					CurExtent.height = std::max(1u, CurExtent.height / 2);
+					CurExtent.depth  = std::max(1u, CurExtent.depth / 2);
+				}
+
+				// Create image view
+				vk::ImageViewCreateInfo BitmapImageViewInfo = {};
+				BitmapImageViewInfo.image = TargetBitmap.Image.get();
+				switch( BitmapEntry.Type )
+				{
+				default:
+				case Blam::BitmapEntryType::Texture2D:
+				{
+					BitmapImageViewInfo.viewType = vk::ImageViewType::e2D;
+					break;
+				}
+				case Blam::BitmapEntryType::Texture3D:
+				{
+					BitmapImageViewInfo.viewType = vk::ImageViewType::e3D;
+					break;
+				}
+				case Blam::BitmapEntryType::CubeMap:
+				{
+					BitmapImageViewInfo.viewType = vk::ImageViewType::eCube;
+					break;
+				}
+				}
+				BitmapImageViewInfo.format
+					= VkBlam::BlamToVk(BitmapEntry.Format);
+				;
+				BitmapImageViewInfo.components.r = vk::ComponentSwizzle::eR;
+				BitmapImageViewInfo.components.g = vk::ComponentSwizzle::eG;
+				BitmapImageViewInfo.components.b = vk::ComponentSwizzle::eB;
+				BitmapImageViewInfo.components.a = vk::ComponentSwizzle::eA;
+				BitmapImageViewInfo.subresourceRange.aspectMask
+					= vk::ImageAspectFlagBits::eColor;
+				BitmapImageViewInfo.subresourceRange.baseMipLevel   = 0;
+				BitmapImageViewInfo.subresourceRange.levelCount     = MipCount;
+				BitmapImageViewInfo.subresourceRange.baseArrayLayer = 0;
+				BitmapImageViewInfo.subresourceRange.layerCount = LayerCount;
+
+				if( auto CreateResult
+					= VulkanContext.LogicalDevice.createImageViewUnique(
+						BitmapImageViewInfo);
+					CreateResult.result == vk::Result::eSuccess )
+				{
+					TargetBitmap.View = std::move(CreateResult.value);
+				}
+				else
+				{
+					std::fprintf(
+						stderr, "Error bitmap view: %s\n",
+						vk::to_string(CreateResult.result).c_str());
+					return false;
+				}
+				return true;
+			};
+
+			const auto StreamBitmap
+				= [&](const Blam::TagIndexEntry&               TagEntry,
+					  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+				for( std::size_t CurSubTextureIdx = 0;
+					 CurSubTextureIdx < Bitmap.Bitmaps.Count;
+					 ++CurSubTextureIdx )
+				{
+					const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
+						TargetWorld.GetMapFile().GetMapData().data(),
+						TargetWorld.GetMapFile()
+							.TagHeapVirtualBase)[CurSubTextureIdx];
+					const auto PixelData = std::span<const std::byte>(
+						reinterpret_cast<const std::byte*>(
+							TargetWorld.GetMapFile().GetBitmapData().data())
+							+ CurSubTexture.PixelDataOffset,
+						CurSubTexture.PixelDataSize);
+
+					auto& BitmapDest
+						= NewScene.BitmapHeap
+							  .Bitmaps[TagEntry.TagID][CurSubTextureIdx];
+
+					StreamBitmapImage(BitmapDest, CurSubTexture, PixelData);
+
+					Vulkan::SetObjectName(
+						VulkanContext.LogicalDevice, BitmapDest.View.get(),
+						"VkBlam::Scene: Bitmap View %08X[%2zu] | %s",
+						TagEntry.TagID, CurSubTextureIdx,
+						TargetWorld.GetMapFile()
+							.GetTagName(TagEntry.TagID)
+							.data());
+
+					// Create descriptor set
+					vk::DescriptorSet& TargetSet
+						= NewScene.BitmapHeap
+							  .Sets[TagEntry.TagID][CurSubTextureIdx];
+
+					if( auto NewSet = NewScene.TrivialDescriptorPool
+										  ->AllocateDescriptorSet();
+						NewSet )
+					{
+						TargetSet = NewSet.value();
+					}
+					else
+					{
+						std::fprintf(
+							stderr, "Error allocating bitmap descriptor set\n");
+						return;
+					}
+
+					Vulkan::SetObjectName(
+						VulkanContext.LogicalDevice, TargetSet,
+						"VkBlam::Scene: Bitmap Descriptor Set %08X[%2zu] | %s",
+						TagEntry.TagID, CurSubTextureIdx,
+						TargetWorld.GetMapFile()
+							.GetTagName(TagEntry.TagID)
+							.data());
+
+					TargetRenderer.GetDescriptorUpdateBatch().AddImageSampler(
+						TargetSet, 0, BitmapDest.View.get(),
+						TargetRenderer.GetDefaultSampler(),
+						vk::ImageLayout::eShaderReadOnlyOptimal);
+				}
+			};
+
+			TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
+				StreamBitmap);
 		}
 	}
 

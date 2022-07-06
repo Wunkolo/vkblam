@@ -5,6 +5,8 @@
 #include <VkBlam/Renderer.hpp>
 #include <VkBlam/World.hpp>
 
+#include <Vulkan/DescriptorHeap.hpp>
+
 namespace VkBlam
 {
 
@@ -17,18 +19,21 @@ private:
 
 	Scene(Renderer& TargetRenderer, const World& TargetWorld);
 
+	// Temporary
+	std::unique_ptr<Vulkan::DescriptorHeap> TrivialDescriptorPool;
+
 	// Contains _both_ the vertex buffers and the index buffer
 	vk::UniqueDeviceMemory BSPGeometryMemory = {};
 
-	vk::UniqueBuffer BSPVertexBuffer;
-	vk::UniqueBuffer BSPLightmapVertexBuffer;
-	vk::UniqueBuffer BSPIndexBuffer;
+	vk::UniqueBuffer BSPVertexBuffer         = {};
+	vk::UniqueBuffer BSPLightmapVertexBuffer = {};
+	vk::UniqueBuffer BSPIndexBuffer          = {};
 
 	struct LightmapMesh
 	{
-		std::uint32_t VertexIndexOffset;
-		std::uint32_t IndexCount;
-		std::uint32_t IndexOffset;
+		std::uint32_t VertexIndexOffset = 0;
+		std::uint32_t IndexCount        = 0;
+		std::uint32_t IndexOffset       = 0;
 
 		std::span<const Blam::Vertex>         VertexData;
 		std::span<const Blam::LightmapVertex> LightmapVertexData;
@@ -40,7 +45,8 @@ private:
 	};
 	std::vector<LightmapMesh> LightmapMeshs;
 
-	BitmapHeapT BitmapHeap;
+	vk::UniqueDeviceMemory BitmapHeapMemory = {};
+	BitmapHeapT            BitmapHeap       = {};
 
 public:
 	~Scene();
