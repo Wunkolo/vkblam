@@ -19,6 +19,7 @@
 #include <Vulkan/VulkanAPI.hpp>
 
 #include <VkBlam/Renderer.hpp>
+#include <VkBlam/Scene.hpp>
 #include <VkBlam/Shaders/ShaderEnvironment.hpp>
 #include <VkBlam/VkBlam.hpp>
 #include <VkBlam/World.hpp>
@@ -250,6 +251,8 @@ int main(int argc, char* argv[])
 		Device.get(), PhysicalDevice, RenderQueue, 0, TransferQueue, 0};
 
 	VkBlam::Renderer Renderer = VkBlam::Renderer::Create(VulkanContext).value();
+
+	VkBlam::Scene CurScene = VkBlam::Scene::Create(Renderer, CurWorld).value();
 
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
@@ -1116,31 +1119,7 @@ int main(int argc, char* argv[])
 
 		CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
 			StreamBitmap);
-
-		// StreamBitmap(
-		// 	*CurWorld.GetMapFile().GetTagIndexEntry(BitmapHeap.Default2D),
-		// 	*CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default2D));
-		// StreamBitmap(
-		// 	*CurWorld.GetMapFile().GetTagIndexEntry(BitmapHeap.Default3D),
-		// 	*CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(BitmapHeap.Default3D));
-		// StreamBitmap(
-		// 	*CurWorld.GetMapFile().GetTagIndexEntry(BitmapHeap.DefaultCube),
-		// 	*CurWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(BitmapHeap.DefaultCube));
 	}
-
-	// const auto CheckBitmapRef
-	// 	= [&CurWorld, &(BitmapHeap.Images)](
-	// 		  std::uint32_t TagID, const char* Name) -> void {
-	// 	if( BitmapHeap.Images.contains(TagID) )
-	// 	{
-	// 		std::printf("\t-%s: %s\n", Name,
-	// CurWorld.GetMapFile().GetTagName(TagID).data());
-	// 	}
-	// 	else
-	// 	{
-	// 		std::printf("\t-%s: \e[31m%08X\e[0m\n", Name, TagID);
-	// 	}
-	// };
 
 	VkBlam::ShaderEnvironment ShaderEnvironments(
 		VulkanContext, BitmapHeap, Renderer.GetDescriptorUpdateBatch());

@@ -4,10 +4,7 @@
 
 #include <filesystem>
 #include <memory>
-
 #include <optional>
-
-#include <mio/mmap.hpp>
 
 namespace VkBlam
 {
@@ -16,10 +13,6 @@ namespace VkBlam
 class World
 {
 private:
-	std::filesystem::path BitmapPath;
-
-	mio::mmap_source BitmapFileData;
-
 	const Blam::MapFile& MapFile;
 
 	glm::f32vec3 WorldBoundMax;

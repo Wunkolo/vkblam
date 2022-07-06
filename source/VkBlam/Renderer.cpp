@@ -54,7 +54,7 @@ std::optional<Renderer> Renderer::Create(
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, NewRenderer.DefaultSampler.get(),
-			"VkBlam: Default Sampler");
+			"VkBlam::Renderer: Default Sampler");
 	}
 
 	NewRenderer.StreamBuffer = std::make_unique<Vulkan::StreamBuffer>(

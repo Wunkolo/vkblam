@@ -128,6 +128,7 @@ add_executable(
 	source/main.cpp
 	source/stb_image_write.cpp
 	source/VkBlam/Renderer.cpp
+	source/VkBlam/Scene.cpp
 	source/VkBlam/Shader.cpp
 	source/VkBlam/Shaders/ShaderEnvironment.cpp
 	source/VkBlam/VkBlam.cpp
