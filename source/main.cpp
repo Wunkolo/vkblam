@@ -244,8 +244,8 @@ int main(int argc, char* argv[])
 	std::size_t            StagingBufferWritePosition = 0;
 
 	vk::BufferCreateInfo StagingBufferInfo = {};
-	StagingBufferInfo.size                 = std::max(
-						128_MiB, RenderSize.x * RenderSize.y * sizeof(std::uint32_t));
+	StagingBufferInfo.size
+		= RenderSize.x * RenderSize.y * sizeof(std::uint32_t);
 	StagingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferDst
 							| vk::BufferUsageFlagBits::eTransferSrc;
 
@@ -631,21 +631,6 @@ int main(int argc, char* argv[])
 			VkBlam::SceneView SceneView(View, Projection, RenderSize);
 
 			CurScene.Render(SceneView, CommandBuffer.get());
-
-			// CommandBuffer->bindPipeline(
-			// 	vk::PipelineBindPoint::eGraphics, UnlitDrawPipeline.get());
-			// CommandBuffer->pushConstants<glm::vec4>(
-			// 	UnlitDrawPipelineLayout.get(),
-			// 	vk::ShaderStageFlagBits::eAllGraphics, sizeof(glm::f32mat4),
-			// 	{glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)});
-			// for( std::size_t i = 0; i < VertexIndexOffsets.size(); ++i )
-			// {
-			// 	Vulkan::InsertDebugLabel(
-			// 		CommandBuffer.get(), {0.5, 0.5, 0.5, 1.0}, "BSP Draw:
-			// %zu", 		i); 	CommandBuffer->drawIndexed(
-			// IndexCounts[i], 1, IndexOffsets[i], VertexIndexOffsets[i],
-			// 0);
-			// }
 
 			CommandBuffer->endRenderPass();
 		}
