@@ -8,7 +8,9 @@
 
 const char Help[]
 	= "Decrypts the `Shaders/*.{bin,enc}` files found within Halo CE and PC \n"
-	  "Usage: ./decrypt-shader ";
+	  "Usage: ./decrypt-shader {list of files}\n"
+	  "\tfor each file, a {file}.decrypted.bin will be created along side it\n"
+	  "\twith the decrypted contents\n";
 
 // Found within the Halo Custom Edition executable
 const static std::uint32_t Key[4] = {
@@ -18,8 +20,9 @@ const static std::uint32_t Key[4] = {
 	0x003FFFEF,
 };
 
-void TEADecrypt(
-	std::span<std::uint32_t, 2> Data, std::span<const std::uint32_t, 4> Key)
+void TEADecryptBlock(
+	const std::span<std::uint32_t, 2> Data,
+	std::span<const std::uint32_t, 4> Key)
 {
 	const std::uint32_t Delta = 0x61C88647;
 	std::uint32_t       Sum   = 0xC6EF3720;
@@ -37,8 +40,6 @@ void TEADecrypt(
 	Data[1] = V1;
 }
 
-// - If the file is larger than `0x80000007`, then decrypt the last 8 bytes
-// - For each group of 8 bytes decrypt each 8 bytes
 // - The last 32 bytes of the decrypted file are an ascii MD5 hash of all of the
 // data before it
 bool DecryptShader(
@@ -76,26 +77,27 @@ bool DecryptShader(
 		return false;
 	}
 
-	auto                     DecryptedFile = mio::mmap_sink(OutFile.c_str());
+	mio::mmap_sink           DecryptedFile = mio::mmap_sink(OutFile.c_str());
 	std::span<std::uint32_t> DecryptedData(
 		reinterpret_cast<std::uint32_t*>(DecryptedFile.data()),
 		DecryptedFile.size() / sizeof(std::uint32_t));
 
-	while( DecryptedData.size() > 2 )
+	if( DecryptedFile.size() & 0x80000007 )
 	{
-		auto CurSpan = DecryptedData.first<2>();
-		TEADecrypt(CurSpan, Key);
-		DecryptedData = DecryptedData.subspan(2);
+		TEADecryptBlock(
+			std::span<std::uint32_t>(
+				reinterpret_cast<std::uint32_t*>(
+					DecryptedFile.data() + DecryptedFile.size() - 8),
+				2)
+				.first<2>(),
+			Key);
 	}
 
-	DecryptedFile.sync(ErrorCode);
-
-	if( ErrorCode )
+	while( DecryptedData.size() >= 2 )
 	{
-		std::fprintf(
-			stderr, "sync(%s): %s", OutFile.string().c_str(),
-			ErrorCode.message().c_str());
-		return false;
+		const std::span<std::uint32_t, 2> CurSpan = DecryptedData.first<2>();
+		TEADecryptBlock(CurSpan, Key);
+		DecryptedData = DecryptedData.subspan(2);
 	}
 
 	return true;
@@ -114,7 +116,11 @@ int main(int argc, char* argv[])
 		const std::filesystem::path InPath = argv[i];
 		const std::filesystem::path OutPath
 			= std::filesystem::path(InPath).replace_extension(".decrypted.bin");
-		DecryptShader(InPath, OutPath);
+		if( !DecryptShader(InPath, OutPath) )
+		{
+			std::fprintf(
+				stderr, "Failed to decrypt file: %s", InPath.string().c_str());
+		}
 	}
 
 	return EXIT_SUCCESS;
