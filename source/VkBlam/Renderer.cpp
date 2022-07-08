@@ -60,7 +60,8 @@ vk::UniqueRenderPass
 		VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eTransfer,
 		vk::PipelineStageFlagBits::eVertexInput,
 		vk::AccessFlagBits::eTransferWrite,
-		vk::AccessFlagBits::eVertexAttributeRead, vk::DependencyFlags())};
+		vk::AccessFlagBits::eVertexAttributeRead,
+		vk::DependencyFlagBits::eByRegion)};
 
 	RenderPassInfo.dependencyCount = std::size(SubpassDependencies);
 	RenderPassInfo.pDependencies   = SubpassDependencies;
