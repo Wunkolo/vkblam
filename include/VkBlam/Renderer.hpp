@@ -19,7 +19,7 @@ using namespace Common::Literals;
 
 struct RendererConfig
 {
-	vk::DeviceSize StreamBufferSize = 64_MiB;
+	vk::DeviceSize StreamBufferSize = 128_MiB;
 
 	std::size_t DescriptorWriteMax = 256;
 	std::size_t DescriptorCopyMax  = 256;
