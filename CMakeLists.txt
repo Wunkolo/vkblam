@@ -111,6 +111,21 @@ target_link_libraries(
 	mio::mio
 )
 
+### decrypt-shader
+add_executable(
+	decrypt-shader
+	source/decrypt-shader.cpp
+)
+target_include_directories(
+	decrypt-shader
+	PRIVATE
+	include
+)
+target_link_libraries(
+	decrypt-shader
+	PRIVATE
+	mio::mio
+)
 
 ### vkblam
 
