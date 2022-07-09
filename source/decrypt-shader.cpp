@@ -2,7 +2,10 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <span>
+
+#include <Common/Format.hpp>
 
 #include <mio/mmap.hpp>
 
@@ -103,6 +106,44 @@ bool DecryptShader(
 	return true;
 }
 
+/* For ImHex
+struct ShaderBlob
+{
+	u32 Size;
+	u8 Data[Size];
+};
+
+ShaderBlob shaders[64] @0x00;
+*/
+bool DumpVertexShaderFile(std::span<const std::byte> ShaderFile)
+{
+	for( std::uint8_t i = 0; i < 64; ++i )
+	{
+		const std::uint32_t& ShaderDataSize
+			= *reinterpret_cast<const std::uint32_t*>(ShaderFile.data());
+		ShaderFile = ShaderFile.subspan(sizeof(uint32_t));
+
+		const std::span<const std::byte> VertexShaderByteCode
+			= ShaderFile.subspan(0, ShaderDataSize);
+		ShaderFile = ShaderFile.subspan(ShaderDataSize);
+
+		std::ofstream OutFile(Common::Format("vsh.%02zu.dxso", i));
+
+		if( OutFile )
+		{
+			OutFile.write(
+				reinterpret_cast<const char*>(VertexShaderByteCode.data()),
+				VertexShaderByteCode.size());
+		}
+		else
+		{
+			std::fprintf(stderr, "Error dumping shader %zu: ");
+		}
+	}
+
+	return true;
+}
+
 int main(int argc, char* argv[])
 {
 	if( argc <= 1 )
@@ -116,10 +157,23 @@ int main(int argc, char* argv[])
 		const std::filesystem::path InPath = argv[i];
 		const std::filesystem::path OutPath
 			= std::filesystem::path(InPath).replace_extension(".decrypted.bin");
-		if( !DecryptShader(InPath, OutPath) )
+		std::fprintf(
+			stdout, "%s -> %s: ", InPath.string().c_str(),
+			OutPath.string().c_str());
+		if( DecryptShader(InPath, OutPath) )
 		{
-			std::fprintf(
-				stderr, "Failed to decrypt file: %s", InPath.string().c_str());
+			std::fprintf(stdout, "Done\n");
+
+			mio::mmap_source DecryptedFile = mio::mmap_source(OutPath.c_str());
+			std::span<const std::byte> DecryptedData(
+				reinterpret_cast<const std::byte*>(DecryptedFile.data()),
+				DecryptedFile.size());
+
+			// DumpVertexShaderFile(DecryptedData);
+		}
+		else
+		{
+			std::fprintf(stdout, "Failed to decrypt file\n");
 		}
 	}
 
