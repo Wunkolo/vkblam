@@ -289,6 +289,183 @@ struct Tag<TagClass::Globals>
 static_assert(sizeof(Tag<TagClass::Globals>) == 0x1AC);
 
 template<>
+struct Tag<TagClass::Gbxmodel>
+{
+	enum class GBXModelBitFlags : std::uint32_t
+	{
+		BlendSharedNormals  = 1 << 0,
+		PartsHaveLocalNodes = 1 << 1,
+		IgnoreSkinning      = 1 << 2,
+	} Flags;
+
+	std::uint32_t NodeListChecksum;
+
+	float SuperHighDetailCutoff;
+	float HighDetailCutoff;
+	float MediumDetailCutoff;
+	float LowDetailCutoff;
+	float SuperLowCutoff;
+
+	std::uint16_t SuperHighDetailNodeCount;
+	std::uint16_t HighDetailNodeCount;
+	std::uint16_t MediumDetailNodeCount;
+	std::uint16_t LowDetailNodeCount;
+	std::uint16_t SuperLowDetailNodeCount;
+
+	std::uint16_t Unknown26;
+
+	std::uint32_t Unknown28;
+	std::uint32_t Unknown2C;
+
+	float BaseMapUScale;
+	float BaseMapVScale;
+
+	std::uint32_t Unknown38;
+	std::uint32_t Unknown3C;
+	std::uint32_t Unknown40;
+	std::uint32_t Unknown44;
+	std::uint32_t Unknown48;
+	std::uint32_t Unknown4C;
+	std::uint32_t Unknown50;
+	std::uint32_t Unknown54;
+	std::uint32_t Unknown58;
+	std::uint32_t Unknown5C;
+	std::uint32_t Unknown60;
+	std::uint32_t Unknown64;
+	std::uint32_t Unknown68;
+	std::uint32_t Unknown6C;
+	std::uint32_t Unknown70;
+	std::uint32_t Unknown74;
+	std::uint32_t Unknown78;
+	std::uint32_t Unknown7C;
+	std::uint32_t Unknown80;
+	std::uint32_t Unknown84;
+	std::uint32_t Unknown88;
+	std::uint32_t Unknown8C;
+	std::uint32_t Unknown90;
+	std::uint32_t Unknown94;
+	std::uint32_t Unknown98;
+	std::uint32_t Unknown9C;
+	std::uint32_t UnknownA0;
+	std::uint32_t UnknownA4;
+	std::uint32_t UnknownA8;
+
+	struct MarkerEntry
+	{
+	};
+	TagBlock<MarkerEntry> Markers;
+
+	struct NodeEntry
+	{
+	};
+	TagBlock<NodeEntry> Nodes;
+
+	struct RegionEntry
+	{
+	};
+	TagBlock<RegionEntry> Regions;
+
+	struct GeometryEntry
+	{
+		std::uint32_t Flags;
+
+		std::uint32_t Unknown4;
+		std::uint32_t Unknown8;
+		std::uint32_t UnknownC;
+		std::uint32_t Unknown10;
+		std::uint32_t Unknown14;
+		std::uint32_t Unknown18;
+		std::uint32_t Unknown1C;
+		std::uint32_t Unknown20;
+
+		struct PartEntry
+		{
+			std::uint32_t Flags;
+			std::uint16_t ShaderIndex;
+
+			std::int8_t PrevFilthyPartIndex;
+			std::int8_t NextFilthyPartIndex;
+
+			std::uint16_t CentroidPrimaryNode;
+			std::uint16_t CentroidSecondaryNode;
+
+			float CentroidPrimaryWeight;
+			float CentroidSecondaryWeight;
+
+			Vector3f Centroid;
+
+			struct UncompressedVertex
+			{
+				Vector3f      Position;
+				Vector3f      Normal;
+				Vector3f      Binormal;
+				Vector3f      Tangent;
+				Vector2f      TextureCoords;
+				std::uint16_t Node0Index;
+				std::uint16_t Node1Index;
+				float         Node0Weight;
+				float         Node1Weight;
+			};
+
+			TagBlock<UncompressedVertex> UncompressedVertices;
+
+			struct CompressedVertex
+			{
+				Vector3f      Position;
+				std::uint32_t Normal;   // [11.11.10-Bit]
+				std::uint32_t Binormal; // [11.11.10-Bit]
+				std::uint32_t Tangent;  // [11.11.10-Bit]
+				std::int16_t  TextureCoordinateU;
+				std::int16_t  TextureCoordinateV;
+				std::int8_t   Node0Index;
+				std::int8_t   Node1Index;
+				std::int16_t  Node0Weight;
+			};
+			TagBlock<CompressedVertex> CompressedVertices;
+
+			struct TriangleEntry
+			{
+				std::uint16_t Vertex0Index;
+				std::uint16_t Vertex1Index;
+				std::uint16_t Vertex2Index;
+			};
+			TagBlock<TriangleEntry> Triangles;
+
+			std::int32_t Unknown44; // IDirect3DIndexBuffer9 *
+			std::int32_t TriangleCount;
+			std::int32_t TriangleDataOffset;
+			std::int32_t TriangleDataOffset2;
+			std::int32_t VertexFormatIndex;
+			std::int32_t VertexCount;
+			std::int32_t Unknown5C;        // Usually set to 0
+			std::int32_t VertexBufferData; // Unknown60;
+			std::int32_t VertexBuffer;     // IDirect3DVertexBuffer9*;
+			std::int8_t  Unknown68;
+			std::int8_t  Unknown69;
+			std::int8_t  Unknown6A;
+			std::int8_t  NumberOfNodes;
+			std::int8_t  LocalNodeIndex[24];
+		};
+		TagBlock<PartEntry> Parts;
+	};
+	TagBlock<GeometryEntry> Geometries;
+
+	struct ShaderEntry
+	{
+		TagReference  Shader;
+		std::uint16_t Permuation;
+
+		std::uint16_t Unknown12;
+
+		std::uint32_t Unknown14;
+		std::uint32_t Unknown18;
+		std::uint32_t Unknown1C;
+	};
+	TagBlock<ShaderEntry> Shaders;
+};
+static_assert(sizeof(Tag<TagClass::Gbxmodel>) == 0xE8);
+
+template<>
 struct Tag<TagClass::Shader>
 {
 	// Radiocity properties
