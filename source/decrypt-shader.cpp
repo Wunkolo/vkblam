@@ -107,13 +107,13 @@ bool DecryptShader(
 }
 
 /* For ImHex
-struct ShaderBlob
+struct VertexShaderBlob
 {
 	u32 Size;
 	u8 Data[Size];
 };
 
-ShaderBlob shaders[64] @0x00;
+VertesShaderBlob shaders[64] @0x00;
 */
 bool DumpVertexShaderFile(std::span<const std::byte> ShaderFile)
 {
@@ -137,7 +137,70 @@ bool DumpVertexShaderFile(std::span<const std::byte> ShaderFile)
 		}
 		else
 		{
-			std::fprintf(stderr, "Error dumping shader %zu: ");
+			std::fprintf(stderr, "Error dumping shader");
+		}
+	}
+
+	return true;
+}
+
+struct FragmentShaderEntry
+{
+	std::uint32_t PermutationCount;
+	char          Name[0x80];
+};
+static_assert(sizeof(FragmentShaderEntry) == 0x84);
+
+// THis is particularly for Halo CE. Will not work with Halo PC
+bool DumpFragmentShaderFileCE(const std::span<const std::byte> ShaderFile)
+{
+	auto StreamSpan = ShaderFile;
+
+	const std::uint32_t& ShaderCount
+		= *reinterpret_cast<const std::uint32_t*>(ShaderFile.data());
+	StreamSpan = StreamSpan.subspan(sizeof(uint32_t));
+
+	for( std::uint8_t ShaderIdx = 0; ShaderIdx < ShaderCount; ++ShaderIdx )
+	{
+		const std::uint32_t& ShaderNameLength
+			= *reinterpret_cast<const std::uint32_t*>(StreamSpan.data());
+		StreamSpan = StreamSpan.subspan(sizeof(uint32_t));
+
+		const auto ShaderNameData = StreamSpan.subspan(0, ShaderNameLength);
+		StreamSpan                = StreamSpan.subspan(ShaderNameLength);
+
+		const char* ShaderName = (const char*)ShaderNameData.data();
+
+		const std::uint32_t& ShaderPermutationCount
+			= *reinterpret_cast<const std::uint32_t*>(StreamSpan.data());
+		StreamSpan = StreamSpan.subspan(sizeof(uint32_t));
+
+		std::printf(
+			"%.*s | Permutations: %u\n", ShaderNameLength, ShaderName,
+			ShaderPermutationCount);
+
+		for( std::uint8_t PermutationIdx = 0;
+			 PermutationIdx < ShaderPermutationCount; ++PermutationIdx )
+		{
+			const std::uint32_t& PermutationNameLength
+				= *reinterpret_cast<const std::uint32_t*>(StreamSpan.data());
+			StreamSpan = StreamSpan.subspan(sizeof(uint32_t));
+
+			const auto PermutationNameData
+				= StreamSpan.subspan(0, PermutationNameLength);
+			StreamSpan = StreamSpan.subspan(PermutationNameLength);
+
+			const char* PermutationName
+				= (const char*)PermutationNameData.data();
+			std::printf("\t - %.*s\n", PermutationNameLength, PermutationName);
+
+			const std::uint32_t& PermutationShaderDataLength
+				= *reinterpret_cast<const std::uint32_t*>(StreamSpan.data());
+			StreamSpan = StreamSpan.subspan(sizeof(uint32_t));
+
+			const auto PermutationShaderData
+				= StreamSpan.subspan(0, PermutationShaderDataLength * 4);
+			StreamSpan = StreamSpan.subspan(PermutationShaderDataLength * 4);
 		}
 	}
 
@@ -170,6 +233,7 @@ int main(int argc, char* argv[])
 				DecryptedFile.size());
 
 			// DumpVertexShaderFile(DecryptedData);
+			DumpFragmentShaderFileCE(DecryptedData);
 		}
 		else
 		{
