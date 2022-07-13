@@ -741,9 +741,8 @@ int main(int argc, char* argv[])
 
 	stbi_write_png_compression_level = 0;
 	stbi_write_png(
-		("./" + std::filesystem::path(argv[2]).stem().string() + ".png")
-			.c_str(),
-		RenderSize.x, RenderSize.y, 4, StagingBufferData.data(), 0);
+		("./" + MapPath.stem().string() + ".png").c_str(), RenderSize.x,
+		RenderSize.y, 4, StagingBufferData.data(), 0);
 
 	return EXIT_SUCCESS;
 }
