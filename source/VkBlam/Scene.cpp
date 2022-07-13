@@ -209,6 +209,13 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 		std::move(Pipeline), std::move(GraphicsPipelineLayout));
 }
 
+static vk::DescriptorSetLayoutBinding SceneBindings[] = {
+	{// Default2DSamplerFiltered
+	 0, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+	{// Default2DSamplerUnfiltered
+	 1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+};
+
 namespace VkBlam
 {
 Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
@@ -240,6 +247,10 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 	CommandBuffer.bindPipeline(
 		vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
+	CommandBuffer.bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(), 0,
+		{CurSceneDescriptor}, {});
+
 	CommandBuffer.pushConstants<VkBlam::CameraGlobals>(
 		DebugDrawPipelineLayout.get(), vk::ShaderStageFlagBits::eAllGraphics, 0,
 		{View.CameraGlobalsData});
@@ -260,7 +271,7 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				0,
+				1,
 				{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
 					 .at(CurLightmapMesh.LightmapIndex.value())},
 				{});
@@ -269,7 +280,7 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				0,
+				1,
 				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
 					 .at(std::uint32_t(
 						 Blam::DefaultTextureIndex::Multiplicative))},
@@ -279,7 +290,7 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1,
+				2,
 				{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value()).at(0)},
 				{});
 		}
@@ -287,7 +298,7 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1,
+				2,
 				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
 					 .at(std::uint32_t(Blam::DefaultTextureIndex::Additive))},
 				{});
@@ -305,22 +316,38 @@ std::optional<Scene>
 
 	const Vulkan::Context& VulkanContext = TargetRenderer.GetVulkanContext();
 
+	// Descriptor pools
 	{
 		NewScene.DebugDrawDescriptorPool
 			= std::make_unique<Vulkan::DescriptorHeap>(
 				Vulkan::DescriptorHeap::Create(
-					VulkanContext,
-					{{vk::DescriptorSetLayoutBinding(
-						0, vk::DescriptorType::eCombinedImageSampler, 1,
-						vk::ShaderStageFlagBits::eFragment)}})
+					VulkanContext, {{vk::DescriptorSetLayoutBinding(
+									   0, vk::DescriptorType::eSampledImage, 1,
+									   vk::ShaderStageFlagBits::eFragment)}})
 					.value());
 
 		NewScene.UnlitDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
 			Vulkan::DescriptorHeap::Create(
 				VulkanContext, {{vk::DescriptorSetLayoutBinding(
-								   0, vk::DescriptorType::eCombinedImageSampler,
-								   1, vk::ShaderStageFlagBits::eFragment)}})
+								   0, vk::DescriptorType::eSampledImage, 1,
+								   vk::ShaderStageFlagBits::eFragment)}})
 				.value());
+		NewScene.SceneDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
+			Vulkan::DescriptorHeap::Create(VulkanContext, SceneBindings)
+				.value());
+	}
+
+	// Scene Descriptor
+	{
+		NewScene.CurSceneDescriptor
+			= NewScene.SceneDescriptorPool->AllocateDescriptorSet().value();
+
+		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
+			NewScene.CurSceneDescriptor, 0,
+			TargetRenderer.GetSamplerCache().GetSampler(Sampler2D()));
+		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
+			NewScene.CurSceneDescriptor, 1,
+			TargetRenderer.GetSamplerCache().GetSampler(Sampler2D(false)));
 	}
 
 	{
@@ -360,7 +387,8 @@ std::optional<Scene>
 				{{vk::PushConstantRange(
 					vk::ShaderStageFlagBits::eAllGraphics, 0,
 					sizeof(VkBlam::CameraGlobals))}},
-				{{NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout(),
+				{{NewScene.SceneDescriptorPool->GetDescriptorSetLayout(),
+				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout(),
 				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout()}},
 				NewScene.DefaultVertexShaderModule.get(),
 				NewScene.DefaultFragmentShaderModule.get(), RenderPass,
@@ -900,9 +928,8 @@ std::optional<Scene>
 							.GetTagName(TagEntry.TagID)
 							.data());
 
-					TargetRenderer.GetDescriptorUpdateBatch().AddImageSampler(
+					TargetRenderer.GetDescriptorUpdateBatch().AddImage(
 						TargetSet, 0, BitmapDest.View.get(),
-						TargetRenderer.GetDefaultSampler(),
 						vk::ImageLayout::eShaderReadOnlyOptimal);
 				}
 			};

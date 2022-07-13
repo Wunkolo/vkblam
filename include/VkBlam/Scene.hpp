@@ -63,6 +63,10 @@ private:
 	vk::UniqueDeviceMemory BitmapHeapMemory = {};
 	BitmapHeapT            BitmapHeap       = {};
 
+	std::unique_ptr<Vulkan::DescriptorHeap> SceneDescriptorPool;
+
+	vk::DescriptorSet CurSceneDescriptor = {};
+
 public:
 	~Scene();
 

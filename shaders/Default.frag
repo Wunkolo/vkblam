@@ -14,13 +14,13 @@ layout( location = 6 ) in f32vec2 InLightmapUV;
 
 //// Descriptor sets
 
-// Set 0: Engine Globals
-
-// Set 1: Scene Globals
+// Set 0: Scene Globals
+layout( set = 0, binding = 0 ) uniform sampler Default2DSamplerFiltered;
+layout( set = 0, binding = 1 ) uniform sampler Default2DSamplerUnfiltered;
 
 // Set 2: Material
-layout( set = 0, binding = 0 ) uniform sampler2D LightmapImage;
-layout( set = 1, binding = 0 ) uniform sampler2D BaseMapImage;
+layout( set = 1, binding = 0 ) uniform texture2D LightmapImage;
+layout( set = 2, binding = 0 ) uniform texture2D BaseMapImage;
 
 //layout( set = 0, binding = 0 ) uniform sampler2D DiffuseImage;
 
@@ -33,7 +33,8 @@ void main()
 {
 	Attachment0 = f32vec4(
 		//dot(f32vec3(InNormal), vec3(0.0, 0.0, 1.0)).xxx,
-		texture(LightmapImage, InLightmapUV).rgb * texture(BaseMapImage, InUV).rgb,
+		texture(sampler2D(LightmapImage, Default2DSamplerFiltered), InLightmapUV).rgb
+		* texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV).rgb,
 		1.0
 	);
 }	

@@ -181,6 +181,7 @@ int main(int argc, char* argv[])
 
 	auto& DeviceFeatures
 		= DeviceFeatureChain.get<vk::PhysicalDeviceFeatures2>().features;
+	DeviceFeatures.samplerAnisotropy = true;
 	DeviceFeatures.sampleRateShading = true;
 	DeviceFeatures.wideLines         = true;
 	DeviceFeatures.fillModeNonSolid  = true;

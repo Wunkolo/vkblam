@@ -7,6 +7,7 @@
 
 #include <Vulkan/Debug.hpp>
 #include <Vulkan/DescriptorUpdateBatch.hpp>
+#include <Vulkan/SamplerCache.hpp>
 #include <Vulkan/StreamBuffer.hpp>
 
 #include <memory>
@@ -38,6 +39,7 @@ private:
 		DefaultRenderPasses = {};
 
 	std::unique_ptr<Vulkan::StreamBuffer>          StreamBuffer;
+	std::unique_ptr<Vulkan::SamplerCache>          SamplerCache;
 	std::unique_ptr<Vulkan::DescriptorUpdateBatch> DescriptorUpdateBatch;
 
 	Renderer(const Vulkan::Context& VulkanContext);
@@ -57,14 +59,14 @@ public:
 		return *StreamBuffer.get();
 	}
 
+	Vulkan::SamplerCache& GetSamplerCache() const
+	{
+		return *SamplerCache.get();
+	}
+
 	Vulkan::DescriptorUpdateBatch& GetDescriptorUpdateBatch() const
 	{
 		return *DescriptorUpdateBatch.get();
-	}
-
-	const vk::Sampler& GetDefaultSampler() const
-	{
-		return DefaultSampler.get();
 	}
 
 	const vk::RenderPass&

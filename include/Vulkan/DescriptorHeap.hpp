@@ -25,7 +25,7 @@ private:
 
 	std::vector<bool> AllocationMap;
 
-	DescriptorHeap(const Vulkan::Context& VulkanContext);
+	explicit DescriptorHeap(const Vulkan::Context& VulkanContext);
 
 public:
 	~DescriptorHeap() = default;

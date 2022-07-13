@@ -58,6 +58,37 @@ vk::Format BlamToVk(Blam::BitmapEntryFormat Value)
 	return vk::Format::eUndefined;
 }
 
+vk::SamplerCreateInfo Sampler2D(bool Filtered, bool Clamp)
+{
+	vk::SamplerCreateInfo SamplerInfo = {};
+	SamplerInfo.magFilter             = Filtered ? vk::Filter::eLinear
+												 : vk::Filter::eNearest;
+	SamplerInfo.minFilter             = Filtered ? vk::Filter::eLinear
+												 : vk::Filter::eNearest;
+
+	SamplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+
+	SamplerInfo.addressModeU = Clamp ? vk::SamplerAddressMode::eClampToEdge
+									 : vk::SamplerAddressMode::eRepeat;
+	SamplerInfo.addressModeV = Clamp ? vk::SamplerAddressMode::eClampToEdge
+									 : vk::SamplerAddressMode::eRepeat;
+	SamplerInfo.addressModeW = Clamp ? vk::SamplerAddressMode::eClampToEdge
+									 : vk::SamplerAddressMode::eRepeat;
+
+	SamplerInfo.mipLodBias       = 0.0f;
+	SamplerInfo.anisotropyEnable = VK_TRUE;
+	SamplerInfo.maxAnisotropy    = 16.0f;
+
+	SamplerInfo.compareEnable = VK_FALSE;
+	SamplerInfo.compareOp     = vk::CompareOp::eAlways;
+
+	SamplerInfo.minLod                  = 0.0f;
+	SamplerInfo.maxLod                  = VK_LOD_CLAMP_NONE;
+	SamplerInfo.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
+	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+	return SamplerInfo;
+}
+
 std::optional<std::span<const std::byte>> OpenResource(const std::string& Path)
 {
 	if( !DataFS.exists(Path) )
