@@ -216,6 +216,30 @@ static vk::DescriptorSetLayoutBinding SceneBindings[] = {
 	 1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
 };
 
+static vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
+	{// Basemap
+	 0, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+	{// PrimaryDetailMap
+	 1, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+	{// SecondaryDetailMap
+	 2, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+	{// MicroDetailMap
+	 3, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+	{// BumpMap
+	 4, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+	{// GlowMap
+	 5, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+	{// ReflectionCubeMap
+	 6, vk::DescriptorType::eSampledImage, 1,
+	 vk::ShaderStageFlagBits::eFragment},
+};
+
 namespace VkBlam
 {
 Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
@@ -269,21 +293,11 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu", i);
 
 		// Bind Shader descriptors
-		if( CurLightmapMesh.BasemapTag.has_value() )
+		if( ShaderEnvironmentDescriptors.contains(CurLightmapMesh.ShaderTag) )
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1,
-				{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value()).at(0)},
-				{});
-		}
-		else
-		{
-			CommandBuffer.bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1,
-				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
-					 .at(std::uint32_t(Blam::DefaultTextureIndex::Additive))},
+				1, {ShaderEnvironmentDescriptors.at(CurLightmapMesh.ShaderTag)},
 				{});
 		}
 
@@ -324,6 +338,11 @@ std::optional<Scene>
 
 	// Descriptor pools
 	{
+		NewScene.ShaderEnvironmentDescriptorPool
+			= std::make_unique<Vulkan::DescriptorHeap>(
+				Vulkan::DescriptorHeap::Create(
+					VulkanContext, ShaderEnvironmentBindings)
+					.value());
 		NewScene.DebugDrawDescriptorPool
 			= std::make_unique<Vulkan::DescriptorHeap>(
 				Vulkan::DescriptorHeap::Create(
@@ -394,7 +413,8 @@ std::optional<Scene>
 					vk::ShaderStageFlagBits::eAllGraphics, 0,
 					sizeof(VkBlam::CameraGlobals))}},
 				{{NewScene.SceneDescriptorPool->GetDescriptorSetLayout(),
-				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout(),
+				  NewScene.ShaderEnvironmentDescriptorPool
+					  ->GetDescriptorSetLayout(),
 				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout()}},
 				NewScene.DefaultVertexShaderModule.get(),
 				NewScene.DefaultFragmentShaderModule.get(), RenderPass,
@@ -469,20 +489,7 @@ std::optional<Scene>
 						CurLightmapMesh.VertexIndexOffset
 							= VertexHeapIndexOffset;
 
-						if( CurMaterial.Shader.Class
-							== Blam::TagClass::ShaderEnvironment )
-						{
-							auto* BasemapTag
-								= TargetWorld.GetMapFile()
-									  .GetTag<
-										  Blam::TagClass::ShaderEnvironment>(
-										  CurMaterial.Shader.TagID);
-							if( BasemapTag->BaseMap.TagID != -1 )
-							{
-								CurLightmapMesh.BasemapTag
-									= BasemapTag->BaseMap.TagID;
-							}
-						}
+						CurLightmapMesh.ShaderTag = CurMaterial.Shader.TagID;
 
 						if( ScenarioBSP.LightmapTexture.TagID != -1
 							&& LightmapTextureIndex != -1 )
@@ -943,6 +950,118 @@ std::optional<Scene>
 			TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
 				StreamBitmap);
 		}
+	}
+
+	// Create Shader-Environment descriptor sets
+	{
+		const auto CreateShaderEnvironmentDescriptor
+			= [&](const Blam::TagIndexEntry& TagEntry,
+				  const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
+					  ShaderEnvironment) -> void {
+			const vk::DescriptorSet NewSet
+				= NewScene.ShaderEnvironmentDescriptorPool
+					  ->AllocateDescriptorSet()
+					  .value();
+			NewScene.ShaderEnvironmentDescriptors[TagEntry.TagID] = NewSet;
+
+			Vulkan::SetObjectName(
+				VulkanContext.LogicalDevice, NewSet,
+				"senv: %08X \'%s\' Descriptor Set", TagEntry.TagID,
+				TargetWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
+
+			const vk::ImageView BaseMapView
+				= (ShaderEnvironment.BaseMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.BaseMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.Default2D)
+							 .at(std::uint32_t(
+								 Blam::DefaultTextureIndex::Multiplicative)))
+					  .View.get();
+			const vk::ImageView PrimaryDetailMapView
+				= (ShaderEnvironment.PrimaryDetailMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.PrimaryDetailMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.Default2D)
+							 .at(0))
+					  .View.get();
+			const vk::ImageView SecondaryDetailMapView
+				= (ShaderEnvironment.SecondaryDetailMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.SecondaryDetailMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.Default2D)
+							 .at(0))
+					  .View.get();
+			const vk::ImageView MicroDetailMapView
+				= (ShaderEnvironment.MicroDetailMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.MicroDetailMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.Default2D)
+							 .at(0))
+					  .View.get();
+			const vk::ImageView BumpMapView
+				= (ShaderEnvironment.BumpMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.BumpMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.Default2D)
+							 .at(std::uint32_t(
+								 Blam::DefaultTextureIndex::Vector)))
+					  .View.get();
+			const vk::ImageView GlowMapView
+				= (ShaderEnvironment.GlowMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.GlowMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.Default2D)
+							 .at(std::uint32_t(
+								 Blam::DefaultTextureIndex::Additive)))
+					  .View.get();
+			const vk::ImageView ReflectionCubeMapView
+				= (ShaderEnvironment.ReflectionCubeMap.TagID != -1
+					   ? NewScene.BitmapHeap.Bitmaps
+							 .at(ShaderEnvironment.ReflectionCubeMap.TagID)
+							 .at(0)
+					   : NewScene.BitmapHeap.Bitmaps
+							 .at(NewScene.BitmapHeap.DefaultCube)
+							 .at(0))
+					  .View.get();
+
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 0, BaseMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 1, PrimaryDetailMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 2, SecondaryDetailMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 3, MicroDetailMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 4, BumpMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 5, GlowMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+			TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+				NewSet, 6, ReflectionCubeMapView,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+		};
+
+		TargetWorld.GetMapFile()
+			.VisitTagClass<Blam::TagClass::ShaderEnvironment>(
+				CreateShaderEnvironmentDescriptor);
 	}
 
 	return {std::move(NewScene)};

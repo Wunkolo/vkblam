@@ -1,5 +1,12 @@
 #version 460
 #extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_GOOGLE_include_directive : require
+
+#include "vkBlam.glsl"
+
+layout( push_constant ) uniform PushConstants {
+	CameraGlobals Camera;
+};
 
 // Input vertex data: Standard vertex
 layout( location = 0 ) in f32vec3 InPosition;
@@ -20,6 +27,12 @@ layout( set = 0, binding = 1 ) uniform sampler Default2DSamplerUnfiltered;
 
 // Set 1: Shader
 layout( set = 1, binding = 0 ) uniform texture2D BaseMapImage;
+layout( set = 1, binding = 1 ) uniform texture2D PrimaryDetailMapImage;
+layout( set = 1, binding = 2 ) uniform texture2D SecondaryDetailMapImage;
+layout( set = 1, binding = 3 ) uniform texture2D MicroDetailMapImage;
+layout( set = 1, binding = 4 ) uniform texture2D BumpMapImage;
+layout( set = 1, binding = 5 ) uniform texture2D GlowMapImage;
+layout( set = 1, binding = 6 ) uniform texture2D ReflectionCubeMapImage;
 
 // Set 2: Object
 layout( set = 2, binding = 0 ) uniform texture2D LightmapImage;
@@ -30,9 +43,9 @@ layout( location = 0 ) out f32vec4 Attachment0;
 void main()
 {
 	Attachment0 = f32vec4(
-		//dot(f32vec3(InNormal), vec3(0.0, 0.0, 1.0)).xxx,
 		texture(sampler2D(LightmapImage, Default2DSamplerFiltered), InLightmapUV).rgb
-		* texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV).rgb,
+		* texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV).rgb
+		+ texture(sampler2D(GlowMapImage, Default2DSamplerFiltered), InUV).rgb,
 		1.0
 	);
 }	

@@ -21,6 +21,10 @@ private:
 	Scene(Renderer& TargetRenderer, const World& TargetWorld);
 
 	// Temporary
+	std::unordered_map<std::uint32_t, vk::DescriptorSet>
+											ShaderEnvironmentDescriptors;
+	std::unique_ptr<Vulkan::DescriptorHeap> ShaderEnvironmentDescriptorPool;
+
 	std::unique_ptr<Vulkan::DescriptorHeap> DebugDrawDescriptorPool;
 
 	vk::UniquePipeline       DebugDrawPipeline       = {};
@@ -52,7 +56,7 @@ private:
 		std::span<const Blam::LightmapVertex> LightmapVertexData;
 		std::span<const std::byte>            IndexData;
 
-		std::optional<std::uint32_t> BasemapTag;
+		std::uint32_t ShaderTag;
 
 		// Some lightmap meshes don't have a lightmap!
 		std::optional<std::uint32_t> LightmapTag;
