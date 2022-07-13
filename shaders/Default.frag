@@ -40,12 +40,39 @@ layout( set = 2, binding = 0 ) uniform texture2D LightmapImage;
 // Attachments
 layout( location = 0 ) out f32vec4 Attachment0;
 
+f32vec3 Glow(f32vec2 UV)
+{
+	const f32vec3 GlowSample = texture(sampler2D(GlowMapImage, Default2DSamplerFiltered), InUV).rgb;
+
+	f32vec3 GlowResult = f32vec3(0, 0, 0);
+
+	// Primary Animation Color
+	const f32vec3 PrimaryOnColor = f32vec3(1, 1, 1);
+	const f32vec3 PrimaryOffColor = f32vec3(1, 1, 1);
+	const float32_t PrimaryAnimationValue = 1.0;
+	GlowResult += GlowSample.r * mix(PrimaryOffColor, PrimaryOnColor, PrimaryAnimationValue);
+
+	// Secondary Animation Color
+	const f32vec3 SecondaryOnColor = f32vec3(1, 1, 1);
+	const f32vec3 SecondaryOffColor = f32vec3(1, 1, 1);
+	const float32_t SecondaryAnimationValue = 1.0;
+	GlowResult += GlowSample.g * mix(SecondaryOffColor, SecondaryOnColor, SecondaryAnimationValue);
+
+	// Plasma Animation Color
+	const f32vec3 PlasmaOnColor = f32vec3(1, 1, 1);
+	const f32vec3 PlasmaOffColor = f32vec3(1, 1, 1);
+	const float32_t PlasmaAnimationValue = 1.0;
+	GlowResult += GlowSample.b * mix(PlasmaOffColor, PlasmaOnColor, PlasmaAnimationValue);
+
+	return GlowResult;
+}
+
 void main()
 {
 	Attachment0 = f32vec4(
 		texture(sampler2D(LightmapImage, Default2DSamplerFiltered), InLightmapUV).rgb
 		* texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV).rgb
-		+ texture(sampler2D(GlowMapImage, Default2DSamplerFiltered), InUV).rgb,
+		+ Glow(InUV),
 		1.0
 	);
 }	
