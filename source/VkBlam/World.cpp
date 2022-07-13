@@ -5,8 +5,8 @@
 namespace VkBlam
 {
 World::World(const Blam::MapFile& MapFile)
-	: MapFile(MapFile), WorldBoundMax(std::numeric_limits<float>::max()),
-	  WorldBoundMin(std::numeric_limits<float>::min())
+	: MapFile(MapFile), WorldBoundMax(std::numeric_limits<float>::min()),
+	  WorldBoundMin(std::numeric_limits<float>::max())
 {
 }
 
