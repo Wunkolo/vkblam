@@ -18,13 +18,11 @@ layout( location = 6 ) in f32vec2 InLightmapUV;
 layout( set = 0, binding = 0 ) uniform sampler Default2DSamplerFiltered;
 layout( set = 0, binding = 1 ) uniform sampler Default2DSamplerUnfiltered;
 
-// Set 2: Material
-layout( set = 1, binding = 0 ) uniform texture2D LightmapImage;
-layout( set = 2, binding = 0 ) uniform texture2D BaseMapImage;
+// Set 1: Shader
+layout( set = 1, binding = 0 ) uniform texture2D BaseMapImage;
 
-//layout( set = 0, binding = 0 ) uniform sampler2D DiffuseImage;
-
-// Set 3: Object
+// Set 2: Object
+layout( set = 2, binding = 0 ) uniform texture2D LightmapImage;
 
 // Attachments
 layout( location = 0 ) out f32vec4 Attachment0;

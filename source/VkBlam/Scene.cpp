@@ -247,6 +247,7 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 	CommandBuffer.bindPipeline(
 		vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get());
 
+	// Bing Scene globals
 	CommandBuffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(), 0,
 		{CurSceneDescriptor}, {});
@@ -266,12 +267,33 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 		const auto& CurLightmapMesh = LightmapMeshs[i];
 		Vulkan::InsertDebugLabel(
 			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu", i);
+
+		// Bind Shader descriptors
+		if( CurLightmapMesh.BasemapTag.has_value() )
+		{
+			CommandBuffer.bindDescriptorSets(
+				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+				1,
+				{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value()).at(0)},
+				{});
+		}
+		else
+		{
+			CommandBuffer.bindDescriptorSets(
+				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+				1,
+				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
+					 .at(std::uint32_t(Blam::DefaultTextureIndex::Additive))},
+				{});
+		}
+
+		// Bind Mesh descriptors
 		if( CurLightmapMesh.LightmapTag.has_value()
 			&& CurLightmapMesh.LightmapIndex.has_value() )
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1,
+				2,
 				{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
 					 .at(CurLightmapMesh.LightmapIndex.value())},
 				{});
@@ -280,29 +302,13 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1,
+				2,
 				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
 					 .at(std::uint32_t(
 						 Blam::DefaultTextureIndex::Multiplicative))},
 				{});
 		}
-		if( CurLightmapMesh.BasemapTag.has_value() )
-		{
-			CommandBuffer.bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				2,
-				{BitmapHeap.Sets.at(CurLightmapMesh.BasemapTag.value()).at(0)},
-				{});
-		}
-		else
-		{
-			CommandBuffer.bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				2,
-				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
-					 .at(std::uint32_t(Blam::DefaultTextureIndex::Additive))},
-				{});
-		}
+
 		CommandBuffer.drawIndexed(
 			CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
 			CurLightmapMesh.VertexIndexOffset, 0);
