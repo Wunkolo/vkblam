@@ -1071,7 +1071,6 @@ struct Tag<TagClass::Scenario>
 	// adds the extra padding
 	struct PaletteEntry : public TagReference
 	{
-	private:
 		std::byte _Padding10[0x20];
 	};
 	static_assert(sizeof(PaletteEntry) == 0x30);
