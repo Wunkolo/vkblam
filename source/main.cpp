@@ -240,9 +240,8 @@ int main(int argc, char* argv[])
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), VkBlam::RenderSamples);
 
-	vk::UniqueBuffer       StagingBuffer              = {};
-	vk::UniqueDeviceMemory StagingBufferMemory        = {};
-	std::size_t            StagingBufferWritePosition = 0;
+	vk::UniqueBuffer       StagingBuffer       = {};
+	vk::UniqueDeviceMemory StagingBufferMemory = {};
 
 	vk::BufferCreateInfo StagingBufferInfo = {};
 	StagingBufferInfo.size
