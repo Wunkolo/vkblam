@@ -579,11 +579,11 @@ int main(int argc, char* argv[])
 	}
 
 	{
-		Vulkan::DebugLabelScope DebugCopyScope(
+		Vulkan::DebugLabelScope FrameScope(
 			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame");
 
 		{
-			Vulkan::DebugLabelScope DebugCopyScope(
+			Vulkan::DebugLabelScope RenderPassScope(
 				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Main Render Pass");
 
 			vk::RenderPassBeginInfo RenderBeginInfo   = {};

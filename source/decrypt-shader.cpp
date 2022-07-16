@@ -16,7 +16,7 @@ const char Help[]
 	  "\twith the decrypted contents\n";
 
 // Found within the Halo Custom Edition executable
-const static std::uint32_t Key[4] = {
+const static std::uint32_t HaloCEKey[4] = {
 	0x3FFFFFDD,
 	0x00007FC3,
 	0x000000E5,
@@ -93,13 +93,13 @@ bool DecryptShader(
 					DecryptedFile.data() + DecryptedFile.size() - 8),
 				2)
 				.first<2>(),
-			Key);
+			HaloCEKey);
 	}
 
 	while( DecryptedData.size() >= 2 )
 	{
 		const std::span<std::uint32_t, 2> CurSpan = DecryptedData.first<2>();
-		TEADecryptBlock(CurSpan, Key);
+		TEADecryptBlock(CurSpan, HaloCEKey);
 		DecryptedData = DecryptedData.subspan(2);
 	}
 

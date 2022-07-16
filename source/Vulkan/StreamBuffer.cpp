@@ -202,7 +202,7 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 
 	if( (CurRingOffset + Data.size_bytes()) >= BufferSize )
 	{
-		const std::uint64_t FlushTick = Flush();
+		const std::uint64_t CurFlushTick = Flush();
 
 		// Blocking wait since we need to ensure that the staging buffer is
 		// entirely free todo, attach timestamps to particular regions of the
@@ -211,7 +211,7 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 		vk::SemaphoreWaitInfo WaitInfo;
 		WaitInfo.semaphoreCount = 1;
 		WaitInfo.pSemaphores    = &GetSemaphore();
-		WaitInfo.pValues        = &FlushTick;
+		WaitInfo.pValues        = &CurFlushTick;
 		if( auto WaitResult
 			= VulkanContext.LogicalDevice.waitSemaphores(WaitInfo, ~0ULL);
 			WaitResult != vk::Result::eSuccess )
@@ -258,7 +258,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 
 	if( (CurRingOffset + Data.size_bytes()) >= BufferSize )
 	{
-		const std::uint64_t FlushTick = Flush();
+		const std::uint64_t CurFlushTick = Flush();
 
 		// Blocking wait since we need to ensure that the staging buffer is
 		// entirely free todo, attach timestamps to particular regions of the
@@ -267,7 +267,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		vk::SemaphoreWaitInfo WaitInfo;
 		WaitInfo.semaphoreCount = 1;
 		WaitInfo.pSemaphores    = &GetSemaphore();
-		WaitInfo.pValues        = &FlushTick;
+		WaitInfo.pValues        = &CurFlushTick;
 		if( VulkanContext.LogicalDevice.waitSemaphores(WaitInfo, ~0ULL)
 			!= vk::Result::eSuccess )
 		{
