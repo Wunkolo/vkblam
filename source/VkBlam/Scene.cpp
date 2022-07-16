@@ -214,6 +214,8 @@ static vk::DescriptorSetLayoutBinding SceneBindings[] = {
 	 0, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
 	{// Default2DSamplerUnfiltered
 	 1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+	{// DefaultCubeSampler
+	 2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
 };
 
 static vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
@@ -366,13 +368,20 @@ std::optional<Scene>
 	{
 		NewScene.CurSceneDescriptor
 			= NewScene.SceneDescriptorPool->AllocateDescriptorSet().value();
-
+		// Default2DSamplerFiltered
 		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
 			NewScene.CurSceneDescriptor, 0,
 			TargetRenderer.GetSamplerCache().GetSampler(Sampler2D()));
+
+		// Default2DSamplerUnfiltered
 		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
 			NewScene.CurSceneDescriptor, 1,
 			TargetRenderer.GetSamplerCache().GetSampler(Sampler2D(false)));
+
+		// Default2DSamplerUnfiltered
+		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
+			NewScene.CurSceneDescriptor, 2,
+			TargetRenderer.GetSamplerCache().GetSampler(SamplerCube()));
 	}
 
 	{

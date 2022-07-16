@@ -24,6 +24,7 @@ layout( location = 6 ) in f32vec2 InLightmapUV;
 // Set 0: Scene Globals
 layout( set = 0, binding = 0 ) uniform sampler Default2DSamplerFiltered;
 layout( set = 0, binding = 1 ) uniform sampler Default2DSamplerUnfiltered;
+layout( set = 0, binding = 2 ) uniform sampler DefaultCubeSampler;
 
 // Set 1: Shader
 layout( set = 1, binding = 0 ) uniform texture2D BaseMapImage;
@@ -32,7 +33,7 @@ layout( set = 1, binding = 2 ) uniform texture2D SecondaryDetailMapImage;
 layout( set = 1, binding = 3 ) uniform texture2D MicroDetailMapImage;
 layout( set = 1, binding = 4 ) uniform texture2D BumpMapImage;
 layout( set = 1, binding = 5 ) uniform texture2D GlowMapImage;
-layout( set = 1, binding = 6 ) uniform texture2D ReflectionCubeMapImage;
+layout( set = 1, binding = 6 ) uniform textureCube ReflectionCubeMapImage;
 
 // Set 2: Object
 layout( set = 2, binding = 0 ) uniform texture2D LightmapImage;
@@ -67,11 +68,39 @@ f32vec3 Glow(f32vec2 UV)
 	return GlowResult;
 }
 
+f32vec3 Reflection(f32vec3 Normal)
+{
+	const f32vec3 CameraPos = (Camera.View * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	const f32vec3 ReflectionDirection = reflect(normalize(CameraPos - InPosition), Normal);
+
+	const f32vec3 CubeSample = texture(
+		samplerCube(ReflectionCubeMapImage, DefaultCubeSampler),
+		ReflectionDirection).rgb;
+
+	// Todo, fresnel
+
+	return CubeSample;
+}
+
+f32vec3 BumpedNormal()
+{
+	const f32vec4 BumpSample = texture(sampler2D(BumpMapImage, Default2DSamplerFiltered), InUV);
+	const f32vec3 BumpVector = normalize(BumpSample.xyz * 2.0 - 1.0);
+	
+	const f32mat3 Basis = f32mat3(InTangent, InBinormal, InNormal);
+
+	return normalize(Basis * BumpVector);
+}
+
 void main()
 {
+	const f32vec4 DiffuseSample = texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV);
+	const f32vec4 LightmapSample = texture(sampler2D(LightmapImage, Default2DSamplerFiltered), InLightmapUV);
+	
+	const f32vec3 Normal = BumpedNormal();
+
 	Attachment0 = f32vec4(
-		texture(sampler2D(LightmapImage, Default2DSamplerFiltered), InLightmapUV).rgb
-		* texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV).rgb
+		(DiffuseSample.rgb + Reflection(Normal) * DiffuseSample.a) * LightmapSample.rgb
 		+ Glow(InUV),
 		1.0
 	);

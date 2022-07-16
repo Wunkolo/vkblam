@@ -54,6 +54,7 @@ std::optional<std::span<const std::byte>> OpenResource(const std::string& Path);
 
 // Abstracts the way that halo utilizes its samplers
 vk::SamplerCreateInfo Sampler2D(bool Filtered = true, bool Clamp = false);
+vk::SamplerCreateInfo SamplerCube();
 
 //// Must match vkBlam.glsl structures
 

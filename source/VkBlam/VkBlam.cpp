@@ -82,9 +82,36 @@ vk::SamplerCreateInfo Sampler2D(bool Filtered, bool Clamp)
 	SamplerInfo.compareEnable = VK_FALSE;
 	SamplerInfo.compareOp     = vk::CompareOp::eAlways;
 
-	SamplerInfo.minLod                  = 0.0f;
-	SamplerInfo.maxLod                  = VK_LOD_CLAMP_NONE;
-	SamplerInfo.borderColor             = vk::BorderColor::eFloatOpaqueWhite;
+	SamplerInfo.minLod      = 0.0f;
+	SamplerInfo.maxLod      = VK_LOD_CLAMP_NONE;
+	SamplerInfo.borderColor = vk::BorderColor::eFloatTransparentBlack;
+	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+	return SamplerInfo;
+}
+
+vk::SamplerCreateInfo SamplerCube()
+{
+	vk::SamplerCreateInfo SamplerInfo = {};
+
+	SamplerInfo.magFilter = vk::Filter::eLinear;
+	SamplerInfo.minFilter = vk::Filter::eLinear;
+
+	SamplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+
+	SamplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+	SamplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+	SamplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+
+	SamplerInfo.mipLodBias       = 0.0f;
+	SamplerInfo.anisotropyEnable = VK_FALSE;
+	SamplerInfo.maxAnisotropy    = 1.0f;
+
+	SamplerInfo.compareEnable = VK_FALSE;
+	SamplerInfo.compareOp     = vk::CompareOp::eAlways;
+
+	SamplerInfo.minLod      = 0.0f;
+	SamplerInfo.maxLod      = VK_LOD_CLAMP_NONE;
+	SamplerInfo.borderColor = vk::BorderColor::eFloatTransparentBlack;
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 	return SamplerInfo;
 }
