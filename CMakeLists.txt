@@ -77,7 +77,7 @@ foreach( GLSL ${GLSL_SOURCE_FILES} )
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
 		COMMAND ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE} -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
-		COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
+		#COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
 		DEPENDS ${GLSL}
 	)
 	list( APPEND SPIRV_BINARY_FILES ${SPIRV} )
