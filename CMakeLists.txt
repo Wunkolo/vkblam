@@ -17,7 +17,29 @@ elseif( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 	if( CMAKE_GENERATOR STREQUAL "Ninja" )
 		add_compile_options( -fdiagnostics-color=always )
 	endif()
+
+	add_compile_options(
+        -Wall
+        -Warray-bounds
+        -Wextra
+        -Wimplicit-fallthrough
+        -Wmissing-declarations
+        -Wmissing-declarations
+        -Wmissing-field-initializers
+        -Wno-attributes
+        -Wno-invalid-offsetof
+        -Wno-unused-parameter
+        -Wreorder
+        -Wshadow
+        -Wsign-compare
+        -Wswitch
+        -Wuninitialized
+        -Wunused-function
+        -Wunused-result
+        -Wunused-variable
+    )
 endif()
+
 
 find_package( Vulkan REQUIRED )
 
