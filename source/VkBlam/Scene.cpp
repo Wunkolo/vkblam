@@ -491,7 +491,7 @@ std::optional<Scene>
 
 						CurLightmapMesh.ShaderTag = CurMaterial.Shader.TagID;
 
-						if( ScenarioBSP.LightmapTexture.TagID != -1
+						if( ScenarioBSP.LightmapTexture.Valid()
 							&& LightmapTextureIndex != -1 )
 						{
 							CurLightmapMesh.LightmapTag
@@ -970,7 +970,7 @@ std::optional<Scene>
 				TargetWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 
 			const vk::ImageView BaseMapView
-				= (ShaderEnvironment.BaseMap.TagID != -1
+				= (ShaderEnvironment.BaseMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.BaseMap.TagID)
 							 .at(0)
@@ -980,7 +980,7 @@ std::optional<Scene>
 								 Blam::DefaultTextureIndex::Multiplicative)))
 					  .View.get();
 			const vk::ImageView PrimaryDetailMapView
-				= (ShaderEnvironment.PrimaryDetailMap.TagID != -1
+				= (ShaderEnvironment.PrimaryDetailMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.PrimaryDetailMap.TagID)
 							 .at(0)
@@ -989,7 +989,7 @@ std::optional<Scene>
 							 .at(0))
 					  .View.get();
 			const vk::ImageView SecondaryDetailMapView
-				= (ShaderEnvironment.SecondaryDetailMap.TagID != -1
+				= (ShaderEnvironment.SecondaryDetailMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.SecondaryDetailMap.TagID)
 							 .at(0)
@@ -998,7 +998,7 @@ std::optional<Scene>
 							 .at(0))
 					  .View.get();
 			const vk::ImageView MicroDetailMapView
-				= (ShaderEnvironment.MicroDetailMap.TagID != -1
+				= (ShaderEnvironment.MicroDetailMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.MicroDetailMap.TagID)
 							 .at(0)
@@ -1007,7 +1007,7 @@ std::optional<Scene>
 							 .at(0))
 					  .View.get();
 			const vk::ImageView BumpMapView
-				= (ShaderEnvironment.BumpMap.TagID != -1
+				= (ShaderEnvironment.BumpMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.BumpMap.TagID)
 							 .at(0)
@@ -1017,7 +1017,7 @@ std::optional<Scene>
 								 Blam::DefaultTextureIndex::Vector)))
 					  .View.get();
 			const vk::ImageView GlowMapView
-				= (ShaderEnvironment.GlowMap.TagID != -1
+				= (ShaderEnvironment.GlowMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.GlowMap.TagID)
 							 .at(0)
@@ -1027,7 +1027,7 @@ std::optional<Scene>
 								 Blam::DefaultTextureIndex::Additive)))
 					  .View.get();
 			const vk::ImageView ReflectionCubeMapView
-				= (ShaderEnvironment.ReflectionCubeMap.TagID != -1
+				= (ShaderEnvironment.ReflectionCubeMap.Valid()
 					   ? NewScene.BitmapHeap.Bitmaps
 							 .at(ShaderEnvironment.ReflectionCubeMap.TagID)
 							 .at(0)

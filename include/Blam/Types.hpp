@@ -39,6 +39,11 @@ struct TagReference
 	std::uint32_t PathVirtualOffset;
 	std::uint32_t PathLength;
 	std::uint32_t TagID;
+
+	bool Valid() const
+	{
+		return TagID != 0xFFFFFFFFu;
+	}
 };
 static_assert(sizeof(TagReference) == 0x10);
 
