@@ -141,7 +141,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	MultisampleState.sampleShadingEnable   = true;
 	MultisampleState.minSampleShading      = 1.0f;
 	MultisampleState.pSampleMask           = nullptr;
-	MultisampleState.alphaToCoverageEnable = false;
+	MultisampleState.alphaToCoverageEnable = true;
 	MultisampleState.alphaToOneEnable      = false;
 
 	vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {};

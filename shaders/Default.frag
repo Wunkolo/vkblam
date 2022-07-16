@@ -82,12 +82,19 @@ f32vec3 Reflection(f32vec3 Normal)
 	return CubeSample;
 }
 
-f32vec3 BumpedNormal()
+f32vec3 BumpedNormal(out float32_t Alpha)
 {
 	const f32vec4 BumpSample = texture(sampler2D(BumpMapImage, Default2DSamplerFiltered), InUV);
+	Alpha = BumpSample.a;
+
 	const f32vec3 BumpVector = normalize(BumpSample.xyz * 2.0 - 1.0);
 	
-	const f32mat3 Basis = f32mat3(InTangent, InBinormal, InNormal);
+	const f32mat3 Basis = f32mat3(
+		// These vectors are linearly interpolated, re-normalize them
+		normalize(InTangent),
+		normalize(InBinormal),
+		normalize(InNormal)
+	);
 
 	return normalize(Basis * BumpVector);
 }
@@ -97,11 +104,14 @@ void main()
 	const f32vec4 DiffuseSample = texture(sampler2D(BaseMapImage, Default2DSamplerFiltered), InUV);
 	const f32vec4 LightmapSample = texture(sampler2D(LightmapImage, Default2DSamplerFiltered), InLightmapUV);
 	
-	const f32vec3 Normal = BumpedNormal();
+	float32_t Alpha = 1.0;
+	const f32vec3 Normal = BumpedNormal(Alpha);
+
+	Alpha = step(0.5, Alpha);
 
 	Attachment0 = f32vec4(
 		(DiffuseSample.rgb + Reflection(Normal) * DiffuseSample.a) * LightmapSample.rgb
 		+ Glow(InUV),
-		1.0
+		Alpha
 	);
 }	
