@@ -243,7 +243,7 @@ static vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
 namespace VkBlam
 {
 Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
-	: TargetRenderer(TargetRenderer), TargetWorld(TargetWorld)
+	: TargetWorld(TargetWorld), TargetRenderer(TargetRenderer)
 {
 }
 
