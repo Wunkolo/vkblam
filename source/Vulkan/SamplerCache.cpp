@@ -31,7 +31,8 @@ const vk::Sampler&
 	return (SamplerMap[SamplerHash] = std::move(CreateResult.value)).get();
 }
 
-std::optional<SamplerCache> SamplerCache::Create(Vulkan::Context VulkanContext)
+std::optional<SamplerCache>
+	SamplerCache::Create(const Vulkan::Context& VulkanContext)
 {
 	SamplerCache NewSamplerCache(VulkanContext);
 

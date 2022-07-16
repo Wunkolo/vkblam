@@ -25,6 +25,7 @@ public:
 
 	const vk::Sampler& GetSampler(const vk::SamplerCreateInfo& SamplerInfo);
 
-	static std::optional<SamplerCache> Create(Vulkan::Context VulkanContext);
+	static std::optional<SamplerCache>
+		Create(const Vulkan::Context& VulkanContext);
 };
 } // namespace Vulkan
