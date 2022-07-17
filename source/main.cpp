@@ -31,7 +31,7 @@
 #include "stb_image_write.h"
 
 // Enable render-doc captures on non-windows for now
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(NDEBUG)
 #define CAPTURE
 #endif
 
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 		{
 			// Just pick the first discrete physical device
 			if( CurPhysicalDevice.getProperties().deviceType
-					== vk::PhysicalDeviceType::eDiscreteGpu )
+				== vk::PhysicalDeviceType::eDiscreteGpu )
 			{
 				PhysicalDevice = CurPhysicalDevice;
 				break;
