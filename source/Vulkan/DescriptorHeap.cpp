@@ -56,7 +56,7 @@ bool DescriptorHeap::FreeDescriptorSet(vk::DescriptorSet Set)
 }
 
 std::optional<DescriptorHeap> DescriptorHeap::Create(
-	Vulkan::Context                                 VulkanContext,
+	const Vulkan::Context&                          VulkanContext,
 	std::span<const vk::DescriptorSetLayoutBinding> Bindings,
 	std::uint16_t                                   DescriptorHeapCount)
 {
