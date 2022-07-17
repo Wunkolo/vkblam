@@ -24,6 +24,9 @@ jobs:
       uses: humbletim/setup-vulkan-sdk@v1.0.3
 
     - name: Configure CMake
+      env:
+        CC: "gcc-10"
+        CXX: "g++-10"
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
