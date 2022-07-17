@@ -30,25 +30,50 @@ std::optional<vk::DescriptorSet> DescriptorHeap::AllocateDescriptorSet()
 	const std::uint16_t Index = static_cast<std::uint16_t>(
 		std::distance(AllocationMap.begin(), FreeSlot));
 
-	return DescripterSets[Index].get();
+	vk::UniqueDescriptorSet& NewDescriptorSet = DescriptorSets[Index];
+
+	if( !NewDescriptorSet )
+	{
+		// Descriptor set doesn't exist yet. Allocate a new one
+		vk::DescriptorSetAllocateInfo AllocateInfo = {};
+
+		AllocateInfo.descriptorPool     = DescriptorPool.get();
+		AllocateInfo.pSetLayouts        = &DescriptorSetLayout.get();
+		AllocateInfo.descriptorSetCount = 1;
+
+		if( auto AllocateResult
+			= VulkanContext.LogicalDevice.allocateDescriptorSetsUnique(
+				AllocateInfo);
+			AllocateResult.result == vk::Result::eSuccess )
+		{
+			NewDescriptorSet = std::move(AllocateResult.value[0]);
+		}
+		else
+		{
+			// Error allocating descriptor set
+			return std::nullopt;
+		}
+	}
+
+	return NewDescriptorSet.get();
 }
 
 bool DescriptorHeap::FreeDescriptorSet(vk::DescriptorSet Set)
 {
 	// Find the descriptor set
 	const auto Found = std::find_if(
-		DescripterSets.begin(), DescripterSets.end(),
+		DescriptorSets.begin(), DescriptorSets.end(),
 		[&Set](const auto& CurSet) -> bool { return CurSet.get() == Set; });
 
 	// If the descriptor set is not found, return
-	if( Found == DescripterSets.end() )
+	if( Found == DescriptorSets.end() )
 	{
 		return false;
 	}
 
 	// Mark the slot as free
 	const std::uint16_t Index = static_cast<std::uint16_t>(
-		std::distance(DescripterSets.begin(), Found));
+		std::distance(DescriptorSets.begin(), Found));
 
 	AllocationMap[Index] = false;
 
@@ -124,31 +149,8 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 		}
 	}
 
-	// Create descriptor sets
-	{
-		NewDescriptorHeap.DescripterSets.resize(DescriptorHeapCount);
-		NewDescriptorHeap.AllocationMap.resize(DescriptorHeapCount);
-
-		vk::DescriptorSetAllocateInfo AllocateInfo;
-		AllocateInfo.descriptorPool = NewDescriptorHeap.DescriptorPool.get();
-		AllocateInfo.pSetLayouts = &NewDescriptorHeap.DescriptorSetLayout.get();
-		AllocateInfo.descriptorSetCount = 1;
-
-		for( auto& CurDescriptorSet : NewDescriptorHeap.DescripterSets )
-		{
-			if( auto AllocateResult
-				= VulkanContext.LogicalDevice.allocateDescriptorSetsUnique(
-					AllocateInfo);
-				AllocateResult.result == vk::Result::eSuccess )
-			{
-				CurDescriptorSet = std::move(AllocateResult.value[0]);
-			}
-			else
-			{
-				return std::nullopt;
-			}
-		}
-	}
+	NewDescriptorHeap.DescriptorSets.resize(DescriptorHeapCount);
+	NewDescriptorHeap.AllocationMap.resize(DescriptorHeapCount);
 
 	NewDescriptorHeap.Bindings.assign(Bindings.begin(), Bindings.end());
 

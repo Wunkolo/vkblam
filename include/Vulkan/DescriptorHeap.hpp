@@ -11,7 +11,8 @@ namespace Vulkan
 // Implements a basic heap of descriptor sets given a layout of particular
 // bindings. Create a descriptor set by providing a list of bindings and it will
 // automatically create both the pool, layout, and maintail a heap of descriptor
-// sets.
+// sets. Descriptor sets will be reused and recycled. Assume that newly
+// allocated descriptor sets are in an undefined state.
 class DescriptorHeap
 {
 private:
@@ -19,7 +20,7 @@ private:
 
 	vk::UniqueDescriptorPool             DescriptorPool;
 	vk::UniqueDescriptorSetLayout        DescriptorSetLayout;
-	std::vector<vk::UniqueDescriptorSet> DescripterSets;
+	std::vector<vk::UniqueDescriptorSet> DescriptorSets;
 
 	std::vector<vk::DescriptorSetLayoutBinding> Bindings;
 
@@ -44,7 +45,7 @@ public:
 
 	const std::span<const vk::UniqueDescriptorSet> GetDescriptorSets() const
 	{
-		return DescripterSets;
+		return DescriptorSets;
 	};
 
 	std::span<const vk::DescriptorSetLayoutBinding> GetBindings() const
