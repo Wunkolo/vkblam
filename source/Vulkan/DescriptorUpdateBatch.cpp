@@ -103,7 +103,7 @@ void DescriptorUpdateBatch::CopyBinding(
 	std::uint8_t SourceArrayElement, std::uint8_t TargetArrayElement,
 	std::uint8_t DescriptorCount)
 {
-	if( DescriptorCopyEnd >= DescriptorWriteMax )
+	if( DescriptorCopyEnd >= DescriptorCopyMax )
 	{
 		Flush();
 	}
