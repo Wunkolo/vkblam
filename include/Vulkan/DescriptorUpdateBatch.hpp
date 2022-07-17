@@ -14,7 +14,7 @@ namespace Vulkan
 class DescriptorUpdateBatch
 {
 private:
-	const Vulkan::Context VulkanContext;
+	const Vulkan::Context& VulkanContext;
 
 	const std::size_t DescriptorWriteMax;
 	const std::size_t DescriptorCopyMax;
