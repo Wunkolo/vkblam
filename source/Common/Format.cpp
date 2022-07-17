@@ -13,7 +13,7 @@ void HexDump(
 	for( std::size_t CurOffset = 0; CurOffset < Data.size();
 		 CurOffset += Columns )
 	{
-		std::printf("0x%08lX:", CurOffset);
+		std::printf("0x%08llX:", CurOffset);
 		for( const auto& Byte : Data.subspan(
 				 CurOffset,
 				 std::min<std::size_t>(Data.size() - CurOffset, Columns)) )
