@@ -1,6 +1,7 @@
 #include <Common/Format.hpp>
 
 #include <algorithm>
+#include <cinttypes>
 #include <cmath>
 
 namespace Common
@@ -13,12 +14,12 @@ void HexDump(
 	for( std::size_t CurOffset = 0; CurOffset < Data.size();
 		 CurOffset += Columns )
 	{
-		std::printf("0x%08llX:", CurOffset);
+		std::printf("0x%08" PRIX64 ":", CurOffset);
 		for( const auto& Byte : Data.subspan(
 				 CurOffset,
 				 std::min<std::size_t>(Data.size() - CurOffset, Columns)) )
 		{
-			std::fprintf(Stream, " %02hhX", Byte);
+			std::fprintf(Stream, " %02" SCNx8, std::uint8_t(Byte));
 		}
 		std::fprintf(Stream, "\n");
 	}
