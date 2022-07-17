@@ -1,4 +1,4 @@
-# vkblam [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/Wunkolo/vkblam/main/LICENSE)
+# vkblam [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/Wunkolo/vkblam/main/LICENSE) ![Github Actions Build Status](https://github.com/Wunkolo/vkblam/actions/workflows/ci.yml/badge.svg?branch=main)
 
 **vkblam** is a re-implementation of the Halo 1 blam engine's graphics library in vulkan.
 
@@ -6,9 +6,10 @@ Currently this is highly experimental and only generates static images and not a
 
 Derelict|Prisoner
 -|-
-![](media/carousel.png) | ![](media/prisoner.png)
+![carousel](media/carousel.png) | ![prisoner](media/prisoner.png)
 
-# Acknowledgements
+## Acknowledgements
+
 * [Reclaimers](https://c20.reclaimers.net/)
 * [Assembly](https://github.com/XboxChaos/Assembly)
 * [Sparkedit](https://github.com/HaloMods/SparkEdit)
