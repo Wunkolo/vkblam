@@ -30,7 +30,11 @@
 
 #include "stb_image_write.h"
 
+// Enable render-doc captures on non-windows for now
+#if !defined(_WIN32)
 #define CAPTURE
+#endif
+
 #ifdef CAPTURE
 #include <dlfcn.h>
 #include <renderdoc_app.h>
