@@ -43,10 +43,15 @@ endif()
 
 find_package( Vulkan REQUIRED )
 
-find_package( glm REQUIRED )
+find_package( glm )
+
+if( glm_FOUND )
+else()
+	add_subdirectory( external/glm EXCLUDE_FROM_ALL )
+endif()
 
 # mio
-add_subdirectory( external/mio )
+add_subdirectory( external/mio EXCLUDE_FROM_ALL )
 
 #cmrc
 include( external/cmrc/CMakeRC.cmake )
