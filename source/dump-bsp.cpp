@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <map>
 #include <span>
+#include <vector>
 
 #include <mio/mmap.hpp>
 
