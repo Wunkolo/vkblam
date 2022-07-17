@@ -41,9 +41,9 @@ elseif( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 endif()
 
 
-find_package( Vulkan REQUIRED )
+find_package( Vulkan 1.3.206 REQUIRED )
 
-find_package( glm )
+find_package( glm 0.9.9.9 QUIET )
 
 if( glm_FOUND )
 else()
