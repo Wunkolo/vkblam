@@ -145,10 +145,9 @@ int main(int argc, char* argv[])
 	{
 		for( const auto& CurPhysicalDevice : EnumerateResult.value )
 		{
-			// Just pick the first physical device
+			// Just pick the first discrete physical device
 			if( CurPhysicalDevice.getProperties().deviceType
-					== vk::PhysicalDeviceType::eDiscreteGpu
-				&& CurPhysicalDevice.getProperties().vendorID == 0x10DE )
+					== vk::PhysicalDeviceType::eDiscreteGpu )
 			{
 				PhysicalDevice = CurPhysicalDevice;
 				break;
