@@ -1,0 +1,89 @@
+name: Build and Test
+
+on: 
+  push:
+    branches:
+    - main
+    - dev
+  pull_request:
+  release:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.0.3
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{env.BUILD_TYPE}}
+      
+    - name: Upload Artifact
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v1
+      with:
+        name: "linux"
+        path: "build/vkblam"
+        
+  windows-build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.0.3
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{env.BUILD_TYPE}}
+      
+    - name: Upload Artifact
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v1
+      with:
+        name: "windows"
+        path: "build/${{env.BUILD_TYPE}}/vkblam.exe"
+
+  create-release:
+    if: github.ref == 'refs/heads/main'
+    needs: [windows-build, linux-build]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Linux Artifacts
+      uses: actions/download-artifact@v1
+      with:
+        name: "linux"
+        
+    - name: Download Windows Artifacts
+      uses: actions/download-artifact@v1
+      with:
+        name: "windows"
+
+    - name: Create release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: false
+        title: "Latest Build"
+        files: |
+          linux/vkblam
+          windows/vkblam.exe
