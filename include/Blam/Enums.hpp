@@ -171,18 +171,34 @@ enum class DetailMapFunction : std::uint16_t
 
 enum class AnimationFunction : std::uint16_t
 {
-	One,
-	Zero,
-	Cosine,
-	CosineVariablePeriod,
-	DiagonalWave,
-	DiagonalWaveVariablePeriod,
-	Slide,
-	SlideVariablePeriod,
-	Noise,
-	Jitter,
-	Wander,
-	Spark,
+	// t = time_in_seconds / 36.0
+	// v = random * 28.0
+	One                        = 0, // 1.0
+	Zero                       = 1, // 0.0
+	Cosine                     = 2, // cos(t * 2 * pi)
+	CosineVariablePeriod       = 3, // cos(v * 2 * pi)
+	DiagonalWave               = 4, // (t < 0.5)?(1-((fract(t)-0.5):fract(t))*2
+	DiagonalWaveVariablePeriod = 5, // (v < 0.5)?(1-((fract(v)-0.5):fract(v))*2
+	Slide                      = 6, // fract(t)
+	SlideVariablePeriod        = 7, // fract(v)
+
+	// uint32_t NextRand()
+	// {
+	// 	static uint32_t RandState = 0x20F3F660;
+	//
+	// 	const uint32_t CurRand = (0x19660D * RandState) + 0x3C6EF35F;
+	// 	RandState              = CurRand;
+	//
+	// 	return CurRand;
+	// }
+
+	// float(NextRand() >> 16) / 65535.0
+	Noise = 8,
+
+	Jitter = 9,
+	Wander = 10,
+
+	Spark = 11, // fract(t) * t
 };
 
 enum class AnimationSource : std::uint16_t
