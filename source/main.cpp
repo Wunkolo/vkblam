@@ -60,6 +60,8 @@ int main(int argc, char* argv[])
 	if( argc < 3 )
 	{
 		// Not enough arguments
+		std::fprintf(
+			stderr, "Error: Not enough arguments\nUsage: ./vkblam <MapPath> <BitmapPath>");
 		return EXIT_FAILURE;
 	}
 
