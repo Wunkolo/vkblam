@@ -9,7 +9,6 @@ Derelict|Prisoner
 ![](media/carousel.png) | ![](media/prisoner.png)
 
 # Build guide
-* Install the "renderdoc" library
 * cmake .
 * make -j$(nproc) 
 
