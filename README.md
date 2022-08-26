@@ -9,8 +9,15 @@ Derelict|Prisoner
 ![](media/carousel.png) | ![](media/prisoner.png)
 
 # Build guide
-* cmake .
-* make -j$(nproc) 
+```
+$ git clone https://github.com/Wunkolo/vkblam && cd vkblam
+$ git clone https://github.com/vector-of-bool/cmrc external/cmrc
+$ git clone https://github.com/mandreyel/mio external/mio
+$ git clone https://github.com/g-truc/glm external/glm
+$ mkdir _build && cd _build
+$ cmake ..
+$ make -j$(nproc) 
+```
 
 # Acknowledgements
 * [Reclaimers](https://c20.reclaimers.net/)

@@ -30,6 +30,9 @@
 
 #include "stb_image_write.h"
 
+#include <fstream>
+#include <json/json.h>
+
 // Enable render-doc captures on non-windows for now
 #if !defined(_WIN32) && !defined(NDEBUG)
 #define CAPTURE
@@ -40,8 +43,6 @@
 #include <renderdoc_app.h>
 RENDERDOC_API_1_4_1* rdoc_api = NULL;
 #endif
-
-static constexpr glm::uvec2 RenderSize = {1024, 1024};
 
 vk::UniqueRenderPass CreateMainRenderPass(
 	vk::Device              Device,
@@ -55,6 +56,27 @@ std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice);
 
 int main(int argc, char* argv[])
 {
+	std::ifstream ifs("settings.json");
+    Json::Reader reader;
+    Json::Value obj;
+    reader.parse(ifs, obj);
+
+    int render_size_x = obj["render_size_x"].asInt();
+	if (render_size_x == 0){
+		std::fprintf(
+			stdout, "Unable to find 'render_size_x' in settings.json, defaulting to 1024.\n");
+		render_size_x = 1024;
+	}
+
+    int render_size_y = obj["render_size_y"].asInt();
+	if (render_size_y == 0){
+		std::fprintf(
+			stdout, "Unable to find 'render_size_y' in settings.json, defaulting to 1024.\n");
+		render_size_y = 1024;
+	}
+
+	static glm::uvec2 RenderSize = {render_size_x, render_size_y};
+
 	using namespace Common::Literals;
 
 	if( argc < 3 )

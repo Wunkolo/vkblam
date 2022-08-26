@@ -230,4 +230,5 @@ target_link_libraries(
 	mio::mio
 	glm
 	${CMAKE_DL_LIBS}
+	jsoncpp
 )
