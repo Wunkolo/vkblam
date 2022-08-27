@@ -1,9 +1,9 @@
 [submodule "external/mio"]
 	path = external/mio
-	url = git@github.com:mandreyel/mio.git
+	url = https://github.com/mandreyel/mio
 [submodule "external/cmrc"]
 	path = external/cmrc
-	url = git@github.com:vector-of-bool/cmrc.git
+	url = https://github.com/vector-of-bool/cmrc
 [submodule "external/glm"]
 	path = external/glm
-	url = git@github.com:g-truc/glm.git
+	url = https://github.com/g-truc/glm

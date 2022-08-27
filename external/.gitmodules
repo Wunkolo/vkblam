@@ -1,0 +1,9 @@
+[submodule "cmrc"]
+	path = cmrc
+	url = https://github.com/vector-of-bool/cmrc
+[submodule "mio"]
+	path = mio
+	url = https://github.com/mandreyel/mio
+[submodule "glm"]
+	path = glm
+	url = https://github.com/g-truc/glm

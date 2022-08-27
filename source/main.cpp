@@ -56,26 +56,32 @@ std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice);
 
 int main(int argc, char* argv[])
 {
-	std::ifstream ifs("settings.json");
-    Json::Reader reader;
-    Json::Value obj;
-    reader.parse(ifs, obj);
+	std::ifstream Ifs("settings.json");
+	Json::Reader  Reader;
+	Json::Value   Obj;
+	Reader.parse(Ifs, Obj);
 
-    int render_size_x = obj["render_size_x"].asInt();
-	if (render_size_x == 0){
+	std::uint16_t RenderSizeX = Obj["render_size_x"].asUInt();
+	if( RenderSizeX == 0 )
+	{
 		std::fprintf(
-			stdout, "Unable to find 'render_size_x' in settings.json, defaulting to 1024.\n");
-		render_size_x = 1024;
+			stdout,
+			"Unable to find 'RenderSizeX' in settings.json, defaulting to "
+			"1024.\n");
+		RenderSizeX = 1024;
 	}
 
-    int render_size_y = obj["render_size_y"].asInt();
-	if (render_size_y == 0){
+	std::uint16_t RenderSizeY = Obj["render_size_y"].asUInt();
+	if( RenderSizeY == 0 )
+	{
 		std::fprintf(
-			stdout, "Unable to find 'render_size_y' in settings.json, defaulting to 1024.\n");
-		render_size_y = 1024;
+			stdout,
+			"Unable to find 'RenderSizeY' in settings.json, defaulting to "
+			"1024.\n");
+		RenderSizeY = 1024;
 	}
 
-	static glm::uvec2 RenderSize = {render_size_x, render_size_y};
+	static glm::uvec2 RenderSize = {RenderSizeX, RenderSizeY};
 
 	using namespace Common::Literals;
 
@@ -83,7 +89,9 @@ int main(int argc, char* argv[])
 	{
 		// Not enough arguments
 		std::fprintf(
-			stderr, "Error: Not enough arguments\nUsage: ./vkblam <MapPath> <BitmapPath>");
+			stderr,
+			"Error: Not enough arguments\nUsage: ./vkblam <MapPath> "
+			"<BitmapPath>");
 		return EXIT_FAILURE;
 	}
 
