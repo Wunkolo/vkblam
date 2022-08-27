@@ -10,10 +10,7 @@ Derelict|Prisoner
 
 # Build guide
 ```
-$ git clone https://github.com/Wunkolo/vkblam && cd vkblam
-$ git clone https://github.com/vector-of-bool/cmrc external/cmrc
-$ git clone https://github.com/mandreyel/mio external/mio
-$ git clone https://github.com/g-truc/glm external/glm
+$ git clone --recursive https://github.com/Wunkolo/vkblam
 $ mkdir build && cd build
 $ cmake ..
 $ cmake --build .
