@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace Blam
 {
@@ -203,11 +203,12 @@ enum class AnimationFunction : std::uint16_t
 
 enum class AnimationSource : std::uint16_t
 {
-	None,
-	AOut,
-	BOut,
-	COut,
-	DOut
+	None, // x
+	AOut, // pow(x, 0.50)
+	BOut, // pow(x, 0.25)
+	COut, // pow(x, 2.00)
+	DOut, // pow(x, 4.00)
+	EOut, // (sin(x * pi - (pi/2)) + 1.0) * 0.5;
 };
 
 template<std::size_t N>
