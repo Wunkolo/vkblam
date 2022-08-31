@@ -854,8 +854,8 @@ struct Tag<TagClass::ShaderEnvironment> : public Tag<TagClass::Shader>
 	float        BumpMapScale;
 	TagReference BumpMap;
 
-	std::uint32_t Unknown138;
-	std::uint32_t Unknown13C;
+	std::uint32_t Unknown138; // low 16 of this are sent to the vertex shader
+	std::uint32_t Unknown13C; // low 16 of this are sent to the vertex shader
 	std::uint32_t Unknown140;
 	std::uint32_t Unknown144;
 	std::uint32_t Unknown148;
