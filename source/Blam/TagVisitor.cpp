@@ -62,12 +62,12 @@ void DispatchTagVisitors(
 			auto TagList = std::span(Tags.at(CurVisitor->VisitClass));
 
 			const std::size_t TagsPerThread
-				= std::max(TagList.size() / ThreadCount, 1ul);
+				= std::max<std::size_t>(TagList.size() / ThreadCount, 1);
 
 			// If there are less tags than threads, then emit a smaller amount
 			// of threads
 			const std::size_t CurVisitorThreads
-				= std::min(TagsPerThread, TagList.size());
+				= std::min<std::size_t>(TagsPerThread, TagList.size());
 
 			if( CurVisitor->Parallel )
 			{
