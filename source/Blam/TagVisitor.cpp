@@ -52,12 +52,21 @@ void DispatchTagVisitors(
 
 	for( const auto& CurVisitor : VisitorDAG )
 	{
-		CurVisitor->BeginVisits(Map);
+		if( CurVisitor->BeginVisits )
+		{
+			CurVisitor->BeginVisits(Map);
+		}
 
 		// Todo: Parallel Visits with a pool of threads
-		CurVisitor->VisitTags(Tags.at(CurVisitor->VisitClass), Map);
+		if( CurVisitor->VisitTags )
+		{
+			CurVisitor->VisitTags(Tags.at(CurVisitor->VisitClass), Map);
+		}
 
-		CurVisitor->EndVisits(Map);
+		if( CurVisitor->EndVisits )
+		{
+			CurVisitor->EndVisits(Map);
+		}
 	}
 }
 
