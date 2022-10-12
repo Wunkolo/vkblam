@@ -115,6 +115,22 @@ struct TagIndexHeader
 };
 static_assert(sizeof(TagIndexHeader) == 40);
 
+union DatumIndex
+{
+	std::int32_t Handle;
+	struct
+	{
+		std::int16_t Index;
+		std::int16_t Salt;
+	};
+
+	static constexpr DatumIndex Invalid()
+	{
+		return DatumIndex{-1};
+	}
+};
+static_assert(sizeof(DatumIndex) == sizeof(std::int32_t));
+
 struct TagIndexEntry
 {
 	TagClass      ClassPrimary;
