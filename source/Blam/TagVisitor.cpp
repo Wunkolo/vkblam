@@ -1,6 +1,8 @@
 #include <Blam/TagVisitor.hpp>
 
 #include <algorithm>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -44,6 +46,10 @@ void DispatchTagVisitors(
 		}
 	}
 
+	const std::size_t ThreadCount = std::thread::hardware_concurrency();
+
+	std::vector<std::thread> ThreadPool(ThreadCount);
+
 	for( const auto& CurVisitor : VisitorDAG )
 	{
 		if( CurVisitor->BeginVisits )
@@ -51,10 +57,55 @@ void DispatchTagVisitors(
 			CurVisitor->BeginVisits(Map);
 		}
 
-		// Todo: Parallel Visits with a pool of threads
 		if( CurVisitor->VisitTags )
 		{
-			CurVisitor->VisitTags(Tags.at(CurVisitor->VisitClass), Map);
+			auto TagList = std::span(Tags.at(CurVisitor->VisitClass));
+
+			const std::size_t TagsPerThread
+				= std::max(TagList.size() / ThreadCount, 1ul);
+
+			// If there are less tags than threads, then emit a smaller amount
+			// of threads
+			const std::size_t CurVisitorThreads
+				= std::min(TagsPerThread, TagList.size());
+
+			if( CurVisitor->Parallel )
+			{
+				for( auto& Thread :
+					 std::span(ThreadPool).first(CurVisitorThreads) )
+				{
+					const std::size_t TagsThisThread
+						= std::min(TagsPerThread, TagList.size());
+
+					if( TagsThisThread == 0 )
+						continue;
+
+					std::mutex Barrier;
+
+					auto ThreadProc =
+						[&Barrier](
+							const Blam::TagVisitorProc*          Visitor,
+							const Blam::MapFile&                 Map,
+							std::span<const Blam::TagIndexEntry> Tags) -> void {
+						std::scoped_lock Lock{Barrier};
+						Visitor->VisitTags(Tags, Map);
+					};
+					Thread = std::thread(
+						ThreadProc, CurVisitor, std::ref(Map),
+						TagList.first(TagsPerThread));
+					TagList = TagList.subspan(TagsPerThread);
+				}
+
+				for( auto& Thread :
+					 std::span(ThreadPool).first(CurVisitorThreads) )
+				{
+					Thread.join();
+				}
+			}
+			else
+			{
+				CurVisitor->VisitTags(TagList, Map);
+			}
 		}
 
 		if( CurVisitor->EndVisits )

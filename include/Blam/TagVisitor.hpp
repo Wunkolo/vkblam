@@ -15,10 +15,13 @@ struct TagVisitorProc
 	std::unordered_set<Blam::TagClass> DependClasses;
 
 	// Visits tags of this designated primary class
-	Blam::TagClass VisitClass;
+	Blam::TagClass VisitClass = Blam::TagClass::None;
 
 	// Ran before all tags within a map are about to be visited
 	std::function<void(const Blam::MapFile&)> BeginVisits;
+
+	// Allow Tag visits to happen in parallel
+	bool Parallel = false;
 
 	// Visits a particular tag from a particular map file
 	std::function<void(
