@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-#include <vector>
+#include <unordered_set>
 
 #include <Blam/Blam.hpp>
 
@@ -12,7 +12,7 @@ struct TagVisiterProc
 {
 	// Do not begin this TagVisitor until previous visitors have ran of this
 	// type
-	std::vector<Blam::TagClass> DependClasses;
+	std::unordered_set<Blam::TagClass> DependClasses;
 
 	// Visits tags of this designated primary class
 	Blam::TagClass VisitClass;
