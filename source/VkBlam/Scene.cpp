@@ -1,5 +1,7 @@
 #include <VkBlam/Scene.hpp>
 
+#include <Blam/TagVisitor.hpp>
+
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/Pipeline.hpp>
 
@@ -740,27 +742,53 @@ std::optional<Scene>
 			}
 		};
 
-		TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
-			CreateBitmap);
+		Blam::TagVisiterProc BitmapLoader = {};
 
-		TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Globals>(
-			[&](const Blam::TagIndexEntry&                TagEntry,
-				const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
-				const auto& CurGlobal = Globals;
-				for( const auto& RasterData : CurGlobal.RasterizerData.GetSpan(
-						 TargetWorld.GetMapFile().GetMapData().data(),
-						 TargetWorld.GetMapFile().TagHeapVirtualBase) )
-				{
-					NewScene.BitmapHeap.Default2D = RasterData.Default2D.TagID;
-					NewScene.BitmapHeap.Default3D = RasterData.Default3D.TagID;
-					NewScene.BitmapHeap.DefaultCube
-						= RasterData.DefaultCube.TagID;
-				}
-			});
+		BitmapLoader.VisitClass = Blam::TagClass::Bitmap;
+
+		BitmapLoader.BeginVisits = [](const Blam::MapFile& Map) -> void {
+
+		};
+
+		BitmapLoader.VisitTags
+			= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
+				  const Blam::MapFile&                 Map) -> void {
+			for( const auto& TagIndexEntry : TagIndexEntries )
+			{
+				const auto& CurBitmap
+					= Map.GetTag<Blam::TagClass::Bitmap>(TagIndexEntry.TagID);
+				CreateBitmap(TagIndexEntry, *CurBitmap);
+			}
+		};
+
+		BitmapLoader.EndVisits = [&](const Blam::MapFile& Map) -> void {
+			Map.VisitTagClass<Blam::TagClass::Globals>(
+				[&](const Blam::TagIndexEntry&                TagEntry,
+					const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
+					const auto& CurGlobal = Globals;
+					for( const auto& RasterData :
+						 CurGlobal.RasterizerData.GetSpan(
+							 TargetWorld.GetMapFile().GetMapData().data(),
+							 TargetWorld.GetMapFile().TagHeapVirtualBase) )
+					{
+						NewScene.BitmapHeap.Default2D
+							= RasterData.Default2D.TagID;
+						NewScene.BitmapHeap.Default3D
+							= RasterData.Default3D.TagID;
+						NewScene.BitmapHeap.DefaultCube
+							= RasterData.DefaultCube.TagID;
+					}
+				});
+		};
+
+		Blam::TagVisiterProc BitmapCommitter = {};
+
+		BitmapCommitter.DependClasses = {Blam::TagClass::Bitmap};
+
+		BitmapCommitter.VisitClass = Blam::TagClass::Bitmap;
 
 		// Allocate and bind memory for all bitmaps
-
-		{
+		BitmapCommitter.BeginVisits = [&](const Blam::MapFile& Map) -> void {
 			std::vector<vk::Image> Bitmaps;
 			for( const auto& CurBitmap : NewScene.BitmapHeap.Bitmaps )
 			{
@@ -784,7 +812,7 @@ std::optional<Scene>
 					vk::to_string(Result).c_str());
 				return {};
 			}
-		}
+		};
 
 		// All images are now created and binded to memory
 		{
@@ -956,8 +984,20 @@ std::optional<Scene>
 				}
 			};
 
-			TargetWorld.GetMapFile().VisitTagClass<Blam::TagClass::Bitmap>(
-				StreamBitmap);
+			BitmapCommitter.VisitTags
+				= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
+					  const Blam::MapFile&                 Map) -> void {
+				for( const auto& TagIndexEntry : TagIndexEntries )
+				{
+					const auto& CurBitmap = Map.GetTag<Blam::TagClass::Bitmap>(
+						TagIndexEntry.TagID);
+					StreamBitmap(TagIndexEntry, *CurBitmap);
+				}
+			};
+
+			Blam::DispatchTagVisitors(
+				std::array{BitmapLoader, BitmapCommitter},
+				TargetWorld.GetMapFile());
 		}
 	}
 
