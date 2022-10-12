@@ -783,8 +783,6 @@ std::optional<Scene>
 
 		Blam::TagVisiterProc BitmapCommitter = {};
 
-		BitmapCommitter.DependClasses = {Blam::TagClass::Bitmap};
-
 		BitmapCommitter.VisitClass = Blam::TagClass::Bitmap;
 
 		// Allocate and bind memory for all bitmaps

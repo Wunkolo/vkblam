@@ -24,22 +24,16 @@ void DispatchTagVisitors(
 	{
 		VisitClasses.insert(CurVisitor.VisitClass);
 
-		auto InsertPoint = VisitorDAG.begin();
-
-		// Place this visitor strictly AFTER any other visitors it depends on
-		for( const TagClass& DependClass : CurVisitor.DependClasses )
-		{
-			InsertPoint
-				= std::find_if(
-					  VisitorDAG.rbegin(), std::reverse_iterator(InsertPoint),
-					  [&DependClass](const TagVisiterProc* Visitor) -> bool {
-						  return Visitor->VisitClass == DependClass;
-					  })
-					  .base();
-		}
-
-		VisitorDAG.insert(InsertPoint, &CurVisitor);
+		VisitorDAG.push_back(&CurVisitor);
 	}
+
+	std::stable_sort(
+		VisitorDAG.begin(), VisitorDAG.end(),
+		[](const TagVisiterProc* A, const TagVisiterProc* B) -> bool {
+			// A should go before B if B depends on A, otherwise just keep the
+			// order as it is
+			return B->DependClasses.contains(A->VisitClass);
+		});
 
 	// Collect all the tags to be visited
 	for( const auto& CurTagEntry : Map.GetTagIndexArray() )
