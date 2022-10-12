@@ -74,6 +74,8 @@ endif()
 
 find_package( Vulkan 1.3.206 REQUIRED )
 
+find_package( Threads REQUIRED )
+
 find_package( glm 0.9.9.9 QUIET )
 
 if( glm_FOUND )
@@ -151,6 +153,7 @@ target_link_libraries(
 	blam
 	PRIVATE
 	common
+	Threads::Threads
 )
 
 ### dump-bsp
