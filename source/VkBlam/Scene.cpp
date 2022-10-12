@@ -444,6 +444,8 @@ std::optional<Scene>
 				RenderSamples, vk::PolygonMode::eLine);
 	}
 
+	std::vector<Blam::TagVisiterProc> TagVisitors = {};
+
 	// Load BSP
 	{
 		// Offset is in elements, not bytes
@@ -742,13 +744,10 @@ std::optional<Scene>
 			}
 		};
 
-		Blam::TagVisiterProc BitmapLoader = {};
+		TagVisitors.push_back({});
+		Blam::TagVisiterProc& BitmapLoader = TagVisitors.back();
 
 		BitmapLoader.VisitClass = Blam::TagClass::Bitmap;
-
-		BitmapLoader.BeginVisits = [](const Blam::MapFile& Map) -> void {
-
-		};
 
 		BitmapLoader.VisitTags
 			= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
@@ -781,7 +780,8 @@ std::optional<Scene>
 				});
 		};
 
-		Blam::TagVisiterProc BitmapCommitter = {};
+		TagVisitors.push_back({});
+		Blam::TagVisiterProc& BitmapCommitter = TagVisitors.back();
 
 		BitmapCommitter.VisitClass = Blam::TagClass::Bitmap;
 
@@ -808,7 +808,7 @@ std::optional<Scene>
 				std::fprintf(
 					stderr, "Error committing bitmap memory: %s\n",
 					vk::to_string(Result).c_str());
-				return {};
+				return;
 			}
 		};
 
@@ -992,10 +992,6 @@ std::optional<Scene>
 					StreamBitmap(TagIndexEntry, *CurBitmap);
 				}
 			};
-
-			Blam::DispatchTagVisitors(
-				std::array{BitmapLoader, BitmapCommitter},
-				TargetWorld.GetMapFile());
 		}
 	}
 
@@ -1106,10 +1102,29 @@ std::optional<Scene>
 				vk::ImageLayout::eShaderReadOnlyOptimal);
 		};
 
-		TargetWorld.GetMapFile()
-			.VisitTagClass<Blam::TagClass::ShaderEnvironment>(
-				CreateShaderEnvironmentDescriptor);
+		TagVisitors.push_back({});
+		Blam::TagVisiterProc& ShaderEnvironmentProc = TagVisitors.back();
+
+		ShaderEnvironmentProc.VisitClass = Blam::TagClass::ShaderEnvironment;
+
+		ShaderEnvironmentProc.DependClasses
+			= {// Wait for bitmap loaders to finish
+			   Blam::TagClass::Bitmap};
+
+		ShaderEnvironmentProc.VisitTags
+			= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
+				  const Blam::MapFile&                 Map) -> void {
+			for( const auto& TagIndexEntry : TagIndexEntries )
+			{
+				const auto& CurShader
+					= Map.GetTag<Blam::TagClass::ShaderEnvironment>(
+						TagIndexEntry.TagID);
+				CreateShaderEnvironmentDescriptor(TagIndexEntry, *CurShader);
+			}
+		};
 	}
+
+	Blam::DispatchTagVisitors(TagVisitors, TargetWorld.GetMapFile());
 
 	return {std::move(NewScene)};
 }
