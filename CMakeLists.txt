@@ -139,6 +139,7 @@ target_include_directories(
 add_library(
 	blam
 	source/Blam/Blam.cpp
+	source/Blam/TagVisitor.cpp
 	source/Blam/Util.cpp
 )
 target_include_directories(
