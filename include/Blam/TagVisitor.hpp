@@ -8,7 +8,7 @@
 namespace Blam
 {
 
-struct TagVisiterProc
+struct TagVisitorProc
 {
 	// Do not begin this TagVisitor until previous visitors have ran of this
 	// type
@@ -33,13 +33,13 @@ class TagVisiter
 {
 	virtual ~TagVisiter() = 0;
 
-	virtual std::vector<TagVisiterProc> GetTagVisiterProcs() = 0;
+	virtual std::vector<TagVisitorProc> GetTagVisitorProcs() = 0;
 };
 
 // Dispatch a sequence of TagVisitorProc structures against all the tags within
 // a particular map file. Will automatically handle dispatching dependent Tag
 // Visitors in order
 void DispatchTagVisitors(
-	std::span<const TagVisiterProc> Visitors, const Blam::MapFile& Map);
+	std::span<const TagVisitorProc> Visitors, const Blam::MapFile& Map);
 
 } // namespace Blam

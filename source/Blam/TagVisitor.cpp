@@ -8,7 +8,7 @@ namespace Blam
 {
 
 void DispatchTagVisitors(
-	std::span<const TagVisiterProc> Visitors, const Blam::MapFile& Map)
+	std::span<const TagVisitorProc> Visitors, const Blam::MapFile& Map)
 {
 	// Set of all tag-classes that are ever going to be visited
 	std::unordered_set<TagClass> VisitClasses;
@@ -17,7 +17,7 @@ void DispatchTagVisitors(
 
 	// Created a new list of each visitor such that they are sorted by their
 	// dependencies
-	std::vector<const TagVisiterProc*> VisitorDAG;
+	std::vector<const TagVisitorProc*> VisitorDAG;
 	VisitorDAG.reserve(Visitors.size());
 
 	for( const auto& CurVisitor : Visitors )
@@ -29,7 +29,7 @@ void DispatchTagVisitors(
 
 	std::stable_sort(
 		VisitorDAG.begin(), VisitorDAG.end(),
-		[](const TagVisiterProc* A, const TagVisiterProc* B) -> bool {
+		[](const TagVisitorProc* A, const TagVisitorProc* B) -> bool {
 			// A should go before B if B depends on A, otherwise just keep the
 			// order as it is
 			return B->DependClasses.contains(A->VisitClass);

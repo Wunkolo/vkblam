@@ -444,7 +444,7 @@ std::optional<Scene>
 				RenderSamples, vk::PolygonMode::eLine);
 	}
 
-	std::vector<Blam::TagVisiterProc> TagVisitors = {};
+	std::vector<Blam::TagVisitorProc> TagVisitors = {};
 
 	// Load BSP
 	{
@@ -745,7 +745,7 @@ std::optional<Scene>
 		};
 
 		TagVisitors.push_back({});
-		Blam::TagVisiterProc& BitmapLoader = TagVisitors.back();
+		Blam::TagVisitorProc& BitmapLoader = TagVisitors.back();
 
 		BitmapLoader.VisitClass = Blam::TagClass::Bitmap;
 
@@ -781,7 +781,7 @@ std::optional<Scene>
 		};
 
 		TagVisitors.push_back({});
-		Blam::TagVisiterProc& BitmapCommitter = TagVisitors.back();
+		Blam::TagVisitorProc& BitmapCommitter = TagVisitors.back();
 
 		BitmapCommitter.VisitClass = Blam::TagClass::Bitmap;
 
@@ -1103,7 +1103,7 @@ std::optional<Scene>
 		};
 
 		TagVisitors.push_back({});
-		Blam::TagVisiterProc& ShaderEnvironmentProc = TagVisitors.back();
+		Blam::TagVisitorProc& ShaderEnvironmentProc = TagVisitors.back();
 
 		ShaderEnvironmentProc.VisitClass = Blam::TagClass::ShaderEnvironment;
 
