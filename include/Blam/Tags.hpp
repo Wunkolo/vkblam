@@ -431,20 +431,20 @@ struct Tag<TagClass::Gbxmodel>
 			};
 			TagBlock<TriangleEntry> Triangles;
 
-			std::int32_t Unknown44; // IDirect3DIndexBuffer9 *
-			std::int32_t TriangleCount;
-			std::int32_t TriangleDataOffset;
-			std::int32_t TriangleDataOffset2;
-			std::int32_t VertexFormatIndex;
-			std::int32_t VertexCount;
-			std::int32_t Unknown5C;        // Usually set to 0
-			std::int32_t VertexBufferData; // Unknown60;
-			std::int32_t VertexBuffer;     // IDirect3DVertexBuffer9*;
-			std::int8_t  Unknown68;
-			std::int8_t  Unknown69;
-			std::int8_t  Unknown6A;
-			std::int8_t  NumberOfNodes;
-			std::int8_t  LocalNodeIndex[24];
+			std::int32_t       Unknown44; // IDirect3DIndexBuffer9 *
+			std::int32_t       TriangleCount;
+			std::int32_t       TriangleDataOffset;
+			std::int32_t       TriangleDataOffset2;
+			Blam::VertexFormat VertexFormat;
+			std::int32_t       VertexCount;
+			std::int32_t       Unknown5C;        // Usually set to 0
+			std::int32_t       VertexBufferData; // Unknown60;
+			std::int32_t       VertexBuffer;     // IDirect3DVertexBuffer9*;
+			std::int8_t        Unknown68;
+			std::int8_t        Unknown69;
+			std::int8_t        Unknown6A;
+			std::int8_t        NumberOfNodes;
+			std::int8_t        LocalNodeIndex[24];
 		};
 		TagBlock<PartEntry> Parts;
 	};
@@ -1322,11 +1322,11 @@ struct Tag<TagClass::ScenarioStructureBsp>
 
 			struct VertexBufferReference
 			{
-				std::uint32_t Unknown0;
-				std::uint32_t VertexBufferCount;
-				std::uint32_t VertexBufferOffset;
-				std::uint32_t UnknownC;
-				std::uint32_t Unknown10;
+				Blam::VertexFormat VertexFormat;
+				std::uint32_t      VertexBufferCount;
+				std::uint32_t      VertexBufferOffset;
+				std::uint32_t      UnknownC;
+				std::uint32_t      VertexIndexPointer;
 			};
 
 			VertexBufferReference Geometry;

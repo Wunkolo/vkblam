@@ -211,6 +211,58 @@ enum class AnimationSource : std::uint16_t
 	EOut, // (sin(x * pi - (pi/2)) + 1.0) * 0.5;
 };
 
+enum class VertexFormat : std::uint32_t
+{
+	// D3DVERTEXELEMENT9 <0, 00h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_POSITION, 0>
+	// D3DVERTEXELEMENT9 <0, 0Ch, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_NORMAL, 0>
+	// D3DVERTEXELEMENT9 <0, 18h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_BINORMAL, 0>
+	// D3DVERTEXELEMENT9 <0, 24h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_TANGENT, 0>
+	// D3DVERTEXELEMENT9 <0, 30h, D3DDECLTYPE_FLOAT2, D3DDECLUSAGE_TEXCOORD, 0>
+	// Size: 56
+	SBSPVertexUncompressed = 0,
+	// Size: 32
+	SBSPVertexCompressed = 1,
+	// Lightmapped BSP vertices, shader_environment
+	// D3DVERTEXELEMENT9 <1, 00h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_NORMAL, 1>
+	// D3DVERTEXELEMENT9 <1, 0Ch, D3DDECLTYPE_FLOAT2, D3DDECLUSAGE_TEXCOORD, 1>
+	// Size: 20
+	SBSPLightmapVertexUncompressed = 2,
+	// Size: 8
+	SBSPLightmapVertexCompressed = 3,
+	// Size: 68
+	ModelUncompressed = 4,
+	// Size: 32
+	ModelCompressed = 5,
+	// Size: 24
+	Format6 = 6,
+	// Size: 36
+	Format7 = 7,
+	// Size: 24
+	Format8 = 8,
+	// Size: 16
+	Format9 = 9,
+	// Size: 16
+	Format10 = 10,
+	// Size: 20
+	Format11 = 11,
+	// Size: 32
+	Format12 = 12,
+	// Size: 8
+	Format13 = 13,
+	// Size: 32
+	Format14 = 14,
+	// Size: 32
+	Format15 = 15,
+	// Size: 36
+	Format16 = 16,
+	// Size: 28
+	Format17 = 17,
+	// Size: 32
+	Format18 = 18,
+	// Size: 40
+	Format19 = 19,
+};
+
 template<std::size_t N>
 struct FourCC
 {

@@ -11,6 +11,10 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	vk::Device Device, std::span<const vk::PushConstantRange> PushConstants,
 	std::span<const vk::DescriptorSetLayout> SetLayouts,
 	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+	std::span<const vk::VertexInputBindingDescription>
+		VertexBindingDescriptions,
+	std::span<const vk::VertexInputAttributeDescription>
+				   VertexAttributeDescriptions,
 	vk::RenderPass RenderPass, vk::SampleCountFlagBits RenderSamples,
 	vk::PolygonMode PolygonMode)
 {
@@ -57,59 +61,15 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 
 	vk::PipelineVertexInputStateCreateInfo VertexInputState = {};
 
-	static std::array<vk::VertexInputBindingDescription, 2>
-		VertexBindingDescriptions
-		= {Vulkan::CreateVertexInputBinding<Blam::Vertex>(0),
-		   Vulkan::CreateVertexInputBinding<Blam::LightmapVertex>(1)};
-
 	VertexInputState.vertexBindingDescriptionCount
-		= std::size(VertexBindingDescriptions);
+		= VertexBindingDescriptions.size();
 	VertexInputState.pVertexBindingDescriptions
 		= VertexBindingDescriptions.data();
 
-	static std::array<vk::VertexInputAttributeDescription, 7>
-		AttributeDescriptions = {};
-	// Position
-	AttributeDescriptions[0].binding  = 0;
-	AttributeDescriptions[0].location = 0;
-	AttributeDescriptions[0].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[0].offset   = offsetof(Blam::Vertex, Position);
-	// Normal
-	AttributeDescriptions[1].binding  = 0;
-	AttributeDescriptions[1].location = 1;
-	AttributeDescriptions[1].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[1].offset   = offsetof(Blam::Vertex, Normal);
-	// Binormal
-	AttributeDescriptions[2].binding  = 0;
-	AttributeDescriptions[2].location = 2;
-	AttributeDescriptions[2].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[2].offset   = offsetof(Blam::Vertex, Binormal);
-	// Tangent
-	AttributeDescriptions[3].binding  = 0;
-	AttributeDescriptions[3].location = 3;
-	AttributeDescriptions[3].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[3].offset   = offsetof(Blam::Vertex, Tangent);
-	// UV
-	AttributeDescriptions[4].binding  = 0;
-	AttributeDescriptions[4].location = 4;
-	AttributeDescriptions[4].format   = vk::Format::eR32G32Sfloat;
-	AttributeDescriptions[4].offset   = offsetof(Blam::Vertex, UV);
-
-	// Normal-Lightmap
-	AttributeDescriptions[5].binding  = 1;
-	AttributeDescriptions[5].location = 5;
-	AttributeDescriptions[5].format   = vk::Format::eR32G32B32Sfloat;
-	AttributeDescriptions[5].offset   = offsetof(Blam::LightmapVertex, Normal);
-	// UV-Lightmap
-	AttributeDescriptions[6].binding  = 1;
-	AttributeDescriptions[6].location = 6;
-	AttributeDescriptions[6].format   = vk::Format::eR32G32Sfloat;
-	AttributeDescriptions[6].offset   = offsetof(Blam::LightmapVertex, UV);
-
 	VertexInputState.vertexAttributeDescriptionCount
-		= AttributeDescriptions.size();
+		= VertexAttributeDescriptions.size();
 	VertexInputState.pVertexAttributeDescriptions
-		= AttributeDescriptions.data();
+		= VertexAttributeDescriptions.data();
 
 	vk::PipelineInputAssemblyStateCreateInfo InputAssemblyState = {};
 	InputAssemblyState.topology = vk::PrimitiveTopology::eTriangleList;
@@ -419,6 +379,17 @@ std::optional<Scene>
 		const vk::RenderPass RenderPass
 			= TargetRenderer.GetDefaultRenderPass(RenderSamples);
 
+		std::array<vk::VertexInputBindingDescription, 2>
+			VertexBindingDescriptions
+			= {Vulkan::CreateVertexInputBinding<Blam::Vertex>(0),
+			   Vulkan::CreateVertexInputBinding<Blam::LightmapVertex>(1)};
+
+		std::vector<vk::VertexInputAttributeDescription>
+			VertexAttributeDescriptions = VkBlam::GetVertexInputAttributes({{
+				Blam::VertexFormat::SBSPVertexUncompressed,
+				Blam::VertexFormat::SBSPLightmapVertexUncompressed,
+			}});
+
 		std::tie(NewScene.DebugDrawPipeline, NewScene.DebugDrawPipelineLayout)
 			= CreateGraphicsPipeline(
 				VulkanContext.LogicalDevice,
@@ -430,7 +401,8 @@ std::optional<Scene>
 					  ->GetDescriptorSetLayout(),
 				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout()}},
 				NewScene.DefaultVertexShaderModule,
-				NewScene.DefaultFragmentShaderModule, RenderPass, RenderSamples,
+				NewScene.DefaultFragmentShaderModule, VertexBindingDescriptions,
+				VertexAttributeDescriptions, RenderPass, RenderSamples,
 				vk::PolygonMode::eFill);
 
 		std::tie(NewScene.UnlitDrawPipeline, NewScene.UnlitDrawPipelineLayout)
@@ -442,7 +414,8 @@ std::optional<Scene>
 				{{NewScene.UnlitDescriptorPool->GetDescriptorSetLayout(),
 				  NewScene.UnlitDescriptorPool->GetDescriptorSetLayout()}},
 				NewScene.DefaultVertexShaderModule,
-				NewScene.UnlitFragmentShaderModule, RenderPass, RenderSamples,
+				NewScene.UnlitFragmentShaderModule, VertexBindingDescriptions,
+				VertexAttributeDescriptions, RenderPass, RenderSamples,
 				vk::PolygonMode::eLine);
 	}
 

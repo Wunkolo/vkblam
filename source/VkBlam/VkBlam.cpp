@@ -1,5 +1,8 @@
 #include <VkBlam/VkBlam.hpp>
 
+#include <array>
+#include <initializer_list>
+
 #include <cmrc/cmrc.hpp>
 
 CMRC_DECLARE(vkblam);
@@ -125,6 +128,165 @@ std::optional<std::span<const std::byte>> OpenResource(const std::string& Path)
 	const cmrc::file File = DataFS.open(Path);
 	return std::span<const std::byte>(
 		reinterpret_cast<const std::byte*>(File.cbegin()), File.size());
+}
+
+static std::array<
+	std::initializer_list<vk::VertexInputAttributeDescription>, 20>
+	VertexFormatAttributes = {{
+		// SBSPVertexUncompressed
+		{
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x00},
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x0C},
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x18},
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x24},
+			{0, 0, vk::Format::eR32G32Sfloat, 0x30},
+		},
+		// SBSPVertexCompressed
+		{
+			{},
+			{},
+			{},
+		},
+		// SBSPLightmapVertexUncompressed
+		{
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x00}, // D3DDECLUSAGE_NORMAL
+			{0, 0, vk::Format::eR32G32Sfloat, 0x0C},    // D3DDECLUSAGE_TEXCOORD
+		},
+		// SBSPLightmapVertexCompressed
+		{
+			{},
+			{},
+			{},
+		},
+		// ModelUncompressed
+		{
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x00}, // D3DDECLUSAGE_POSITION
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x0C}, // D3DDECLUSAGE_NORMAL
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x18}, // D3DDECLUSAGE_BINORMAL
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x24}, // D3DDECLUSAGE_TANGENT
+			{0, 0, vk::Format::eR32G32Sfloat, 0x30},    // D3DDECLUSAGE_TEXCOORD
+
+		},
+		// ModelCompressed
+		{
+			{},
+			{},
+			{},
+		},
+		// 6
+		{
+			{},
+			{},
+			{},
+		},
+		// 7
+		{
+			{},
+			{},
+			{},
+		},
+		// 8
+		{
+			{},
+			{},
+			{},
+		},
+		// 9
+		{
+			{},
+			{},
+			{},
+		},
+		// 10
+		{
+			{},
+			{},
+			{},
+		},
+		// 11
+		{
+			{},
+			{},
+			{},
+		},
+		// 12
+		{
+			{},
+			{},
+			{},
+		},
+		// 13
+		{
+			{},
+			{},
+			{},
+		},
+		// 14
+		{
+			{},
+			{},
+			{},
+		},
+		// 15
+		{
+			{},
+			{},
+			{},
+		},
+		// 16
+		{
+			{},
+			{},
+			{},
+		},
+		// 17
+		{
+			{},
+			{},
+			{},
+		},
+		// 18
+		{
+			{},
+			{},
+			{},
+		},
+		// 19
+		{
+			{},
+			{},
+			{},
+		},
+	}};
+
+std::vector<vk::VertexInputAttributeDescription>
+	GetVertexInputAttributes(std::span<const Blam::VertexFormat> Formats)
+{
+	std::vector<vk::VertexInputAttributeDescription> Result;
+
+	std::size_t BindingIndex  = 0;
+	std::size_t LocationIndex = 0;
+	for( const Blam::VertexFormat& CurFormat : Formats )
+	{
+		std::vector<vk::VertexInputAttributeDescription> CurVertexAttributes
+			= VertexFormatAttributes.at(static_cast<std::size_t>(CurFormat));
+
+		for( vk::VertexInputAttributeDescription& CurAttribute :
+			 CurVertexAttributes )
+		{
+			CurAttribute.binding  = BindingIndex;
+			CurAttribute.location = LocationIndex;
+			++LocationIndex;
+		}
+
+		Result.insert(
+			Result.end(), CurVertexAttributes.begin(),
+			CurVertexAttributes.end());
+
+		++BindingIndex;
+	}
+
+	return Result;
 }
 
 } // namespace VkBlam
