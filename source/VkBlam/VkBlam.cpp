@@ -130,6 +130,24 @@ std::optional<std::span<const std::byte>> OpenResource(const std::string& Path)
 		reinterpret_cast<const std::byte*>(File.cbegin()), File.size());
 }
 
+std::vector<vk::VertexInputBindingDescription>
+	GetVertexInputBindings(std::span<const Blam::VertexFormat> Formats)
+{
+	std::vector<vk::VertexInputBindingDescription> Result;
+
+	std::size_t BindingIndex = 0;
+	for( const Blam::VertexFormat& CurFormat : Formats )
+	{
+		Result.push_back(vk::VertexInputBindingDescription(
+			BindingIndex, Blam::GetVertexStride(CurFormat),
+			vk::VertexInputRate::eVertex));
+
+		++BindingIndex;
+	}
+
+	return Result;
+}
+
 static std::array<
 	std::initializer_list<vk::VertexInputAttributeDescription>, 20>
 	VertexFormatAttributes = {{

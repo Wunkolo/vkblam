@@ -379,13 +379,8 @@ std::optional<Scene>
 		const vk::RenderPass RenderPass
 			= TargetRenderer.GetDefaultRenderPass(RenderSamples);
 
-		std::array<vk::VertexInputBindingDescription, 2>
-			VertexBindingDescriptions
-			= {Vulkan::CreateVertexInputBinding<Blam::Vertex>(0),
-			   Vulkan::CreateVertexInputBinding<Blam::LightmapVertex>(1)};
-
-		std::vector<vk::VertexInputAttributeDescription>
-			VertexAttributeDescriptions = VkBlam::GetVertexInputAttributes({{
+		const auto [VertexBindingDescriptions, VertexAttributeDescriptions]
+			= VkBlam::GetVertexInputDescriptions({{
 				Blam::VertexFormat::SBSPVertexUncompressed,
 				Blam::VertexFormat::SBSPLightmapVertexUncompressed,
 			}});

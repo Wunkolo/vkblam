@@ -52,8 +52,19 @@ vk::Format BlamToVk(Blam::BitmapEntryFormat Value);
 
 std::optional<std::span<const std::byte>> OpenResource(const std::string& Path);
 
+std::vector<vk::VertexInputBindingDescription>
+	GetVertexInputBindings(std::span<const Blam::VertexFormat> Formats);
 std::vector<vk::VertexInputAttributeDescription>
 	GetVertexInputAttributes(std::span<const Blam::VertexFormat> Formats);
+
+inline std::tuple<
+	std::vector<vk::VertexInputBindingDescription>,
+	std::vector<vk::VertexInputAttributeDescription>>
+	GetVertexInputDescriptions(std::span<const Blam::VertexFormat> Formats)
+{
+	return std::make_tuple(
+		GetVertexInputBindings(Formats), GetVertexInputAttributes(Formats));
+}
 
 // Abstracts the way that halo utilizes its samplers
 vk::SamplerCreateInfo Sampler2D(bool Filtered = true, bool Clamp = false);
