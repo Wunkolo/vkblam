@@ -9,7 +9,9 @@
 namespace Blam
 {
 
-std::string FormatTagClass(Blam::TagClass Class);
+std::string FormatTagClass(TagClass Class);
+
+std::size_t GetVertexStride(VertexFormat Format);
 
 // Enums
 const char* ToString(const CacheVersion& Value);
