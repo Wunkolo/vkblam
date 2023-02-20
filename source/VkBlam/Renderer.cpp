@@ -116,6 +116,9 @@ std::optional<Renderer> Renderer::Create(
 	NewRenderer.SamplerCache = std::make_unique<Vulkan::SamplerCache>(
 		Vulkan::SamplerCache::Create(VulkanContext).value());
 
+	NewRenderer.ShaderModuleCache = std::make_unique<Vulkan::ShaderModuleCache>(
+		Vulkan::ShaderModuleCache::Create(VulkanContext).value());
+
 	NewRenderer.DescriptorUpdateBatch
 		= std::make_unique<Vulkan::DescriptorUpdateBatch>(
 			Vulkan::DescriptorUpdateBatch::Create(

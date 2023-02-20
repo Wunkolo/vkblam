@@ -15,7 +15,4 @@ inline vk::VertexInputBindingDescription CreateVertexInputBinding(
 	return vk::VertexInputBindingDescription(
 		BindingIndex, sizeof(T), InputRate);
 }
-
-vk::UniqueShaderModule CreateShaderModule(
-	vk::Device LogicalDevice, std::span<const std::uint32_t> ShaderCode);
 } // namespace Vulkan

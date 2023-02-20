@@ -35,9 +35,9 @@ private:
 	vk::UniquePipeline       UnlitDrawPipeline       = {};
 	vk::UniquePipelineLayout UnlitDrawPipelineLayout = {};
 
-	vk::UniqueShaderModule DefaultVertexShaderModule;
-	vk::UniqueShaderModule DefaultFragmentShaderModule;
-	vk::UniqueShaderModule UnlitFragmentShaderModule;
+	vk::ShaderModule DefaultVertexShaderModule;
+	vk::ShaderModule DefaultFragmentShaderModule;
+	vk::ShaderModule UnlitFragmentShaderModule;
 
 	// Contains _both_ the vertex buffers and the index buffer
 	vk::UniqueDeviceMemory BSPGeometryMemory = {};

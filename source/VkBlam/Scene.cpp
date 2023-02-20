@@ -395,24 +395,26 @@ std::optional<Scene>
 		const auto UnlitFragShaderData
 			= VkBlam::OpenResource("shaders/Unlit.frag.spv").value();
 
-		NewScene.DefaultVertexShaderModule = Vulkan::CreateShaderModule(
-			VulkanContext.LogicalDevice,
-			std::span<const std::uint32_t>(
-				reinterpret_cast<const std::uint32_t*>(
-					DefaultVertShaderData.data()),
-				DefaultVertShaderData.size() / sizeof(std::uint32_t)));
-		NewScene.DefaultFragmentShaderModule = Vulkan::CreateShaderModule(
-			VulkanContext.LogicalDevice,
-			std::span<const std::uint32_t>(
-				reinterpret_cast<const std::uint32_t*>(
-					DefaultFragShaderData.data()),
-				DefaultFragShaderData.size() / sizeof(std::uint32_t)));
-		NewScene.UnlitFragmentShaderModule = Vulkan::CreateShaderModule(
-			VulkanContext.LogicalDevice,
-			std::span<const std::uint32_t>(
-				reinterpret_cast<const std::uint32_t*>(
-					UnlitFragShaderData.data()),
-				UnlitFragShaderData.size() / sizeof(std::uint32_t)));
+		std::hash<std::string> StringHasher = {};
+
+		NewScene.DefaultVertexShaderModule
+			= TargetRenderer.GetShaderModuleCache()
+				  .GetShaderModule(
+					  StringHasher("shaders/Default.vert.spv"),
+					  DefaultVertShaderData)
+				  .value();
+		NewScene.DefaultFragmentShaderModule
+			= TargetRenderer.GetShaderModuleCache()
+				  .GetShaderModule(
+					  StringHasher("shaders/Default.frag.spv"),
+					  DefaultFragShaderData)
+				  .value();
+		NewScene.UnlitFragmentShaderModule
+			= TargetRenderer.GetShaderModuleCache()
+				  .GetShaderModule(
+					  StringHasher("shaders/Unlit.frag.spv"),
+					  UnlitFragShaderData)
+				  .value();
 
 		const vk::RenderPass RenderPass
 			= TargetRenderer.GetDefaultRenderPass(RenderSamples);
@@ -427,9 +429,9 @@ std::optional<Scene>
 				  NewScene.ShaderEnvironmentDescriptorPool
 					  ->GetDescriptorSetLayout(),
 				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout()}},
-				NewScene.DefaultVertexShaderModule.get(),
-				NewScene.DefaultFragmentShaderModule.get(), RenderPass,
-				RenderSamples, vk::PolygonMode::eFill);
+				NewScene.DefaultVertexShaderModule,
+				NewScene.DefaultFragmentShaderModule, RenderPass, RenderSamples,
+				vk::PolygonMode::eFill);
 
 		std::tie(NewScene.UnlitDrawPipeline, NewScene.UnlitDrawPipelineLayout)
 			= CreateGraphicsPipeline(
@@ -439,9 +441,9 @@ std::optional<Scene>
 					sizeof(VkBlam::CameraGlobals))}},
 				{{NewScene.UnlitDescriptorPool->GetDescriptorSetLayout(),
 				  NewScene.UnlitDescriptorPool->GetDescriptorSetLayout()}},
-				NewScene.DefaultVertexShaderModule.get(),
-				NewScene.UnlitFragmentShaderModule.get(), RenderPass,
-				RenderSamples, vk::PolygonMode::eLine);
+				NewScene.DefaultVertexShaderModule,
+				NewScene.UnlitFragmentShaderModule, RenderPass, RenderSamples,
+				vk::PolygonMode::eLine);
 	}
 
 	std::vector<Blam::TagVisitorProc> TagVisitors = {};
