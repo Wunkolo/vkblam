@@ -48,7 +48,8 @@ struct BitmapHeapT
 
 vk::ImageType BlamToVk(Blam::BitmapEntryType Value);
 
-vk::Format BlamToVk(Blam::BitmapEntryFormat Value);
+vk::Format           BlamToVk(Blam::BitmapEntryFormat Value);
+vk::ComponentMapping GetFormatSwizzle(Blam::BitmapEntryFormat Value);
 
 std::optional<std::span<const std::byte>> OpenResource(const std::string& Path);
 
