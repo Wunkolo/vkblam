@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
 		= DeviceFeatureChain.get<vk::PhysicalDeviceFeatures2>().features;
 	DeviceFeatures.samplerAnisotropy = true;
 	DeviceFeatures.sampleRateShading = true;
-	DeviceFeatures.wideLines         = true;
+	// DeviceFeatures.wideLines         = true; // Not supported on MoltenVK
 	DeviceFeatures.fillModeNonSolid  = true;
 
 	auto& DeviceTimelineFeatures
