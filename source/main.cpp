@@ -187,7 +187,12 @@ int main(int argc, char* argv[])
 	vk::DeviceCreateInfo DeviceInfo = {};
 
 	static const char* DeviceExtensions[]
-		= {VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME};
+		= {
+		#if defined(__APPLE__)
+			"VK_KHR_portability_subset",
+		#endif
+			VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME
+	};
 	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions;
 	DeviceInfo.enabledExtensionCount   = std::size(DeviceExtensions);
 
