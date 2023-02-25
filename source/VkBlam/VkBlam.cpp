@@ -44,7 +44,9 @@ vk::Format BlamToVk(Blam::BitmapEntryFormat Value)
 	case Blam::BitmapEntryFormat::A1R5G5B5:
 		return vk::Format::eA1R5G5B5UnormPack16;
 	case Blam::BitmapEntryFormat::A4R4G4B4:
-		return vk::Format::eA4R4G4B4UnormPack16EXT;
+		return vk::Format::eR4G4B4A4UnormPack16;
+	// case Blam::BitmapEntryFormat::A4R4G4B4:
+	// 	return vk::Format::eA4R4G4B4UnormPack16EXT;
 	case Blam::BitmapEntryFormat::X8R8G8B8:
 		return vk::Format::eA8B8G8R8UnormPack32;
 	case Blam::BitmapEntryFormat::A8R8G8B8:
@@ -59,6 +61,47 @@ vk::Format BlamToVk(Blam::BitmapEntryFormat Value)
 		return vk::Format::eR8Unorm;
 	}
 	return vk::Format::eUndefined;
+}
+
+vk::ComponentMapping GetFormatSwizzle(Blam::BitmapEntryFormat Value)
+{
+	switch( Value )
+	{
+	case Blam::BitmapEntryFormat::A8:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::Y8:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::AY8:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::A8Y8:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::R5G6B5:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::A1R5G5B5:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::A4R4G4B4:
+		// ARGB
+		// ^^^^
+		// RGBA
+		return vk::ComponentMapping(
+			vk::ComponentSwizzle::eG, vk::ComponentSwizzle::eB,
+			vk::ComponentSwizzle::eA, vk::ComponentSwizzle::eR);
+	// case Blam::BitmapEntryFormat::A4R4G4B4:
+	// 	return vk::Format::eA4R4G4B4UnormPack16EXT;
+	case Blam::BitmapEntryFormat::X8R8G8B8:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::A8R8G8B8:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::DXT1:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::DXT2AND3:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::DXT4AND5:
+		return vk::ComponentMapping();
+	case Blam::BitmapEntryFormat::P8:
+		return vk::ComponentMapping();
+	}
+	return vk::ComponentMapping();
 }
 
 vk::SamplerCreateInfo Sampler2D(bool Filtered, bool Clamp)
