@@ -1,3 +1,4 @@
+#include <VkBlam/Format.hpp>
 #include <VkBlam/Scene.hpp>
 
 #include <Blam/TagVisitor.hpp>
