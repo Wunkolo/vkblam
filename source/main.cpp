@@ -31,7 +31,7 @@
 #include "stb_image_write.h"
 
 // Enable render-doc captures on non-windows for now
-#if !defined(_WIN32) && !defined(NDEBUG)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(NDEBUG)
 #define CAPTURE
 #endif
 
@@ -115,11 +115,19 @@ int main(int argc, char* argv[])
 
 	InstanceInfo.pApplicationInfo = &ApplicationInfo;
 
-	static const char* InstanceExtensions[]
-		= {VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
+	static std::array InstanceExtensions = std::to_array({
+#if defined(__APPLE__)
+		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
+#endif
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+	});
 
-	InstanceInfo.ppEnabledExtensionNames = InstanceExtensions;
-	InstanceInfo.enabledExtensionCount   = std::size(InstanceExtensions);
+#if defined(__APPLE__)
+	InstanceInfo.flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+#endif
+
+	InstanceInfo.ppEnabledExtensionNames = InstanceExtensions.data();
+	InstanceInfo.enabledExtensionCount   = InstanceExtensions.size();
 
 	vk::UniqueInstance Instance = {};
 
