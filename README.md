@@ -15,6 +15,7 @@ vkblam requires the official Vulkan SDK library and tools to be installed:
 |||
 |-|-|
 Windows|[LunarG VulkanSDK](https://vulkan.lunarg.com/sdk/home#windows)
+Mac|[LunarG VulkanSDK](https://vulkan.lunarg.com/sdk/home#mac)
 Arch|[vulkan-devel](https://archlinux.org/groups/x86_64/vulkan-devel/)
 Ubuntu|`libvulkan-dev spirv-tools vulkan-tools`
 
