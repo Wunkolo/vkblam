@@ -102,7 +102,6 @@ int main(int argc, char* argv[])
 		Blam::ToString(CurWorld.GetMapFile().TagIndexHeader).c_str(), stdout);
 
 	//// Create Instance
-	vk::InstanceCreateInfo InstanceInfo = {};
 
 	vk::ApplicationInfo ApplicationInfo = {};
 	ApplicationInfo.apiVersion          = VK_API_VERSION_1_1;
@@ -113,11 +112,13 @@ int main(int argc, char* argv[])
 	ApplicationInfo.pApplicationName   = "VkBlam";
 	ApplicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 
+	vk::InstanceCreateInfo InstanceInfo = {};
+
 	InstanceInfo.pApplicationInfo = &ApplicationInfo;
 
-	static std::array InstanceExtensions = std::to_array({
+	static const std::array InstanceExtensions = std::to_array({
 #if defined(__APPLE__)
-		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
+		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #endif
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	});
