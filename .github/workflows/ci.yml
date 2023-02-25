@@ -101,9 +101,14 @@ jobs:
 
   create-release:
     if: github.ref == 'refs/heads/main'
-    needs: [windows-build, linux-build]
+    needs: [windows-build, linux-build, macos-build]
     runs-on: ubuntu-latest
     steps:
+    - name: Download Mac Artifacts
+      uses: actions/download-artifact@v1
+      with:
+        name: "macos"
+
     - name: Download Linux Artifacts
       uses: actions/download-artifact@v1
       with:
@@ -112,7 +117,13 @@ jobs:
     - name: Download Windows Artifacts
       uses: actions/download-artifact@v1
       with:
-        name: "windows"
+        name: "windows"        
+        
+    - name: Compress Artifacts
+      uses: vimtor/action-zip@v1
+      with:
+        files: windows/ linux/ macos/
+        dest: vkblam.zip
 
     - name: Create release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -122,6 +133,4 @@ jobs:
         prerelease: false
         title: "Latest Build"
         files: |
-          macos/vkblam
-          linux/vkblam
-          windows/vkblam.exe
+          ${{ github.workspace }}/vkblam.zip
