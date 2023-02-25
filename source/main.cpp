@@ -152,16 +152,21 @@ int main(int argc, char* argv[])
 	if( auto EnumerateResult = Instance->enumeratePhysicalDevices();
 		EnumerateResult.result == vk::Result::eSuccess )
 	{
-		for( const auto& CurPhysicalDevice : EnumerateResult.value )
-		{
-			// Just pick the first discrete physical device
-			if( CurPhysicalDevice.getProperties().deviceType
-				== vk::PhysicalDeviceType::eDiscreteGpu )
-			{
-				PhysicalDevice = CurPhysicalDevice;
-				break;
-			}
-		}
+		std::vector<vk::PhysicalDevice> PhysicalDevices
+			= std::move(EnumerateResult.value);
+
+		// Prefer Discrete GPUs
+		const auto IsDiscrete
+			= [](const vk::PhysicalDevice& PhysicalDevice) -> bool {
+			return PhysicalDevice.getProperties().deviceType
+				== vk::PhysicalDeviceType::eDiscreteGpu;
+		};
+
+		std::partition(
+			PhysicalDevices.begin(), PhysicalDevices.end(), IsDiscrete);
+
+		// Pick the "best" out of all of the previous criteria
+		PhysicalDevice = PhysicalDevices.front();
 	}
 	else
 	{
