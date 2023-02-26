@@ -71,6 +71,10 @@ elseif( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 	)
 endif()
 
+if( APPLE )
+	# Create Universal Binary
+	set( CMAKE_OSX_ARCHITECTURES "arm64;x86_64" )
+endif()
 
 find_package( Vulkan 1.3.206 REQUIRED )
 
