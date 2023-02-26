@@ -76,7 +76,11 @@ if( APPLE )
 	set( CMAKE_OSX_ARCHITECTURES "arm64;x86_64" )
 endif()
 
-find_package( Vulkan 1.3.206 REQUIRED )
+find_package(
+	Vulkan 1.3.206 REQUIRED
+	COMPONENTS 
+		glslangValidator
+)
 
 find_package( Threads REQUIRED )
 
@@ -118,7 +122,7 @@ foreach( GLSL ${GLSL_SOURCE_FILES} )
 	add_custom_command(
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
-		COMMAND ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE} -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
+		COMMAND Vulkan::glslangValidator -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
 		#COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
 		DEPENDS ${GLSL}
 	)
