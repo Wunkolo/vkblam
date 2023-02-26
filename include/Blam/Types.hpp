@@ -73,8 +73,10 @@ struct TagBlock
 		return std::span<const U>(
 			reinterpret_cast<const U*>(
 				reinterpret_cast<const std::byte*>(Data)
-				+ (VirtualOffset - VirtualBase)),
-			Count);
+				+ (VirtualOffset - VirtualBase)
+			),
+			Count
+		);
 	}
 };
 static_assert(sizeof(TagBlock<void>) == 12);

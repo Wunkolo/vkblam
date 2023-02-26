@@ -13,7 +13,8 @@ std::int32_t FindMemoryTypeIndex(
 	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
 	vk::MemoryPropertyFlags MemoryProperties,
 	vk::MemoryPropertyFlags MemoryExcludeProperties
-	= vk::MemoryPropertyFlagBits::eProtected);
+	= vk::MemoryPropertyFlagBits::eProtected
+);
 
 // Given an array of valid Vulkan image-handles or buffer-handles, these
 // functions will allocate a single block of device-memory for all of them
@@ -27,7 +28,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	vk::MemoryPropertyFlags          MemoryProperties
 	= vk::MemoryPropertyFlagBits::eDeviceLocal,
 	vk::MemoryPropertyFlags MemoryExcludeProperties
-	= vk::MemoryPropertyFlagBits::eProtected);
+	= vk::MemoryPropertyFlagBits::eProtected
+);
 
 std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
@@ -35,5 +37,6 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	vk::MemoryPropertyFlags           MemoryProperties
 	= vk::MemoryPropertyFlagBits::eDeviceLocal,
 	vk::MemoryPropertyFlags MemoryExcludeProperties
-	= vk::MemoryPropertyFlagBits::eProtected);
+	= vk::MemoryPropertyFlagBits::eProtected
+);
 } // namespace Vulkan

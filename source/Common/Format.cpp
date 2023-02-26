@@ -8,7 +8,8 @@ namespace Common
 {
 void HexDump(
 	const std::span<const std::byte>& Data, std::uint8_t Columns,
-	std::FILE* Stream)
+	std::FILE* Stream
+)
 {
 
 	for( std::size_t CurOffset = 0; CurOffset < Data.size();
@@ -17,7 +18,8 @@ void HexDump(
 		std::printf("0x%08" PRIX64 ":", CurOffset);
 		for( const auto& Byte : Data.subspan(
 				 CurOffset,
-				 std::min<std::size_t>(Data.size() - CurOffset, Columns)) )
+				 std::min<std::size_t>(Data.size() - CurOffset, Columns)
+			 ) )
 		{
 			std::fprintf(Stream, " %02" SCNx8, std::uint8_t(Byte));
 		}

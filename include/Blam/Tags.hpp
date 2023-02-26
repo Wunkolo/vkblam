@@ -1174,8 +1174,8 @@ struct Tag<TagClass::Scenario>
 		std::span<const std::byte> GetSBSPData(const void* MapFile) const
 		{
 			return std::span<const std::byte>(
-				reinterpret_cast<const std::byte*>(MapFile) + BSPStart,
-				BSPSize);
+				reinterpret_cast<const std::byte*>(MapFile) + BSPStart, BSPSize
+			);
 		}
 
 		struct SBSPHeader
@@ -1192,17 +1192,19 @@ struct Tag<TagClass::Scenario>
 		const SBSPHeader& GetSBSPHeader(const void* MapFile) const
 		{
 			return *reinterpret_cast<const SBSPHeader*>(
-				reinterpret_cast<const std::byte*>(MapFile) + BSPStart);
+				reinterpret_cast<const std::byte*>(MapFile) + BSPStart
+			);
 		}
 
-		const Tag<TagClass::ScenarioStructureBsp>&
-			GetSBSP(const void* MapFile) const
+		const Tag<TagClass::ScenarioStructureBsp>& GetSBSP(const void* MapFile
+		) const
 		{
 			const auto& SBSPHeader = GetSBSPHeader(MapFile);
 			return *reinterpret_cast<
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
 				reinterpret_cast<const std::byte*>(MapFile)
-				+ ((SBSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart));
+				+ ((SBSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart)
+			);
 		}
 	};
 	static_assert(sizeof(StructureBSP) == 0x20);
@@ -1231,7 +1233,8 @@ static_assert(offsetof(Tag<TagClass::Scenario>, Weapons) == 0x270);
 
 static_assert(offsetof(Tag<TagClass::Scenario>, SoundSceneryPalette) == 0x2E8);
 static_assert(
-	offsetof(Tag<TagClass::Scenario>, PlayerStartingProfile) == 0x348);
+	offsetof(Tag<TagClass::Scenario>, PlayerStartingProfile) == 0x348
+);
 
 static_assert(offsetof(Tag<TagClass::Scenario>, ActorPalette) == 0x420);
 
@@ -1336,12 +1339,14 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			TagDataReference CompressedVertices;
 
 			std::span<const std::byte> GetVertexBuffer(
-				const void* Data, std::uint32_t VirtualBase) const
+				const void* Data, std::uint32_t VirtualBase
+			) const
 			{
 				return std::span<const std::byte>(
 					reinterpret_cast<const std::byte*>(Data)
 						+ (UncompressedVertices.VirtualOffset - VirtualBase),
-					UncompressedVertices.Size);
+					UncompressedVertices.Size
+				);
 			}
 
 			std::span<const Vertex>
@@ -1350,18 +1355,23 @@ struct Tag<TagClass::ScenarioStructureBsp>
 				return std::span<const Vertex>(
 					reinterpret_cast<const Vertex*>(
 						reinterpret_cast<const std::byte*>(Data)
-						+ (UncompressedVertices.VirtualOffset - VirtualBase)),
-					Geometry.VertexBufferCount);
+						+ (UncompressedVertices.VirtualOffset - VirtualBase)
+					),
+					Geometry.VertexBufferCount
+				);
 			}
 			std::span<const LightmapVertex> GetLightmapVertices(
-				const void* Data, std::uint32_t VirtualBase) const
+				const void* Data, std::uint32_t VirtualBase
+			) const
 			{
 				return std::span<const LightmapVertex>(
 					reinterpret_cast<const LightmapVertex*>(
 						reinterpret_cast<const std::byte*>(Data)
 						+ (UncompressedVertices.VirtualOffset - VirtualBase)
-						+ (Geometry.VertexBufferCount * sizeof(Vertex))),
-					LightmapGeometry.VertexBufferCount);
+						+ (Geometry.VertexBufferCount * sizeof(Vertex))
+					),
+					LightmapGeometry.VertexBufferCount
+				);
 			}
 		};
 		static_assert(sizeof(Material) == 0x100);
@@ -1433,39 +1443,48 @@ struct Tag<TagClass::ScenarioStructureBsp>
 };
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, LightmapTexture) == 0x0);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LightmapTexture) == 0x0
+);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultAmbientColor) == 0x2C);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultAmbientColor) == 0x2C
+);
 
 static_assert(
 	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultDistantLight0Color)
-	== 0x3C);
+	== 0x3C
+);
 
 static_assert(
 	offsetof(Tag<TagClass::ScenarioStructureBsp>, DefaultShadowDirection)
-	== 0x88);
+	== 0x88
+);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, CollisionMaterials) == 0xA4);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, CollisionMaterials) == 0xA4
+);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, LensFlares) == 0x11C);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LensFlares) == 0x11C
+);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, BreakableSurfaces) == 0x16C);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, BreakableSurfaces) == 0x16C
+);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, WeatherPalette) == 0x1B4);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, WeatherPalette) == 0x1B4
+);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, PathfindingSurfaces)
-	== 0x1E4);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, PathfindingSurfaces) == 0x1E4
+);
 
 static_assert(offsetof(Tag<TagClass::ScenarioStructureBsp>, Markers) == 0x240);
 
 static_assert(
-	offsetof(Tag<TagClass::ScenarioStructureBsp>, LeafMapLeaves) == 0x270);
+	offsetof(Tag<TagClass::ScenarioStructureBsp>, LeafMapLeaves) == 0x270
+);
 
 static_assert(sizeof(Tag<TagClass::ScenarioStructureBsp>) == (0x288));
 #pragma pack(pop)

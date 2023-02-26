@@ -25,7 +25,8 @@ const static std::uint32_t HaloCEKey[4] = {
 
 void TEADecryptBlock(
 	const std::span<std::uint32_t, 2> Data,
-	std::span<const std::uint32_t, 4> Key)
+	std::span<const std::uint32_t, 4> Key
+)
 {
 	const std::uint32_t Delta = 0x61C88647;
 	std::uint32_t       Sum   = 0xC6EF3720;
@@ -46,7 +47,8 @@ void TEADecryptBlock(
 // - The last 32 bytes of the decrypted file are an ascii MD5 hash of all of the
 // data before it
 bool DecryptShader(
-	const std::filesystem::path& InFile, const std::filesystem::path& OutFile)
+	const std::filesystem::path& InFile, const std::filesystem::path& OutFile
+)
 {
 	std::error_code ErrorCode;
 	if( !std::filesystem::exists(InFile) )
@@ -65,35 +67,41 @@ bool DecryptShader(
 	{
 		std::fprintf(
 			stderr, "create_directories(%s): %s",
-			OutFile.parent_path().string().c_str(),
-			ErrorCode.message().c_str());
+			OutFile.parent_path().string().c_str(), ErrorCode.message().c_str()
+		);
 		return false;
 	}
 	std::filesystem::copy_file(
 		InFile, OutFile, std::filesystem::copy_options::overwrite_existing,
-		ErrorCode);
+		ErrorCode
+	);
 	if( ErrorCode )
 	{
 		std::fprintf(
 			stderr, "copy_file(%s -> %s): %s", InFile.string().c_str(),
-			OutFile.string().c_str(), ErrorCode.message().c_str());
+			OutFile.string().c_str(), ErrorCode.message().c_str()
+		);
 		return false;
 	}
 
 	mio::mmap_sink           DecryptedFile = mio::mmap_sink(OutFile.c_str());
 	std::span<std::uint32_t> DecryptedData(
 		reinterpret_cast<std::uint32_t*>(DecryptedFile.data()),
-		DecryptedFile.size() / sizeof(std::uint32_t));
+		DecryptedFile.size() / sizeof(std::uint32_t)
+	);
 
 	if( DecryptedFile.size() & 0x80000007 )
 	{
 		TEADecryptBlock(
 			std::span<std::uint32_t>(
 				reinterpret_cast<std::uint32_t*>(
-					DecryptedFile.data() + DecryptedFile.size() - 8),
-				2)
+					DecryptedFile.data() + DecryptedFile.size() - 8
+				),
+				2
+			)
 				.first<2>(),
-			HaloCEKey);
+			HaloCEKey
+		);
 	}
 
 	while( DecryptedData.size() >= 2 )
@@ -133,7 +141,8 @@ bool DumpVertexShaderFile(std::span<const std::byte> ShaderFile)
 		{
 			OutFile.write(
 				reinterpret_cast<const char*>(VertexShaderByteCode.data()),
-				VertexShaderByteCode.size());
+				VertexShaderByteCode.size()
+			);
 		}
 		else
 		{
@@ -177,7 +186,8 @@ bool DumpFragmentShaderFileCE(const std::span<const std::byte> ShaderFile)
 
 		std::printf(
 			"%.*s | Permutations: %u\n", ShaderNameLength, ShaderName,
-			ShaderPermutationCount);
+			ShaderPermutationCount
+		);
 
 		for( std::uint8_t PermutationIdx = 0;
 			 PermutationIdx < ShaderPermutationCount; ++PermutationIdx )
@@ -222,7 +232,8 @@ int main(int argc, char* argv[])
 			= std::filesystem::path(InPath).replace_extension(".decrypted.bin");
 		std::fprintf(
 			stdout, "%s -> %s: ", InPath.string().c_str(),
-			OutPath.string().c_str());
+			OutPath.string().c_str()
+		);
 		if( DecryptShader(InPath, OutPath) )
 		{
 			std::fprintf(stdout, "Done\n");
@@ -230,7 +241,8 @@ int main(int argc, char* argv[])
 			mio::mmap_source DecryptedFile = mio::mmap_source(OutPath.c_str());
 			std::span<const std::byte> DecryptedData(
 				reinterpret_cast<const std::byte*>(DecryptedFile.data()),
-				DecryptedFile.size());
+				DecryptedFile.size()
+			);
 
 			// DumpVertexShaderFile(DecryptedData);
 			DumpFragmentShaderFileCE(DecryptedData);

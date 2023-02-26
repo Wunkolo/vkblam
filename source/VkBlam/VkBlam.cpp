@@ -77,7 +77,8 @@ std::optional<std::span<const std::byte>> OpenResource(const std::string& Path)
 	}
 	const cmrc::file File = DataFS.open(Path);
 	return std::span<const std::byte>(
-		reinterpret_cast<const std::byte*>(File.cbegin()), File.size());
+		reinterpret_cast<const std::byte*>(File.cbegin()), File.size()
+	);
 }
 
 std::vector<vk::VertexInputBindingDescription>
@@ -90,7 +91,8 @@ std::vector<vk::VertexInputBindingDescription>
 	{
 		Result.push_back(vk::VertexInputBindingDescription(
 			BindingIndex, Blam::GetVertexStride(CurFormat),
-			vk::VertexInputRate::eVertex));
+			vk::VertexInputRate::eVertex
+		));
 
 		++BindingIndex;
 	}
@@ -248,8 +250,8 @@ std::vector<vk::VertexInputAttributeDescription>
 		}
 
 		Result.insert(
-			Result.end(), CurVertexAttributes.begin(),
-			CurVertexAttributes.end());
+			Result.end(), CurVertexAttributes.begin(), CurVertexAttributes.end()
+		);
 
 		++BindingIndex;
 	}

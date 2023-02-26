@@ -45,11 +45,13 @@ static constexpr glm::uvec2 RenderSize = {1024, 1024};
 
 vk::UniqueRenderPass CreateMainRenderPass(
 	vk::Device              Device,
-	vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1);
+	vk::SampleCountFlagBits SampleCount = vk::SampleCountFlagBits::e1
+);
 
 vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
-	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass);
+	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass
+);
 
 std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice);
 
@@ -90,16 +92,20 @@ int main(int argc, char* argv[])
 
 	Blam::MapFile CurMap(
 		std::span<const std::byte>(
-			reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()),
+			reinterpret_cast<const std::byte*>(MapFile.data()), MapFile.size()
+		),
 		std::span<const std::byte>(
 			reinterpret_cast<const std::byte*>(BitmapFile.data()),
-			BitmapFile.size()));
+			BitmapFile.size()
+		)
+	);
 
 	VkBlam::World CurWorld = VkBlam::World::Create(CurMap).value();
 
 	std::fputs(Blam::ToString(CurWorld.GetMapFile().MapHeader).c_str(), stdout);
 	std::fputs(
-		Blam::ToString(CurWorld.GetMapFile().TagIndexHeader).c_str(), stdout);
+		Blam::ToString(CurWorld.GetMapFile().TagIndexHeader).c_str(), stdout
+	);
 
 	//// Create Instance
 
@@ -120,7 +126,7 @@ int main(int argc, char* argv[])
 #if defined(__APPLE__)
 		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #endif
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+			VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	});
 
 #if defined(__APPLE__)
@@ -141,7 +147,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating Vulkan instance: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(Instance.get());
@@ -163,7 +170,8 @@ int main(int argc, char* argv[])
 		};
 
 		std::partition(
-			PhysicalDevices.begin(), PhysicalDevices.end(), IsDiscrete);
+			PhysicalDevices.begin(), PhysicalDevices.end(), IsDiscrete
+		);
 
 		// Pick the "best" out of all of the previous criteria
 		PhysicalDevice = PhysicalDevices.front();
@@ -172,7 +180,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error enumerating physical devices: %s\n",
-			vk::to_string(EnumerateResult.result).c_str());
+			vk::to_string(EnumerateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -181,17 +190,17 @@ int main(int argc, char* argv[])
 		"---\n"
 		"%s"
 		"---\n",
-		FormatDeviceCaps(PhysicalDevice).c_str());
+		FormatDeviceCaps(PhysicalDevice).c_str()
+	);
 
 	//// Create Device
 	vk::DeviceCreateInfo DeviceInfo = {};
 
-	static const char* DeviceExtensions[]
-		= {
-		#if defined(__APPLE__)
-			"VK_KHR_portability_subset",
-		#endif
-			VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME
+	static const char* DeviceExtensions[] = {
+#if defined(__APPLE__)
+		"VK_KHR_portability_subset",
+#endif
+		VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME
 	};
 	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions;
 	DeviceInfo.enabledExtensionCount   = std::size(DeviceExtensions);
@@ -206,7 +215,7 @@ int main(int argc, char* argv[])
 	DeviceFeatures.samplerAnisotropy = true;
 	DeviceFeatures.sampleRateShading = true;
 	// DeviceFeatures.wideLines         = true; // Not supported on MoltenVK
-	DeviceFeatures.fillModeNonSolid  = true;
+	DeviceFeatures.fillModeNonSolid = true;
 
 	auto& DeviceTimelineFeatures
 		= DeviceFeatureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
@@ -234,7 +243,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating logical device: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -243,7 +253,8 @@ int main(int argc, char* argv[])
 #ifdef CAPTURE
 	if( rdoc_api )
 		rdoc_api->StartFrameCapture(
-			*(void**)(VkInstance)(*Instance.operator->()), NULL);
+			*(void**)(VkInstance)(*Instance.operator->()), NULL
+		);
 #endif
 
 	// Main Rendering queue
@@ -280,13 +291,15 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating staging buffer: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
 	Vulkan::SetObjectName(
 		Device.get(), StagingBuffer.get(), "Staging Buffer( %s )",
-		Common::FormatByteCount(StagingBufferInfo.size).c_str());
+		Common::FormatByteCount(StagingBufferInfo.size).c_str()
+	);
 
 	// Allocate memory for staging buffer
 	{
@@ -299,7 +312,8 @@ int main(int argc, char* argv[])
 		StagingBufferAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
 			PhysicalDevice, StagingBufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eHostVisible
-				| vk::MemoryPropertyFlagBits::eHostCoherent);
+				| vk::MemoryPropertyFlagBits::eHostCoherent
+		);
 
 		if( auto AllocResult
 			= Device->allocateMemoryUnique(StagingBufferAllocInfo);
@@ -311,12 +325,14 @@ int main(int argc, char* argv[])
 		{
 			std::fprintf(
 				stderr, "Error allocating memory for staging buffer: %s\n",
-				vk::to_string(AllocResult.result).c_str());
+				vk::to_string(AllocResult.result).c_str()
+			);
 			return EXIT_FAILURE;
 		}
 
 		if( auto BindResult = Device->bindBufferMemory(
-				StagingBuffer.get(), StagingBufferMemory.get(), 0);
+				StagingBuffer.get(), StagingBufferMemory.get(), 0
+			);
 			BindResult == vk::Result::eSuccess )
 		{
 			// Successfully binded memory to buffer
@@ -325,25 +341,29 @@ int main(int argc, char* argv[])
 		{
 			std::fprintf(
 				stderr, "Error binding memory to staging buffer: %s\n",
-				vk::to_string(BindResult).c_str());
+				vk::to_string(BindResult).c_str()
+			);
 			return EXIT_FAILURE;
 		}
 	}
 
 	std::span<std::byte> StagingBufferData;
 	if( auto MapResult = Device->mapMemory(
-			StagingBufferMemory.get(), 0, StagingBufferInfo.size);
+			StagingBufferMemory.get(), 0, StagingBufferInfo.size
+		);
 		MapResult.result == vk::Result::eSuccess )
 	{
 		StagingBufferData = std::span<std::byte>(
 			reinterpret_cast<std::byte*>(MapResult.value),
-			StagingBufferInfo.size);
+			StagingBufferInfo.size
+		);
 	}
 	else
 	{
 		std::fprintf(
 			stderr, "Error mapping staging buffer memory: %s\n",
-			vk::to_string(MapResult.result).c_str());
+			vk::to_string(MapResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -404,11 +424,13 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating render target: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 	Vulkan::SetObjectName(
-		Device.get(), RenderImage.get(), "Render Image Resolve");
+		Device.get(), RenderImage.get(), "Render Image Resolve"
+	);
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageAAInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -419,11 +441,13 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating render target: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 	Vulkan::SetObjectName(
-		Device.get(), RenderImageAA.get(), "Render Image(AA)");
+		Device.get(), RenderImageAA.get(), "Render Image(AA)"
+	);
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageDepthInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -434,11 +458,13 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating render target: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 	Vulkan::SetObjectName(
-		Device.get(), RenderImageDepth.get(), "Render Image Depth(AA)");
+		Device.get(), RenderImageDepth.get(), "Render Image Depth(AA)"
+	);
 
 	std::vector<vk::Image> ImageHeapTargets = {};
 	ImageHeapTargets.push_back(RenderImage.get());
@@ -450,7 +476,8 @@ int main(int argc, char* argv[])
 	vk::UniqueDeviceMemory ImageHeapMemory = {};
 
 	if( auto [Result, Value] = Vulkan::CommitImageHeap(
-			Device.get(), PhysicalDevice, ImageHeapTargets);
+			Device.get(), PhysicalDevice, ImageHeapTargets
+		);
 		Result == vk::Result::eSuccess )
 	{
 		ImageHeapMemory = std::move(Value);
@@ -459,7 +486,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error committing image memory: %s\n",
-			vk::to_string(Result).c_str());
+			vk::to_string(Result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -492,7 +520,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating render target view: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -509,7 +538,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating render target view: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -528,14 +558,16 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating render target view: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
 	//// MainFrameBuffer
 	vk::UniqueFramebuffer RenderFramebuffer = CreateMainFrameBuffer(
 		Device.get(), RenderImageView.get(), RenderImageDepthView.get(),
-		RenderImageAAView.get(), RenderSize, MainRenderPass.get());
+		RenderImageAAView.get(), RenderSize, MainRenderPass.get()
+	);
 
 	// VkBlam::ShaderEnvironment ShaderEnvironments(
 	// 	VulkanContext, BitmapHeap, Renderer.GetDescriptorUpdateBatch());
@@ -564,7 +596,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating command pool: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -586,7 +619,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error allocating command buffer: %s\n",
-			vk::to_string(AllocateResult.result).c_str());
+			vk::to_string(AllocateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -595,26 +629,29 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error beginning command buffer: %s\n",
-			vk::to_string(BeginResult).c_str());
+			vk::to_string(BeginResult).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
 	{
 		Vulkan::DebugLabelScope FrameScope(
-			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame");
+			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame"
+		);
 
 		{
 			Vulkan::DebugLabelScope RenderPassScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Main Render Pass");
+				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Main Render Pass"
+			);
 
 			vk::RenderPassBeginInfo RenderBeginInfo   = {};
 			RenderBeginInfo.renderPass                = MainRenderPass.get();
 			static const vk::ClearValue ClearColors[] = {
-				vk::ClearColorValue(
-					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
+				),
 				vk::ClearDepthStencilValue(1.0f, 0),
-				vk::ClearColorValue(
-					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}),
+				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
+				),
 			};
 			RenderBeginInfo.pClearValues             = ClearColors;
 			RenderBeginInfo.clearValueCount          = std::size(ClearColors);
@@ -622,7 +659,8 @@ int main(int argc, char* argv[])
 			RenderBeginInfo.renderArea.extent.height = RenderSize.y;
 			RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
 			CommandBuffer->beginRenderPass(
-				RenderBeginInfo, vk::SubpassContents::eInline);
+				RenderBeginInfo, vk::SubpassContents::eInline
+			);
 
 			// Draw
 
@@ -639,7 +677,8 @@ int main(int argc, char* argv[])
 				glm::vec3(WorldBounds[1].x, WorldBounds[1].y, MaxExtent) * 1.5f,
 				// glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
 				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBounds[0].z),
-				glm::vec3(0, 0, 1));
+				glm::vec3(0, 0, 1)
+			);
 
 			const auto Projection
 				// = glm::ortho<glm::f32>(
@@ -648,7 +687,8 @@ int main(int argc, char* argv[])
 				= glm::perspective<glm::f32>(
 					glm::radians(60.0f),
 					static_cast<float>(RenderSize.x) / RenderSize.y, 1.0f,
-					1000.0f);
+					1000.0f
+				);
 
 			VkBlam::SceneView SceneView(View, Projection, RenderSize);
 
@@ -661,7 +701,8 @@ int main(int argc, char* argv[])
 		{
 			Vulkan::DebugLabelScope DebugCopyScope(
 				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
-				"Upload framebuffer to staging buffer");
+				"Upload framebuffer to staging buffer"
+			);
 			CommandBuffer->pipelineBarrier(
 				vk::PipelineStageFlagBits::eColorAttachmentOutput,
 				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
@@ -675,16 +716,21 @@ int main(int argc, char* argv[])
 					 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
 					 RenderImage.get(),
 					 vk::ImageSubresourceRange(
-						 vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))});
+						 vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
+					 )
+				 )}
+			);
 			CommandBuffer->copyImageToBuffer(
 				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
 				StagingBuffer.get(),
 				{vk::BufferImageCopy(
 					0, RenderSize.x, RenderSize.y,
 					vk::ImageSubresourceLayers(
-						vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-					vk::Offset3D(),
-					vk::Extent3D(RenderSize.x, RenderSize.y, 1))});
+						vk::ImageAspectFlagBits::eColor, 0, 0, 1
+					),
+					vk::Offset3D(), vk::Extent3D(RenderSize.x, RenderSize.y, 1)
+				)}
+			);
 		}
 	}
 
@@ -693,7 +739,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error ending command buffer: %s\n",
-			vk::to_string(EndResult).c_str());
+			vk::to_string(EndResult).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -710,7 +757,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error creating fence: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -740,7 +788,8 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error submitting command buffer: %s\n",
-			vk::to_string(SubmitResult).c_str());
+			vk::to_string(SubmitResult).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
@@ -750,27 +799,31 @@ int main(int argc, char* argv[])
 	{
 		std::fprintf(
 			stderr, "Error waiting for fence: %s\n",
-			vk::to_string(WaitResult).c_str());
+			vk::to_string(WaitResult).c_str()
+		);
 		return EXIT_FAILURE;
 	}
 
 #ifdef CAPTURE
 	if( rdoc_api )
 		rdoc_api->EndFrameCapture(
-			*(void**)(VkInstance)(*Instance.operator->()), NULL);
+			*(void**)(VkInstance)(*Instance.operator->()), NULL
+		);
 #endif
 
 	stbi_write_png_compression_level = 0;
 	stbi_write_png(
 		("./" + MapPath.stem().string() + ".png").c_str(), RenderSize.x,
-		RenderSize.y, 4, StagingBufferData.data(), 0);
+		RenderSize.y, 4, StagingBufferData.data(), 0
+	);
 
 	return EXIT_SUCCESS;
 }
 
 vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::Device Device, vk::ImageView Color, vk::ImageView DepthAA,
-	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass)
+	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass
+)
 {
 	vk::FramebufferCreateInfo FramebufferInfo = {};
 
@@ -792,7 +845,8 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	{
 		std::fprintf(
 			stderr, "Error creating framebuffer: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return {};
 	}
 }
@@ -805,12 +859,14 @@ std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice)
 		= PhysicalDevice.getProperties();
 
 	Result += Common::Format(
-		"Device Name: %.256s\n", Properties.deviceName.data());
+		"Device Name: %.256s\n", Properties.deviceName.data()
+	);
 	Result += Common::Format(
-		"Device Type: %s\n", vk::to_string(Properties.deviceType).c_str());
+		"Device Type: %s\n", vk::to_string(Properties.deviceType).c_str()
+	);
 	Result += Common::Format(
-		"DeviceID/VendorID: %8x:%8x\n", Properties.deviceID,
-		Properties.vendorID);
+		"DeviceID/VendorID: %8x:%8x\n", Properties.deviceID, Properties.vendorID
+	);
 
 	const vk::PhysicalDeviceMemoryProperties MemoryProperties
 		= PhysicalDevice.getMemoryProperties();
@@ -821,7 +877,8 @@ std::string FormatDeviceCaps(vk::PhysicalDevice PhysicalDevice)
 		Result += Common::Format(
 			"Heap %2u: %12s %s\n", HeapIdx,
 			Common::FormatByteCount(CurHeap.size).c_str(),
-			vk::to_string(CurHeap.flags).c_str());
+			vk::to_string(CurHeap.flags).c_str()
+		);
 	}
 
 	return Result;

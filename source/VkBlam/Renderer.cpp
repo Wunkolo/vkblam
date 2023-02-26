@@ -17,7 +17,8 @@ vk::UniqueRenderPass
 			vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear,
 			vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare,
 			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eTransferSrcOptimal),
+			vk::ImageLayout::eTransferSrcOptimal
+		),
 		// Depth Attachment
 		// Dont care about reading or storing it
 		vk::AttachmentDescription(
@@ -25,7 +26,8 @@ vk::UniqueRenderPass
 			SampleCount, vk::AttachmentLoadOp::eClear,
 			vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eClear,
 			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eDepthStencilAttachmentOptimal),
+			vk::ImageLayout::eDepthStencilAttachmentOptimal
+		),
 		// Color Attachment(MSAA)
 		// We just care about it storing its color data
 		vk::AttachmentDescription(
@@ -33,12 +35,14 @@ vk::UniqueRenderPass
 			SampleCount, vk::AttachmentLoadOp::eClear,
 			vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare,
 			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eColorAttachmentOptimal)};
+			vk::ImageLayout::eColorAttachmentOptimal
+		)};
 
 	const vk::AttachmentReference AttachmentRefs[] = {
 		vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
 		vk::AttachmentReference(
-			1, vk::ImageLayout::eDepthStencilAttachmentOptimal),
+			1, vk::ImageLayout::eDepthStencilAttachmentOptimal
+		),
 		vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal),
 	};
 
@@ -61,7 +65,8 @@ vk::UniqueRenderPass
 		vk::PipelineStageFlagBits::eVertexInput,
 		vk::AccessFlagBits::eTransferWrite,
 		vk::AccessFlagBits::eVertexAttributeRead,
-		vk::DependencyFlagBits::eByRegion)};
+		vk::DependencyFlagBits::eByRegion
+	)};
 
 	RenderPassInfo.dependencyCount = std::size(SubpassDependencies);
 	RenderPassInfo.pDependencies   = SubpassDependencies;
@@ -75,7 +80,8 @@ vk::UniqueRenderPass
 	{
 		std::fprintf(
 			stderr, "Error creating render pass: %s\n",
-			vk::to_string(CreateResult.result).c_str());
+			vk::to_string(CreateResult.result).c_str()
+		);
 		return {};
 	}
 }
@@ -106,25 +112,31 @@ const vk::RenderPass&
 }
 
 std::optional<Renderer> Renderer::Create(
-	const Vulkan::Context& VulkanContext, const RendererConfig& Config)
+	const Vulkan::Context& VulkanContext, const RendererConfig& Config
+)
 {
 	Renderer NewRenderer(VulkanContext);
 
 	NewRenderer.StreamBuffer = std::make_unique<Vulkan::StreamBuffer>(
-		VulkanContext, Config.StreamBufferSize);
+		VulkanContext, Config.StreamBufferSize
+	);
 
 	NewRenderer.SamplerCache = std::make_unique<Vulkan::SamplerCache>(
-		Vulkan::SamplerCache::Create(VulkanContext).value());
+		Vulkan::SamplerCache::Create(VulkanContext).value()
+	);
 
 	NewRenderer.ShaderModuleCache = std::make_unique<Vulkan::ShaderModuleCache>(
-		Vulkan::ShaderModuleCache::Create(VulkanContext).value());
+		Vulkan::ShaderModuleCache::Create(VulkanContext).value()
+	);
 
 	NewRenderer.DescriptorUpdateBatch
 		= std::make_unique<Vulkan::DescriptorUpdateBatch>(
 			Vulkan::DescriptorUpdateBatch::Create(
 				VulkanContext, Config.DescriptorWriteMax,
-				Config.DescriptorCopyMax)
-				.value());
+				Config.DescriptorCopyMax
+			)
+				.value()
+		);
 
 	return {std::move(NewRenderer)};
 }

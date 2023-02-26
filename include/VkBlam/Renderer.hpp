@@ -80,7 +80,7 @@ public:
 		GetDefaultRenderPass(vk::SampleCountFlagBits SampleCount);
 
 	static std::optional<Renderer> Create(
-		const Vulkan::Context& VulkanContext,
-		const RendererConfig&  Config = {});
+		const Vulkan::Context& VulkanContext, const RendererConfig& Config = {}
+	);
 };
 } // namespace VkBlam

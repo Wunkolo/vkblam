@@ -10,7 +10,8 @@ void DescriptorUpdateBatch::Flush()
 {
 	VulkanContext.LogicalDevice.updateDescriptorSets(
 		{std::span(DescriptorWrites.get(), DescriptorWriteEnd)},
-		{std::span(DescriptorCopies.get(), DescriptorCopyEnd)});
+		{std::span(DescriptorCopies.get(), DescriptorCopyEnd)}
+	);
 
 	DescriptorWriteEnd = 0;
 	DescriptorCopyEnd  = 0;
@@ -18,7 +19,8 @@ void DescriptorUpdateBatch::Flush()
 
 void DescriptorUpdateBatch::AddImage(
 	vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
-	vk::ImageView ImageView, vk::ImageLayout ImageLayout)
+	vk::ImageView ImageView, vk::ImageLayout ImageLayout
+)
 {
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
@@ -27,18 +29,21 @@ void DescriptorUpdateBatch::AddImage(
 
 	const auto& ImageInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorImageInfo>(
-			vk::Sampler(), ImageView, ImageLayout);
+			vk::Sampler(), ImageView, ImageLayout
+		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
 		TargetDescriptor, TargetBinding, 0, 1,
-		vk::DescriptorType::eSampledImage, &ImageInfo, nullptr, nullptr);
+		vk::DescriptorType::eSampledImage, &ImageInfo, nullptr, nullptr
+	);
 
 	++DescriptorWriteEnd;
 }
 
 void DescriptorUpdateBatch::AddSampler(
 	vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
-	vk::Sampler Sampler)
+	vk::Sampler Sampler
+)
 {
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
@@ -47,18 +52,21 @@ void DescriptorUpdateBatch::AddSampler(
 
 	const auto& ImageInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorImageInfo>(
-			Sampler, vk::ImageView(), vk::ImageLayout());
+			Sampler, vk::ImageView(), vk::ImageLayout()
+		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
 		TargetDescriptor, TargetBinding, 0, 1, vk::DescriptorType::eSampler,
-		&ImageInfo, nullptr, nullptr);
+		&ImageInfo, nullptr, nullptr
+	);
 
 	++DescriptorWriteEnd;
 }
 
 void DescriptorUpdateBatch::AddImageSampler(
 	vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
-	vk::ImageView ImageView, vk::Sampler Sampler, vk::ImageLayout ImageLayout)
+	vk::ImageView ImageView, vk::Sampler Sampler, vk::ImageLayout ImageLayout
+)
 {
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
@@ -67,19 +75,21 @@ void DescriptorUpdateBatch::AddImageSampler(
 
 	const auto& ImageInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorImageInfo>(
-			Sampler, ImageView, ImageLayout);
+			Sampler, ImageView, ImageLayout
+		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
 		TargetDescriptor, TargetBinding, 0, 1,
-		vk::DescriptorType::eCombinedImageSampler, &ImageInfo, nullptr,
-		nullptr);
+		vk::DescriptorType::eCombinedImageSampler, &ImageInfo, nullptr, nullptr
+	);
 
 	++DescriptorWriteEnd;
 }
 
 void DescriptorUpdateBatch::AddBuffer(
 	vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
-	vk::Buffer Buffer, vk::DeviceSize Offset, vk::DeviceSize Size)
+	vk::Buffer Buffer, vk::DeviceSize Offset, vk::DeviceSize Size
+)
 {
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
@@ -88,11 +98,13 @@ void DescriptorUpdateBatch::AddBuffer(
 
 	const auto& BufferInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorBufferInfo>(
-			Buffer, Offset, Size);
+			Buffer, Offset, Size
+		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
 		TargetDescriptor, TargetBinding, 0, 1,
-		vk::DescriptorType::eStorageImage, nullptr, &BufferInfo, nullptr);
+		vk::DescriptorType::eStorageImage, nullptr, &BufferInfo, nullptr
+	);
 
 	++DescriptorWriteEnd;
 }
@@ -101,7 +113,8 @@ void DescriptorUpdateBatch::CopyBinding(
 	vk::DescriptorSet SourceDescriptor, vk::DescriptorSet TargetDescriptor,
 	std::uint8_t SourceBinding, std::uint8_t TargetBinding,
 	std::uint8_t SourceArrayElement, std::uint8_t TargetArrayElement,
-	std::uint8_t DescriptorCount)
+	std::uint8_t DescriptorCount
+)
 {
 	if( DescriptorCopyEnd >= DescriptorCopyMax )
 	{
@@ -110,18 +123,21 @@ void DescriptorUpdateBatch::CopyBinding(
 
 	DescriptorCopies[DescriptorCopyEnd] = vk::CopyDescriptorSet(
 		SourceDescriptor, SourceBinding, SourceArrayElement, TargetDescriptor,
-		TargetBinding, TargetArrayElement, DescriptorCount);
+		TargetBinding, TargetArrayElement, DescriptorCount
+	);
 
 	++DescriptorCopyEnd;
 }
 
 std::optional<DescriptorUpdateBatch> DescriptorUpdateBatch::Create(
 	const Vulkan::Context& VulkanContext, std::size_t DescriptorWriteMax,
-	std::size_t DescriptorCopyMax)
+	std::size_t DescriptorCopyMax
+)
 
 {
 	DescriptorUpdateBatch NewDescriptorUpdateBatch(
-		VulkanContext, DescriptorWriteMax, DescriptorCopyMax);
+		VulkanContext, DescriptorWriteMax, DescriptorCopyMax
+	);
 
 	NewDescriptorUpdateBatch.DescriptorInfos
 		= std::make_unique<DescriptorInfoUnion[]>(DescriptorWriteMax);

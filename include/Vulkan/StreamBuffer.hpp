@@ -43,7 +43,8 @@ private:
 
 public:
 	StreamBuffer(
-		const Vulkan::Context& VulkanContext, vk::DeviceSize BufferSize);
+		const Vulkan::Context& VulkanContext, vk::DeviceSize BufferSize
+	);
 
 	~StreamBuffer();
 
@@ -53,7 +54,8 @@ public:
 	// for to know when this transfer is complete
 	std::uint64_t QueueBufferUpload(
 		const std::span<const std::byte> Data, vk::Buffer Buffer,
-		vk::DeviceSize Offset = 0);
+		vk::DeviceSize Offset = 0
+	);
 
 	// Queue an Upload of the passed in span of bytes to the target image at the
 	// specified offset, extent, and subresource
@@ -64,7 +66,8 @@ public:
 		vk::Offset3D Offset, vk::Extent3D Extent,
 		vk::ImageSubresourceLayers SubresourceLayers
 		= vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-		vk::ImageLayout DstLayout = vk::ImageLayout::eTransferDstOptimal);
+		vk::ImageLayout DstLayout = vk::ImageLayout::eTransferDstOptimal
+	);
 
 	// Flush all pending uploads and downloads to the specified queue
 	// and returns the semaphore value to wait for to know when completion is

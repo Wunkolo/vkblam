@@ -33,7 +33,8 @@ private:
 
 	DescriptorUpdateBatch(
 		const Vulkan::Context& VulkanContext, std::size_t DescriptorWriteMax,
-		std::size_t DescriptorCopyMax)
+		std::size_t DescriptorCopyMax
+	)
 		: VulkanContext(VulkanContext), DescriptorWriteMax(DescriptorWriteMax),
 		  DescriptorCopyMax(DescriptorCopyMax)
 	{
@@ -49,29 +50,35 @@ public:
 	void AddImage(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
 		vk::ImageView   ImageView,
-		vk::ImageLayout ImageLayout = vk::ImageLayout::eGeneral);
+		vk::ImageLayout ImageLayout = vk::ImageLayout::eGeneral
+	);
 	void AddSampler(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
-		vk::Sampler Sampler);
+		vk::Sampler Sampler
+	);
 
 	void AddImageSampler(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
 		vk::ImageView ImageView, vk::Sampler Sampler,
-		vk::ImageLayout ImageLayout = vk::ImageLayout::eShaderReadOnlyOptimal);
+		vk::ImageLayout ImageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+	);
 	void AddBuffer(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
 		vk::Buffer Buffer, vk::DeviceSize Offset,
-		vk::DeviceSize Size = VK_WHOLE_SIZE);
+		vk::DeviceSize Size = VK_WHOLE_SIZE
+	);
 
 	void CopyBinding(
 		vk::DescriptorSet SourceDescriptor, vk::DescriptorSet TargetDescriptor,
 		std::uint8_t SourceBinding, std::uint8_t TargetBinding,
 		std::uint8_t SourceArrayElement = 0,
-		std::uint8_t TargetArrayElement = 0, std::uint8_t DescriptorCount = 1);
+		std::uint8_t TargetArrayElement = 0, std::uint8_t DescriptorCount = 1
+	);
 
 	static std::optional<DescriptorUpdateBatch> Create(
 		const Vulkan::Context& VulkanContext,
 		std::size_t            DescriptorWriteMax = 256,
-		std::size_t            DescriptorCopyMax  = 256);
+		std::size_t            DescriptorCopyMax  = 256
+	);
 };
 } // namespace Vulkan

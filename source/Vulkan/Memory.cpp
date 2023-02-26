@@ -7,7 +7,8 @@ namespace Vulkan
 std::int32_t FindMemoryTypeIndex(
 	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
 	vk::MemoryPropertyFlags MemoryProperties,
-	vk::MemoryPropertyFlags MemoryExcludeProperties)
+	vk::MemoryPropertyFlags MemoryExcludeProperties
+)
 {
 	const vk::PhysicalDeviceMemoryProperties DeviceMemoryProperties
 		= PhysicalDevice.getMemoryProperties();
@@ -37,7 +38,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
 	const std::span<const vk::Image> Images,
 	vk::MemoryPropertyFlags          MemoryProperties,
-	vk::MemoryPropertyFlags          MemoryExcludeProperties)
+	vk::MemoryPropertyFlags          MemoryExcludeProperties
+)
 {
 	vk::DeviceSize                       CurImageHeapMemoryExtent = 0;
 	std::uint32_t                        ImageHeapMemoryMask      = 0xFFFFFFFF;
@@ -63,8 +65,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 			= Common::AlignUp(MemReqs.size, BufferImageGranularity);
 
 		// Put nullptr for the device memory for now
-		ImageHeapBinds.emplace_back(
-			vk::BindImageMemoryInfo{CurImage, nullptr, CurMemoryOffset});
+		ImageHeapBinds.emplace_back(vk::BindImageMemoryInfo{
+			CurImage, nullptr, CurMemoryOffset});
 		CurImageHeapMemoryExtent = (CurMemoryOffset + CurMemorySize);
 	}
 
@@ -72,7 +74,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	ImageHeapAllocInfo.allocationSize  = CurImageHeapMemoryExtent;
 	ImageHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
 		PhysicalDevice, ImageHeapMemoryMask, MemoryProperties,
-		MemoryExcludeProperties);
+		MemoryExcludeProperties
+	);
 
 	vk::UniqueDeviceMemory ImageHeapMemory = {};
 
@@ -110,7 +113,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
 	const std::span<const vk::Buffer> Buffers,
 	vk::MemoryPropertyFlags           MemoryProperties,
-	vk::MemoryPropertyFlags           MemoryExcludeProperties)
+	vk::MemoryPropertyFlags           MemoryExcludeProperties
+)
 {
 	vk::DeviceSize                        BufferHeapMemoryExtent = 0;
 	std::uint32_t                         BufferHeapMemoryMask   = 0xFFFFFFFF;
@@ -144,7 +148,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	BufferHeapAllocInfo.allocationSize  = BufferHeapMemoryExtent;
 	BufferHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
 		PhysicalDevice, BufferHeapMemoryMask, MemoryProperties,
-		MemoryExcludeProperties);
+		MemoryExcludeProperties
+	);
 
 	vk::UniqueDeviceMemory BufferHeapMemory = {};
 

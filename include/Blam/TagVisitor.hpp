@@ -24,8 +24,8 @@ struct TagVisitorProc
 	bool Parallel = false;
 
 	// Visits a particular tag from a particular map file
-	std::function<void(
-		std::span<const Blam::TagIndexEntry>, const Blam::MapFile&)>
+	std::function<
+		void(std::span<const Blam::TagIndexEntry>, const Blam::MapFile&)>
 		VisitTags;
 
 	// Ran after all tags within a map have been visited
@@ -43,6 +43,7 @@ class TagVisiter
 // a particular map file. Will automatically handle dispatching dependent Tag
 // Visitors in order
 void DispatchTagVisitors(
-	std::span<const TagVisitorProc> Visitors, const Blam::MapFile& Map);
+	std::span<const TagVisitorProc> Visitors, const Blam::MapFile& Map
+);
 
 } // namespace Blam

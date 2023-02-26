@@ -9,7 +9,8 @@
 namespace Vulkan
 {
 StreamBuffer::StreamBuffer(
-	const Vulkan::Context& VulkanContext, vk::DeviceSize BufferSize)
+	const Vulkan::Context& VulkanContext, vk::DeviceSize BufferSize
+)
 	: VulkanContext(VulkanContext), BufferSize(BufferSize), FlushTick(0),
 	  RingOffset(0)
 {
@@ -31,7 +32,8 @@ StreamBuffer::StreamBuffer(
 
 		if( auto CreateResult
 			= VulkanContext.LogicalDevice.createSemaphoreUnique(
-				FlushSemaphoreInfoChain.get());
+				FlushSemaphoreInfoChain.get()
+			);
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			FlushSemaphore = std::move(CreateResult.value);
@@ -40,12 +42,14 @@ StreamBuffer::StreamBuffer(
 		{
 			std::fprintf(
 				stderr, "Error creating vertex buffer: %s\n",
-				vk::to_string(CreateResult.result).c_str());
+				vk::to_string(CreateResult.result).c_str()
+			);
 			/// ??? should we exit the program
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, FlushSemaphore.get(),
-			"Staging Ring Buffer Semaphore");
+			"Staging Ring Buffer Semaphore"
+		);
 	}
 
 	//// Create buffer
@@ -65,20 +69,23 @@ StreamBuffer::StreamBuffer(
 		{
 			std::fprintf(
 				stderr, "Error creating vertex buffer: %s\n",
-				vk::to_string(CreateResult.result).c_str());
+				vk::to_string(CreateResult.result).c_str()
+			);
 			/// ??? should we exit the program
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, RingBuffer.get(),
 			"Staging Ring Buffer( %s )",
-			Common::FormatByteCount(BufferSize).c_str());
+			Common::FormatByteCount(BufferSize).c_str()
+		);
 	}
 
 	//// Allocate memory for staging ring buffer
 	{
 		const vk::MemoryRequirements RingBufferMemoryRequirements
 			= VulkanContext.LogicalDevice.getBufferMemoryRequirements(
-				RingBuffer.get());
+				RingBuffer.get()
+			);
 
 		vk::MemoryAllocateInfo RingBufferAllocInfo = {};
 		RingBufferAllocInfo.allocationSize = RingBufferMemoryRequirements.size;
@@ -89,7 +96,8 @@ StreamBuffer::StreamBuffer(
 			RingBufferMemoryRequirements.memoryTypeBits,
 			vk::MemoryPropertyFlagBits::eHostVisible
 				| vk::MemoryPropertyFlagBits::eHostCoherent
-				| vk::MemoryPropertyFlagBits::eDeviceLocal);
+				| vk::MemoryPropertyFlagBits::eDeviceLocal
+		);
 
 		// If that failed, then just get some host memory
 		if( RingBufferHeapIndex < 0 )
@@ -98,13 +106,15 @@ StreamBuffer::StreamBuffer(
 				VulkanContext.PhysicalDevice,
 				RingBufferMemoryRequirements.memoryTypeBits,
 				vk::MemoryPropertyFlagBits::eHostVisible
-					| vk::MemoryPropertyFlagBits::eHostCoherent);
+					| vk::MemoryPropertyFlagBits::eHostCoherent
+			);
 		}
 
 		RingBufferAllocInfo.memoryTypeIndex = RingBufferHeapIndex;
 
 		if( auto AllocResult = VulkanContext.LogicalDevice.allocateMemoryUnique(
-				RingBufferAllocInfo);
+				RingBufferAllocInfo
+			);
 			AllocResult.result == vk::Result::eSuccess )
 		{
 			RingBufferMemory = std::move(AllocResult.value);
@@ -113,16 +123,19 @@ StreamBuffer::StreamBuffer(
 		{
 			std::fprintf(
 				stderr, "Error allocating memory for staging buffer: %s\n",
-				vk::to_string(AllocResult.result).c_str());
+				vk::to_string(AllocResult.result).c_str()
+			);
 			/// ??? should we exit the program
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, RingBufferMemory.get(),
 			"Staging Ring Buffer Memory( %s )",
-			Common::FormatByteCount(BufferSize).c_str());
+			Common::FormatByteCount(BufferSize).c_str()
+		);
 
 		if( auto BindResult = VulkanContext.LogicalDevice.bindBufferMemory(
-				RingBuffer.get(), RingBufferMemory.get(), 0);
+				RingBuffer.get(), RingBufferMemory.get(), 0
+			);
 			BindResult == vk::Result::eSuccess )
 		{
 			// Successfully binded memory to buffer
@@ -131,24 +144,28 @@ StreamBuffer::StreamBuffer(
 		{
 			std::fprintf(
 				stderr, "Error binding memory to staging ring buffer: %s\n",
-				vk::to_string(BindResult).c_str());
+				vk::to_string(BindResult).c_str()
+			);
 			/// ??? should we exit the program
 		}
 	}
 
 	//// Map the device memory
 	if( auto MapResult = VulkanContext.LogicalDevice.mapMemory(
-			RingBufferMemory.get(), 0, BufferSize);
+			RingBufferMemory.get(), 0, BufferSize
+		);
 		MapResult.result == vk::Result::eSuccess )
 	{
 		RingMemoryMapped = std::span<std::byte>(
-			reinterpret_cast<std::byte*>(MapResult.value), BufferSize);
+			reinterpret_cast<std::byte*>(MapResult.value), BufferSize
+		);
 	}
 	else
 	{
 		std::fprintf(
 			stderr, "Error mapping staging ring buffer memory: %s\n",
-			vk::to_string(MapResult.result).c_str());
+			vk::to_string(MapResult.result).c_str()
+		);
 		/// ??? should we exit the program
 	}
 
@@ -160,9 +177,8 @@ StreamBuffer::StreamBuffer(
 		CommandPoolInfo.queueFamilyIndex
 			= VulkanContext.TransferQueueFamilyIndex;
 
-		if( auto CreateResult
-			= VulkanContext.LogicalDevice.createCommandPoolUnique(
-				CommandPoolInfo);
+		if( auto CreateResult = VulkanContext.LogicalDevice
+									.createCommandPoolUnique(CommandPoolInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
 			CommandPool = std::move(CreateResult.value);
@@ -171,7 +187,8 @@ StreamBuffer::StreamBuffer(
 		{
 			std::fprintf(
 				stderr, "Error creating staging buffer command pool: %s\n",
-				vk::to_string(CreateResult.result).c_str());
+				vk::to_string(CreateResult.result).c_str()
+			);
 			/// ??? should we exit the program
 		}
 	}
@@ -184,7 +201,8 @@ StreamBuffer::~StreamBuffer()
 
 std::uint64_t StreamBuffer::QueueBufferUpload(
 	const std::span<const std::byte> Data, vk::Buffer Buffer,
-	vk::DeviceSize Offset)
+	vk::DeviceSize Offset
+)
 {
 	if( Data.empty() )
 	{
@@ -194,7 +212,8 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 	{
 		std::fprintf(
 			stderr, "Staging buffer overflow: %zu > %zu \n", Data.size_bytes(),
-			BufferSize);
+			BufferSize
+		);
 	}
 
 	// Satisfy any alignment requirements here
@@ -227,10 +246,11 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 
 	std::copy(
 		Data.begin(), Data.end(),
-		RingMemoryMapped.subspan(CurRingOffset).begin());
+		RingMemoryMapped.subspan(CurRingOffset).begin()
+	);
 
-	BufferCopies[Buffer].emplace_back(
-		vk::BufferCopy{CurRingOffset, Offset, Data.size_bytes()});
+	BufferCopies[Buffer].emplace_back(vk::BufferCopy{
+		CurRingOffset, Offset, Data.size_bytes()});
 
 	return FlushTick;
 }
@@ -238,7 +258,8 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 std::uint64_t StreamBuffer::QueueImageUpload(
 	const std::span<const std::byte> Data, vk::Image Image, vk::Offset3D Offset,
 	vk::Extent3D Extent, vk::ImageSubresourceLayers SubresourceLayers,
-	vk::ImageLayout DstLayout)
+	vk::ImageLayout DstLayout
+)
 {
 	if( Data.empty() )
 	{
@@ -248,7 +269,8 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 	{
 		std::fprintf(
 			stderr, "Staging buffer overflow: %zu > %zu \n", Data.size_bytes(),
-			BufferSize);
+			BufferSize
+		);
 	}
 
 	// Memory offset must at least match the alignment of the image format's
@@ -281,7 +303,8 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 
 	std::copy(
 		Data.begin(), Data.end(),
-		RingMemoryMapped.subspan(CurRingOffset).begin());
+		RingMemoryMapped.subspan(CurRingOffset).begin()
+	);
 
 	ImageCopies[Image].emplace_back(vk::BufferImageCopy{
 		CurRingOffset, 0, 0, SubresourceLayers, Offset, Extent});
@@ -292,7 +315,9 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, Image,
 		vk::ImageSubresourceRange(
 			SubresourceLayers.aspectMask, SubresourceLayers.mipLevel, 1,
-			SubresourceLayers.baseArrayLayer, SubresourceLayers.layerCount)));
+			SubresourceLayers.baseArrayLayer, SubresourceLayers.layerCount
+		)
+	));
 	ImagePostBarrier.emplace_back(vk::ImageMemoryBarrier(
 		vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eMemoryRead,
 		vk::ImageLayout::eTransferDstOptimal,
@@ -300,7 +325,9 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		VK_QUEUE_FAMILY_IGNORED, Image,
 		vk::ImageSubresourceRange(
 			SubresourceLayers.aspectMask, SubresourceLayers.mipLevel, 1,
-			SubresourceLayers.baseArrayLayer, SubresourceLayers.layerCount)));
+			SubresourceLayers.baseArrayLayer, SubresourceLayers.layerCount
+		)
+	));
 
 	return FlushTick;
 }
@@ -318,7 +345,8 @@ std::uint64_t StreamBuffer::Flush()
 	// Get where the GPU is at in our submit-timeline
 	std::uint64_t GpuFlushTick = 0;
 	if( auto GetResult = VulkanContext.LogicalDevice.getSemaphoreCounterValue(
-			FlushSemaphore.get());
+			FlushSemaphore.get()
+		);
 		GetResult.result == vk::Result::eSuccess )
 	{
 		GpuFlushTick = GetResult.value;
@@ -327,7 +355,8 @@ std::uint64_t StreamBuffer::Flush()
 	{
 		std::fprintf(
 			stderr, "Error getting timeline semaphore value: %s\n",
-			vk::to_string(GetResult.result).c_str());
+			vk::to_string(GetResult.result).c_str()
+		);
 		/// ??? should we exit the program
 	}
 
@@ -354,7 +383,8 @@ std::uint64_t StreamBuffer::Flush()
 
 		if( auto AllocateResult
 			= VulkanContext.LogicalDevice.allocateCommandBuffersUnique(
-				CommandBufferInfo);
+				CommandBufferInfo
+			);
 			AllocateResult.result == vk::Result::eSuccess )
 		{
 			FlushCommandBuffer = AllocateResult.value[0].get();
@@ -364,7 +394,8 @@ std::uint64_t StreamBuffer::Flush()
 		{
 			std::fprintf(
 				stderr, "Error allocating command buffer: %s\n",
-				vk::to_string(AllocateResult.result).c_str());
+				vk::to_string(AllocateResult.result).c_str()
+			);
 			/// ??? should we exit the program
 		}
 	}
@@ -377,36 +408,43 @@ std::uint64_t StreamBuffer::Flush()
 	{
 		std::fprintf(
 			stderr, "Error beginning command buffer: %s\n",
-			vk::to_string(BeginResult).c_str());
+			vk::to_string(BeginResult).c_str()
+		);
 	}
 
 	{
 		Vulkan::DebugLabelScope DebugCopyScope(
-			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Upload Buffers");
+			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Upload Buffers"
+		);
 		for( const auto& [CurBuffer, CurBufferCopies] : BufferCopies )
 		{
 			FlushCommandBuffer.copyBuffer(
-				RingBuffer.get(), CurBuffer, CurBufferCopies);
+				RingBuffer.get(), CurBuffer, CurBufferCopies
+			);
 		}
 	}
 
 	{
 		Vulkan::DebugLabelScope DebugCopyScope(
-			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Upload Images");
+			FlushCommandBuffer, {1.0, 1.0, 0.0, 1.0}, "Upload Images"
+		);
 		FlushCommandBuffer.pipelineBarrier(
 			vk::PipelineStageFlagBits::eTransfer,
 			vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{}, {}, {},
-			ImagePreBarrier);
+			ImagePreBarrier
+		);
 		for( const auto& [CurImage, CurImageCopies] : ImageCopies )
 		{
 			FlushCommandBuffer.copyBufferToImage(
 				RingBuffer.get(), CurImage,
-				vk::ImageLayout::eTransferDstOptimal, CurImageCopies);
+				vk::ImageLayout::eTransferDstOptimal, CurImageCopies
+			);
 		}
 		FlushCommandBuffer.pipelineBarrier(
 			vk::PipelineStageFlagBits::eTransfer,
 			vk::PipelineStageFlagBits::eAllCommands, vk::DependencyFlags{}, {},
-			{}, ImagePostBarrier);
+			{}, ImagePostBarrier
+		);
 	}
 
 	if( auto EndResult = FlushCommandBuffer.end();
@@ -414,7 +452,8 @@ std::uint64_t StreamBuffer::Flush()
 	{
 		std::fprintf(
 			stderr, "Error ending command buffer: %s\n",
-			vk::to_string(EndResult).c_str());
+			vk::to_string(EndResult).c_str()
+		);
 	}
 
 	vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
@@ -450,7 +489,8 @@ std::uint64_t StreamBuffer::Flush()
 		// Error submitting
 		std::fprintf(
 			stderr, "Error submitting streaming buffer flush: %s\n",
-			vk::to_string(SubmitResult).c_str());
+			vk::to_string(SubmitResult).c_str()
+		);
 	}
 
 	RingOffset = 0;

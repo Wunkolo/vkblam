@@ -22,11 +22,13 @@ public:
 	ShaderEnvironment(
 		const Vulkan::Context&         VulkanContext,
 		const VkBlam::BitmapHeapT&     BitmapHeap,
-		Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch);
+		Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch
+	);
 	virtual ~ShaderEnvironment();
 
 	bool RegisterShader(
 		const Blam::TagIndexEntry&               TagEntry,
-		const Blam::Tag<Blam::TagClass::Shader>& Shader) override;
+		const Blam::Tag<Blam::TagClass::Shader>& Shader
+	) override;
 };
 } // namespace VkBlam

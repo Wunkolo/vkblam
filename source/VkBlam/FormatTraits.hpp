@@ -12,7 +12,8 @@ struct FormatTrait<Blam::BitmapEntryFormat::A8>
 	static constexpr vk::Format           Format  = vk::Format::eR8Unorm;
 	static constexpr vk::ComponentMapping Swizzle = vk::ComponentMapping(
 		vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
-		vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eR);
+		vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eR
+	);
 };
 
 template<>
@@ -57,7 +58,8 @@ struct FormatTrait<Blam::BitmapEntryFormat::A4R4G4B4>
 	// ARGB <-> RGBA
 	static constexpr vk::ComponentMapping Swizzle = vk::ComponentMapping(
 		vk::ComponentSwizzle::eG, vk::ComponentSwizzle::eB,
-		vk::ComponentSwizzle::eA, vk::ComponentSwizzle::eR);
+		vk::ComponentSwizzle::eA, vk::ComponentSwizzle::eR
+	);
 	;
 };
 

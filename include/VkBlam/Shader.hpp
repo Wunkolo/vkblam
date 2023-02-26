@@ -27,14 +27,15 @@ protected:
 
 	Shader(
 		const Vulkan::Context& VulkanContext, const BitmapHeapT& BitmapHeap,
-		Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch);
+		Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch
+	);
 
 public:
 	virtual ~Shader() = default;
 
 	virtual bool RegisterShader(
 		const Blam::TagIndexEntry&               TagEntry,
-		const Blam::Tag<Blam::TagClass::Shader>& Shader)
-		= 0;
+		const Blam::Tag<Blam::TagClass::Shader>& Shader
+	) = 0;
 };
 } // namespace VkBlam

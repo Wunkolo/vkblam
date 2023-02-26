@@ -11,7 +11,8 @@ namespace Blam
 {
 
 void DispatchTagVisitors(
-	std::span<const TagVisitorProc> Visitors, const Blam::MapFile& Map)
+	std::span<const TagVisitorProc> Visitors, const Blam::MapFile& Map
+)
 {
 	// Set of all tag-classes that are ever going to be visited
 	std::unordered_set<TagClass> VisitClasses;
@@ -36,7 +37,8 @@ void DispatchTagVisitors(
 			// A should go before B if B depends on A, otherwise just keep the
 			// order as it is
 			return B->DependClasses.contains(A->VisitClass);
-		});
+		}
+	);
 
 	// Collect all the tags to be visited
 	for( const auto& CurTagEntry : Map.GetTagIndexArray() )
@@ -83,17 +85,19 @@ void DispatchTagVisitors(
 
 					std::mutex Barrier;
 
-					auto ThreadProc =
-						[&Barrier](
-							const Blam::TagVisitorProc*          Visitor,
-							const Blam::MapFile&                 Map,
-							std::span<const Blam::TagIndexEntry> Tags) -> void {
+					auto ThreadProc
+						= [&Barrier](
+							  const Blam::TagVisitorProc*          Visitor,
+							  const Blam::MapFile&                 Map,
+							  std::span<const Blam::TagIndexEntry> Tags
+						  ) -> void {
 						std::scoped_lock Lock{Barrier};
 						Visitor->VisitTags(Tags, Map);
 					};
 					Thread = std::thread(
 						ThreadProc, CurVisitor, std::ref(Map),
-						TagList.first(TagsPerThread));
+						TagList.first(TagsPerThread)
+					);
 					TagList = TagList.subspan(TagsPerThread);
 				}
 

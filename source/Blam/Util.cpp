@@ -88,7 +88,8 @@ std::string ToString(const MapHeader& Value)
 		"Checksum: 0x%08x\n",
 		ToString(Value.Version), Value.FileSize, Value.PaddingLength,
 		Value.TagIndexOffset, Value.TagIndexSize, Value.ScenarioName,
-		Value.BuildVersion, ToString(Value.Type), Value.Checksum);
+		Value.BuildVersion, ToString(Value.Type), Value.Checksum
+	);
 }
 
 std::string ToString(const TagIndexHeader& Value)
@@ -105,7 +106,8 @@ std::string ToString(const TagIndexHeader& Value)
 		"ModelDataSize: %u\n",
 		Value.TagIndexVirtualOffset, Value.BaseTag, Value.ScenarioTagID,
 		Value.TagCount, Value.VertexCount, Value.VertexOffset, Value.IndexCount,
-		Value.IndexOffset, Value.ModelDataSize);
+		Value.IndexOffset, Value.ModelDataSize
+	);
 }
 
 std::string ToString(const TagIndexEntry& Value)
@@ -122,6 +124,7 @@ std::string ToString(const TagIndexEntry& Value)
 		FormatTagClass(Value.ClassSecondary).c_str(),
 		FormatTagClass(Value.ClassTertiary).c_str(), Value.TagID,
 		Value.TagPathVirtualOffset, Value.TagDataVirtualOffset,
-		Value.IsExternal ? "true" : "false");
+		Value.IsExternal ? "true" : "false"
+	);
 }
 } // namespace Blam

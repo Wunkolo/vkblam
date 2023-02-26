@@ -59,7 +59,8 @@ public:
 	static std::optional<DescriptorHeap> Create(
 		const Vulkan::Context&                          VulkanContext,
 		std::span<const vk::DescriptorSetLayoutBinding> Bindings,
-		std::uint16_t DescriptorHeapCount = 1024);
+		std::uint16_t DescriptorHeapCount = 1024
+	);
 };
 
 } // namespace Vulkan

@@ -53,18 +53,22 @@ namespace VkBlam
 
 ShaderEnvironment::ShaderEnvironment(
 	const Vulkan::Context& VulkanContext, const BitmapHeapT& BitmapHeap,
-	Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch)
+	Vulkan::DescriptorUpdateBatch& DescriptorUpdateBatch
+)
 	: Shader(VulkanContext, BitmapHeap, DescriptorUpdateBatch)
 {
 	DescriptorHeap = std::make_unique<Vulkan::DescriptorHeap>(
-		Vulkan::DescriptorHeap::Create(VulkanContext, Bindings).value());
+		Vulkan::DescriptorHeap::Create(VulkanContext, Bindings).value()
+	);
 
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice, DescriptorHeap->GetDescriptorPool(),
-		"Shader Environment Descriptor Pool");
+		"Shader Environment Descriptor Pool"
+	);
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice, DescriptorHeap->GetDescriptorSetLayout(),
-		"Shader Environment Descriptor Set Layout");
+		"Shader Environment Descriptor Set Layout"
+	);
 }
 
 ShaderEnvironment::~ShaderEnvironment()
@@ -73,7 +77,8 @@ ShaderEnvironment::~ShaderEnvironment()
 
 bool ShaderEnvironment::RegisterShader(
 	const Blam::TagIndexEntry&               TagEntry,
-	const Blam::Tag<Blam::TagClass::Shader>& Shader)
+	const Blam::Tag<Blam::TagClass::Shader>& Shader
+)
 {
 	if( TagEntry.ClassPrimary != Blam::TagClass::ShaderEnvironment )
 	{
@@ -81,7 +86,8 @@ bool ShaderEnvironment::RegisterShader(
 	}
 	const auto* ShaderEnvironment
 		= reinterpret_cast<const Blam::Tag<Blam::TagClass::ShaderEnvironment>*>(
-			&Shader);
+			&Shader
+		);
 
 	vk::DescriptorSet NewSet = {};
 
@@ -121,33 +127,40 @@ bool ShaderEnvironment::RegisterShader(
 				NewSet, Binding,
 				BitmapHeap.Bitmaps.at(DefaultImageTag)
 					.at(std::uint32_t(DefaultIndex))
-					.View.get());
+					.View.get()
+			);
 			return;
 		}
 		DescriptorUpdateBatch.AddImage(
-			NewSet, Binding, BitmapHeap.Bitmaps.at(TagID).at(0).View.get());
+			NewSet, Binding, BitmapHeap.Bitmaps.at(TagID).at(0).View.get()
+		);
 	};
 
 	WriteImageTag(
-		0, ShaderEnvironment->BaseMap.TagID,
-		Blam::DefaultTextureIndex::Additive);
+		0, ShaderEnvironment->BaseMap.TagID, Blam::DefaultTextureIndex::Additive
+	);
 	WriteImageTag(
-		1, ShaderEnvironment->BumpMap.TagID, Blam::DefaultTextureIndex::Vector);
+		1, ShaderEnvironment->BumpMap.TagID, Blam::DefaultTextureIndex::Vector
+	);
 	WriteImageTag(
 		2, ShaderEnvironment->PrimaryDetailMap.TagID,
-		Blam::DefaultTextureIndex::SignedAdditive);
+		Blam::DefaultTextureIndex::SignedAdditive
+	);
 	WriteImageTag(
 		3, ShaderEnvironment->SecondaryDetailMap.TagID,
-		Blam::DefaultTextureIndex::SignedAdditive);
+		Blam::DefaultTextureIndex::SignedAdditive
+	);
 	WriteImageTag(
 		4, ShaderEnvironment->MicroDetailMap.TagID,
-		Blam::DefaultTextureIndex::SignedAdditive);
+		Blam::DefaultTextureIndex::SignedAdditive
+	);
 	WriteImageTag(
-		5, ShaderEnvironment->GlowMap.TagID,
-		Blam::DefaultTextureIndex::Additive);
+		5, ShaderEnvironment->GlowMap.TagID, Blam::DefaultTextureIndex::Additive
+	);
 	WriteImageTag(
 		6, ShaderEnvironment->ReflectionCubeMap.TagID,
-		Blam::DefaultTextureIndex::Additive);
+		Blam::DefaultTextureIndex::Additive
+	);
 
 	return true;
 }

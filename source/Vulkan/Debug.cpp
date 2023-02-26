@@ -10,7 +10,8 @@ namespace Vulkan
 {
 void SetObjectName(
 	vk::Device Device, vk::ObjectType ObjectType, const void* ObjectHandle,
-	const char* Format, ...)
+	const char* Format, ...
+)
 {
 	va_list Args;
 	va_start(Args, Format);
@@ -28,7 +29,8 @@ void SetObjectName(
 	// Write formatted object name
 	va_start(Args, Format);
 	std::vsnprintf(
-		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args
+	);
 	va_end(Args);
 
 	vk::DebugUtilsObjectNameInfoEXT NameInfo = {};
@@ -44,7 +46,8 @@ void SetObjectName(
 
 void BeginDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
-	const char* Format, ...)
+	const char* Format, ...
+)
 {
 	va_list Args;
 	va_start(Args, Format);
@@ -62,7 +65,8 @@ void BeginDebugLabel(
 	// Write formatted object name
 	va_start(Args, Format);
 	std::vsnprintf(
-		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args
+	);
 	va_end(Args);
 
 	vk::DebugUtilsLabelEXT LabelInfo = {};
@@ -77,7 +81,8 @@ void BeginDebugLabel(
 
 void InsertDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
-	const char* Format, ...)
+	const char* Format, ...
+)
 {
 	va_list Args;
 	va_start(Args, Format);
@@ -95,7 +100,8 @@ void InsertDebugLabel(
 	// Write formatted object name
 	va_start(Args, Format);
 	std::vsnprintf(
-		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args);
+		ObjectName.get(), std::size_t(NameLength) + 1u, Format, Args
+	);
 	va_end(Args);
 
 	vk::DebugUtilsLabelEXT LabelInfo = {};

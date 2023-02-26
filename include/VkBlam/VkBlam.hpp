@@ -59,7 +59,8 @@ inline std::tuple<
 	GetVertexInputDescriptions(std::span<const Blam::VertexFormat> Formats)
 {
 	return std::make_tuple(
-		GetVertexInputBindings(Formats), GetVertexInputAttributes(Formats));
+		GetVertexInputBindings(Formats), GetVertexInputAttributes(Formats)
+	);
 }
 
 // Abstracts the way that halo utilizes its samplers

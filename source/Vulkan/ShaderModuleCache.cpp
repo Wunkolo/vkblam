@@ -11,7 +11,8 @@ ShaderModuleCache::ShaderModuleCache(const Vulkan::Context& VulkanContext)
 }
 
 std::optional<const vk::ShaderModule> ShaderModuleCache::GetShaderModule(
-	std::size_t Hash, std::span<const std::byte> ShaderCode)
+	std::size_t Hash, std::span<const std::byte> ShaderCode
+)
 {
 	// Cache hit
 	if( ShaderModuleMap.contains(Hash) )
@@ -25,8 +26,8 @@ std::optional<const vk::ShaderModule> ShaderModuleCache::GetShaderModule(
 	ShaderModuleInfo.codeSize = ShaderCode.size_bytes();
 
 	if( auto CreateResult
-		= VulkanContext.LogicalDevice.createShaderModuleUnique(
-			ShaderModuleInfo);
+		= VulkanContext.LogicalDevice.createShaderModuleUnique(ShaderModuleInfo
+		);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		const auto Iterator
