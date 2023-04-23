@@ -4,6 +4,36 @@
 namespace Vulkan
 {
 
+// Given a speculative heap-allocation, defined by its current size and
+// memory-type bits, appends a memory requirements structure to it, updating
+// both the size and the required memory-type-bits. Returns the offset within
+// the heap for the current MemoryRequirements Todo: Sun Apr 23 13:28:25 PDT
+// 2023 Rather than using a running-size of the heap, look at all of the memory
+// requests and optimally create a packing for all of the offset and alignment
+// requirements. Such as by satisfying all of the largest alignments first, and
+// then the smallest, to reduce padding
+static vk::DeviceSize CommitMemoryRequestToHeap(
+	const vk::MemoryRequirements& CurMemoryRequirements,
+	vk::DeviceSize& CurHeapEnd, std::uint32_t& CurMemoryTypeBits,
+	vk::DeviceSize SizeAlignment
+)
+{
+	// Accumulate a mask of all the memory types that satisfies each of the
+	// handles
+	CurMemoryTypeBits &= CurMemoryRequirements.memoryTypeBits;
+
+	// Pad up the memory sizes so they are not considered aliasing
+	const vk::DeviceSize CurMemoryOffset
+		= Common::AlignUp(CurHeapEnd, CurMemoryRequirements.alignment);
+	// Pad the size by the required size-alignment.
+	// Intended for BufferImageGranularity
+	const vk::DeviceSize CurMemorySize
+		= Common::AlignUp(CurMemoryRequirements.size, SizeAlignment);
+
+	CurHeapEnd = (CurMemoryOffset + CurMemorySize);
+	return CurMemoryOffset;
+}
+
 std::int32_t FindMemoryTypeIndex(
 	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
 	vk::MemoryPropertyFlags MemoryProperties,
@@ -41,8 +71,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	vk::MemoryPropertyFlags          MemoryExcludeProperties
 )
 {
-	vk::DeviceSize                       CurImageHeapMemoryExtent = 0;
-	std::uint32_t                        ImageHeapMemoryMask      = 0xFFFFFFFF;
+	vk::MemoryAllocateInfo               ImageHeapAllocInfo      = {};
+	std::uint32_t                        ImageHeapMemoryTypeBits = 0xFFFFFFFF;
 	std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
 
 	const vk::DeviceSize BufferImageGranularity
@@ -50,32 +80,39 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 
 	for( const vk::Image& CurImage : Images )
 	{
-		const vk::MemoryRequirements MemReqs
-			= Device.getImageMemoryRequirements(CurImage);
+		const vk::DeviceSize CurBindOffset = CommitMemoryRequestToHeap(
+			Device.getImageMemoryRequirements(CurImage),
+			ImageHeapAllocInfo.allocationSize, ImageHeapMemoryTypeBits,
+			BufferImageGranularity
+		);
 
-		// Accumulate a mask of all the memory types that satisfies each of the
-		// handles
-		ImageHeapMemoryMask &= MemReqs.memoryTypeBits;
-
-		// Ensure the binding offset meets the required alignment
-		const vk::DeviceSize CurMemoryOffset
-			= Common::AlignUp(CurImageHeapMemoryExtent, MemReqs.alignment);
-		// Pad up the memory sizes so they are not considered aliasing
-		const vk::DeviceSize CurMemorySize
-			= Common::AlignUp(MemReqs.size, BufferImageGranularity);
+		if( ImageHeapMemoryTypeBits == 0 )
+		{
+			// No possible memory heap for all of the images to share
+			return std::make_tuple(
+				vk::Result::eErrorOutOfDeviceMemory, vk::UniqueDeviceMemory()
+			);
+		}
 
 		// Put nullptr for the device memory for now
 		ImageHeapBinds.emplace_back(vk::BindImageMemoryInfo{
-			CurImage, nullptr, CurMemoryOffset});
-		CurImageHeapMemoryExtent = (CurMemoryOffset + CurMemorySize);
+			CurImage, nullptr, CurBindOffset});
 	}
 
-	vk::MemoryAllocateInfo ImageHeapAllocInfo;
-	ImageHeapAllocInfo.allocationSize  = CurImageHeapMemoryExtent;
-	ImageHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
-		PhysicalDevice, ImageHeapMemoryMask, MemoryProperties,
+	const std::int32_t MemoryTypeIndex = FindMemoryTypeIndex(
+		PhysicalDevice, ImageHeapMemoryTypeBits, MemoryProperties,
 		MemoryExcludeProperties
 	);
+
+	if( MemoryTypeIndex < 0 )
+	{
+		// Unable to find a memory heap that satisfies all the images
+		return std::make_tuple(
+			vk::Result::eErrorOutOfDeviceMemory, vk::UniqueDeviceMemory()
+		);
+	}
+
+	ImageHeapAllocInfo.memoryTypeIndex = MemoryTypeIndex;
 
 	vk::UniqueDeviceMemory ImageHeapMemory = {};
 
@@ -89,14 +126,14 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 		return std::make_tuple(AllocResult.result, vk::UniqueDeviceMemory());
 	}
 
-	// Now we can assign the device memory to the images
+	// Assign the device memory to the bindings
 	for( vk::BindImageMemoryInfo& CurBind : ImageHeapBinds )
 	{
 		CurBind.memory = ImageHeapMemory.get();
 	}
 
-	// Now bind them all in one go
-	if( auto BindResult = Device.bindImageMemory2(ImageHeapBinds);
+	// Now bind them all in one call
+	if( const vk::Result BindResult = Device.bindImageMemory2(ImageHeapBinds);
 		BindResult == vk::Result::eSuccess )
 	{
 		// Binding memory succeeded
@@ -116,8 +153,8 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	vk::MemoryPropertyFlags           MemoryExcludeProperties
 )
 {
-	vk::DeviceSize                        BufferHeapMemoryExtent = 0;
-	std::uint32_t                         BufferHeapMemoryMask   = 0xFFFFFFFF;
+	vk::MemoryAllocateInfo                BufferHeapAllocInfo      = {};
+	std::uint32_t                         BufferHeapMemoryTypeBits = 0xFFFFFFFF;
 	std::vector<vk::BindBufferMemoryInfo> BufferHeapBinds;
 
 	const vk::DeviceSize BufferImageGranularity
@@ -125,31 +162,39 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 
 	for( const vk::Buffer& CurBuffer : Buffers )
 	{
-		const vk::MemoryRequirements MemReqs
-			= Device.getBufferMemoryRequirements(CurBuffer);
+		const vk::DeviceSize CurBindOffset = CommitMemoryRequestToHeap(
+			Device.getBufferMemoryRequirements(CurBuffer),
+			BufferHeapAllocInfo.allocationSize, BufferHeapMemoryTypeBits,
+			BufferImageGranularity
+		);
 
-		// Accumulate a mask of all the memory types that satisfies each of the
-		// handles
-		BufferHeapMemoryMask &= MemReqs.memoryTypeBits;
-
-		// Pad up the memory sizes so they are not considered aliasing
-		const vk::DeviceSize CurMemoryOffset
-			= Common::AlignUp(BufferHeapMemoryExtent, MemReqs.alignment);
-		const vk::DeviceSize CurMemorySize
-			= Common::AlignUp(MemReqs.size, BufferImageGranularity);
+		if( BufferHeapMemoryTypeBits == 0 )
+		{
+			// No possible memory heap for all of the buffers to share
+			return std::make_tuple(
+				vk::Result::eErrorOutOfDeviceMemory, vk::UniqueDeviceMemory()
+			);
+		}
 
 		// Put nullptr for the device memory for now
 		BufferHeapBinds.emplace_back(vk::BindBufferMemoryInfo{
-			CurBuffer, nullptr, BufferHeapMemoryExtent});
-		BufferHeapMemoryExtent = (CurMemoryOffset + CurMemorySize);
+			CurBuffer, nullptr, CurBindOffset});
 	}
 
-	vk::MemoryAllocateInfo BufferHeapAllocInfo;
-	BufferHeapAllocInfo.allocationSize  = BufferHeapMemoryExtent;
-	BufferHeapAllocInfo.memoryTypeIndex = FindMemoryTypeIndex(
-		PhysicalDevice, BufferHeapMemoryMask, MemoryProperties,
+	const std::int32_t MemoryTypeIndex = FindMemoryTypeIndex(
+		PhysicalDevice, BufferHeapMemoryTypeBits, MemoryProperties,
 		MemoryExcludeProperties
 	);
+
+	if( MemoryTypeIndex < 0 )
+	{
+		// Unable to find a memory heap that satisfies all the buffers
+		return std::make_tuple(
+			vk::Result::eErrorOutOfDeviceMemory, vk::UniqueDeviceMemory()
+		);
+	}
+
+	BufferHeapAllocInfo.memoryTypeIndex = MemoryTypeIndex;
 
 	vk::UniqueDeviceMemory BufferHeapMemory = {};
 
@@ -163,14 +208,14 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 		return std::make_tuple(AllocResult.result, vk::UniqueDeviceMemory());
 	}
 
-	// Now we can assign the device memory to the Buffers
+	// Assign the device memory to the bindings
 	for( vk::BindBufferMemoryInfo& CurBind : BufferHeapBinds )
 	{
 		CurBind.memory = BufferHeapMemory.get();
 	}
 
-	// Now bind them all in one go
-	if( auto BindResult = Device.bindBufferMemory2(BufferHeapBinds);
+	// Now bind them all in one call
+	if( const vk::Result BindResult = Device.bindBufferMemory2(BufferHeapBinds);
 		BindResult == vk::Result::eSuccess )
 	{
 		// Binding memory succeeded
