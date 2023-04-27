@@ -70,12 +70,13 @@ struct Tag<TagClass::Bitmap>
 		// This seems to be the ID for the owning bitmap tag
 		std::uint32_t BitmapTagID;
 
-		std::int32_t  Unknown24;
+		std::int32_t Unknown24;
+
+		// Runtime: IDirect3DBaseTexture9*
 		std::uint32_t Unknown28;
-		std::uint8_t  Unknown2C;
-		std::uint8_t  Unknown2D;
-		std::uint8_t  Unknown2E;
-		std::uint8_t  Unknown2F;
+
+		// Runtime: Host ptr to texel data
+		std::uint32_t Unknown2C;
 	};
 	TagBlock<BitmapEntry> Bitmaps;
 };
@@ -1329,7 +1330,9 @@ struct Tag<TagClass::ScenarioStructureBsp>
 				std::uint32_t      VertexBufferCount;
 				std::uint32_t      VertexBufferOffset;
 				std::uint32_t      UnknownC;
-				std::uint32_t      VertexIndexPointer;
+
+				// Runtime: IDirect3DVertexBuffer9*
+				std::uint32_t D3DVertexBuffer;
 			};
 
 			VertexBufferReference Geometry;
