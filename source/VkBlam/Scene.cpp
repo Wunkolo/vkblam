@@ -484,12 +484,16 @@ std::optional<Scene>
 				{
 
 					std::printf(
-						"Shader(%s): %s | Permutation: %04X\n",
+						"Shader(%s): %s | Permutation: %04X | Surfaces: "
+						"[%04d,%04d)\n",
 						Blam::FormatTagClass(CurMaterial.Shader.Class).c_str(),
 						TargetWorld.GetMapFile()
 							.GetTagName(CurMaterial.Shader.TagID)
 							.data(),
-						CurMaterial.ShaderPermutation
+						CurMaterial.ShaderPermutation,
+						CurMaterial.SurfacesIndexStart,
+						CurMaterial.SurfacesIndexStart
+							+ CurMaterial.SurfacesCount
 					);
 
 					auto& CurLightmapMesh
