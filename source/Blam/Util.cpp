@@ -25,6 +25,33 @@ std::size_t GetVertexStride(VertexFormat Format)
 	return VertexFormatStride.at(static_cast<std::size_t>(Format));
 }
 
+void GenerateVisibleSurfaceIndices(
+	const void* BSPData, std::uint32_t VirtualBase,
+	std::span<const Tag<TagClass::ScenarioStructureBsp>::Cluster::SubCluster>
+					SubClusters,
+	const Bounds3D& OverlapTest, SurfaceOcclusionBitArray SurfaceOcclusionArray
+)
+{
+	for( const auto& SubCluster : SubClusters )
+	{
+		// Test if the SubCluster's AABB overlaps
+		if( OverlapTest.Intersects(SubCluster.WorldBounds) )
+		{
+			// If the subcluster overlaps, then enable each surface index's
+			// visibility-bit
+			for( const std::uint32_t& SurfaceIndex :
+				 SubCluster.SurfaceIndices.GetSpan(BSPData, VirtualBase) )
+			{
+				const std::uint32_t OcclusionWordIndex = SurfaceIndex / 32;
+				const std::uint32_t OcclusionBitIndex  = SurfaceIndex % 32;
+
+				SurfaceOcclusionArray[OcclusionWordIndex]
+					|= (1 << OcclusionBitIndex);
+			}
+		}
+	}
+}
+
 template<typename... ArgsT>
 std::string FormatString(const std::string& Format, ArgsT... Args)
 {
