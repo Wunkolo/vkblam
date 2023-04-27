@@ -16,6 +16,14 @@ using Vector2f = std::array<float, 2>;
 using Vector3f = std::array<float, 3>;
 using Vector4f = std::array<float, 4>;
 
+struct Bounds3D
+{
+	Vector2f BoundsX;
+	Vector2f BoundsY;
+	Vector2f BoundsZ;
+};
+static_assert(sizeof(Bounds3D) == 24);
+
 struct Vertex
 {
 	Blam::Vector3f Position;

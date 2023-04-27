@@ -27,19 +27,25 @@ std::optional<World> World::Create(const Blam::MapFile& MapFile)
 		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
 			= CurBSPEntry.GetSBSP(NewWorld.MapFile.GetMapData().data());
 
-		NewWorld.WorldBoundMin.x
-			= glm::min(NewWorld.WorldBoundMin.x, ScenarioBSP.WorldBoundsX[0]);
-		NewWorld.WorldBoundMin.y
-			= glm::min(NewWorld.WorldBoundMin.y, ScenarioBSP.WorldBoundsY[0]);
-		NewWorld.WorldBoundMin.z
-			= glm::min(NewWorld.WorldBoundMin.z, ScenarioBSP.WorldBoundsZ[0]);
+		NewWorld.WorldBoundMin.x = glm::min(
+			NewWorld.WorldBoundMin.x, ScenarioBSP.WorldBounds.BoundsX[0]
+		);
+		NewWorld.WorldBoundMin.y = glm::min(
+			NewWorld.WorldBoundMin.y, ScenarioBSP.WorldBounds.BoundsY[0]
+		);
+		NewWorld.WorldBoundMin.z = glm::min(
+			NewWorld.WorldBoundMin.z, ScenarioBSP.WorldBounds.BoundsZ[0]
+		);
 
-		NewWorld.WorldBoundMax.x
-			= glm::max(NewWorld.WorldBoundMax.x, ScenarioBSP.WorldBoundsX[1]);
-		NewWorld.WorldBoundMax.y
-			= glm::max(NewWorld.WorldBoundMax.y, ScenarioBSP.WorldBoundsY[1]);
-		NewWorld.WorldBoundMax.z
-			= glm::max(NewWorld.WorldBoundMax.z, ScenarioBSP.WorldBoundsZ[1]);
+		NewWorld.WorldBoundMax.x = glm::max(
+			NewWorld.WorldBoundMax.x, ScenarioBSP.WorldBounds.BoundsX[1]
+		);
+		NewWorld.WorldBoundMax.y = glm::max(
+			NewWorld.WorldBoundMax.y, ScenarioBSP.WorldBounds.BoundsY[1]
+		);
+		NewWorld.WorldBoundMax.z = glm::max(
+			NewWorld.WorldBoundMax.z, ScenarioBSP.WorldBounds.BoundsZ[1]
+		);
 	}
 
 	return {std::move(NewWorld)};

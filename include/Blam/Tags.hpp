@@ -1281,9 +1281,7 @@ struct Tag<TagClass::ScenarioStructureBsp>
 	TagBlock<void> /*Todo*/ CollisionMaterials;
 	TagBlock<void> /*Todo*/ CollisionBSPs;
 	TagBlock<void> /*Todo*/ Nodes;
-	float                   WorldBoundsX[2];
-	float                   WorldBoundsY[2];
-	float                   WorldBoundsZ[2];
+	Bounds3D                WorldBounds;
 	TagBlock<void> /*Todo*/ Leaves;
 	TagBlock<void> /*Todo*/ LeafSurfaces;
 
