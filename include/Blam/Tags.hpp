@@ -1398,7 +1398,15 @@ struct Tag<TagClass::ScenarioStructureBsp>
 		std::byte _PaddingC[0x1C];
 
 		TagBlock<void> /*Todo*/ PredictedResources;
-		TagBlock<void> /*Todo*/ SubClusters;
+
+		struct SubCluster
+		{
+			Bounds3D                WorldBounds;
+			TagBlock<std::uint32_t> SurfaceIndices;
+		};
+		static_assert(sizeof(SubCluster) == 0x24);
+		TagBlock<SubCluster> SubClusters;
+
 		std::uint16_t           LensFlareMarkersStart;
 		std::uint16_t           LensFlareMarkersCount;
 		TagBlock<std::uint32_t> SurfaceIndices;
