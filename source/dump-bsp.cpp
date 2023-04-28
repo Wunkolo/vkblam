@@ -30,6 +30,8 @@ int main(int argc, char* argv[])
 		{}
 	);
 
+	const auto MapDataPtr = CurMap.GetMapData().data();
+
 	if( const auto BaseTagPtr
 		= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
 		BaseTagPtr )
@@ -45,47 +47,40 @@ int main(int argc, char* argv[])
 		{
 			const Blam::Tag<Blam::TagClass::Scenario>& Scenario = *ScenarioPtr;
 
-			std::uint16_t IndexStart = 1; // Objs start at index 0
+			std::uint16_t IndexStart = 1;
 
 			for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
-					 CurBSPEntry : Scenario.StructureBSPs.GetSpan(
-						 MapFile.data(), CurMap.TagHeapVirtualBase
-					 ) )
+					 CurSBSP : CurMap.GetBlock(Scenario.StructureBSPs) )
 			{
 				const std::span<const std::byte> BSPData
-					= CurBSPEntry.GetSBSPData(MapFile.data());
+					= CurSBSP.GetSBSPData(MapFile.data());
 
 				const char* BSPName
 					= (MapFile.data()
-					   + (CurBSPEntry.BSP.PathVirtualOffset
+					   + (CurSBSP.BSP.PathVirtualOffset
 						  - CurMap.TagHeapVirtualBase));
 				std::printf(
-					"g %s %s\n",
-					CurBSPEntry.BSP.PathVirtualOffset ? BSPName : "",
+					"g %s %s\n", CurSBSP.BSP.PathVirtualOffset ? BSPName : "",
 					TagName.data()
 				);
 
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
 					ScenarioBSP
-					= CurBSPEntry.GetSBSP(MapFile.data());
+					= CurSBSP.GetSBSP(MapDataPtr);
 
-				const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
-					BSPData.data(), CurBSPEntry.BSPVirtualBase
-				);
+				const auto Surfaces
+					= CurSBSP.GetBlock(MapDataPtr, ScenarioBSP.Surfaces);
 
 				// Lightmap
-				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
-						 BSPData.data(), CurBSPEntry.BSPVirtualBase
-					 ) )
+				for( const auto& CurLightmap :
+					 CurSBSP.GetBlock(MapDataPtr, ScenarioBSP.Lightmaps) )
 				{
 					for( const auto& CurMaterial :
-						 CurLightmap.Materials.GetSpan(
-							 BSPData.data(), CurBSPEntry.BSPVirtualBase
-						 ) )
+						 CurSBSP.GetBlock(MapDataPtr, CurLightmap.Materials) )
 					{
 						auto Test = CurMaterial;
 						for( const auto& CurVert : CurMaterial.GetVertices(
-								 BSPData.data(), CurBSPEntry.BSPVirtualBase
+								 BSPData.data(), CurSBSP.BSPVirtualBase
 							 ) )
 						{
 							std::printf(
@@ -101,14 +96,11 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
-						 BSPData.data(), CurBSPEntry.BSPVirtualBase
-					 ) )
+				for( const auto& CurLightmap :
+					 CurSBSP.GetBlock(MapDataPtr, ScenarioBSP.Lightmaps) )
 				{
 					for( const auto& CurMaterial :
-						 CurLightmap.Materials.GetSpan(
-							 BSPData.data(), CurBSPEntry.BSPVirtualBase
-						 ) )
+						 CurSBSP.GetBlock(MapDataPtr, CurLightmap.Materials) )
 					{
 						const auto CurSurfaces = Surfaces.subspan(
 							CurMaterial.SurfacesIndexStart,

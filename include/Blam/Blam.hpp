@@ -33,6 +33,12 @@ public:
 	const Blam::TagIndexHeader& TagIndexHeader;
 	const std::uint32_t         TagHeapVirtualBase;
 
+	template<typename T>
+	std::span<const T> GetBlock(const TagBlock<T>& Block) const
+	{
+		return Block.GetSpan(GetMapData().data(), TagHeapVirtualBase);
+	}
+
 	std::span<const std::byte> GetMapData() const
 	{
 		return MapFileData;
@@ -115,9 +121,7 @@ public:
 	{
 		if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
 		{
-			return ScenarioTag->StructureBSPs.GetSpan(
-				MapFileData.data(), TagHeapVirtualBase
-			);
+			return GetBlock(ScenarioTag->StructureBSPs);
 		}
 		return {};
 	}

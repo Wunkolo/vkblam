@@ -1171,6 +1171,13 @@ struct Tag<TagClass::Scenario>
 		std::uint32_t _PaddingC;
 		TagReference  BSP;
 
+		template<typename T>
+		std::span<const T>
+			GetBlock(const void* MapFile, const TagBlock<T>& Block) const
+		{
+			return Block.GetSpan(GetSBSPData(MapFile), BSPVirtualBase);
+		}
+
 		// Gets the entire SBSP data
 		std::span<const std::byte> GetSBSPData(const void* MapFile) const
 		{

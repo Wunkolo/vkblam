@@ -452,21 +452,32 @@ std::optional<Scene>
 		std::uint32_t VertexHeapIndexOffset = 0;
 		std::uint32_t IndexHeapIndexOffset  = 0;
 
-		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
-				 CurBSPEntry : TargetWorld.GetMapFile().GetScenarioBSPs() )
+		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& CurBSP :
+			 TargetWorld.GetMapFile().GetScenarioBSPs() )
 		{
-			const std::span<const std::byte> BSPData = CurBSPEntry.GetSBSPData(
-				TargetWorld.GetMapFile().GetMapData().data()
-			);
+			const auto MapDataPtr
+				= TargetWorld.GetMapFile().GetMapData().data();
+
+			const std::span<const std::byte> BSPData
+				= CurBSP.GetSBSPData(MapDataPtr);
+
 			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-				= CurBSPEntry.GetSBSP(
-					TargetWorld.GetMapFile().GetMapData().data()
-				);
+				= CurBSP.GetSBSP(MapDataPtr);
+
+			// Clusters
+			for( const auto& CurCluster :
+				 CurBSP.GetBlock(MapDataPtr, ScenarioBSP.Clusters) )
+			{
+				for( const auto& CurSubCluster :
+					 CurBSP.GetBlock(MapDataPtr, CurCluster.SubClusters) )
+				{
+					static volatile auto Temp = CurSubCluster.WorldBounds;
+				}
+			}
 
 			// Lightmap
-			for( const auto& CurLightmap : ScenarioBSP.Lightmaps.GetSpan(
-					 BSPData.data(), CurBSPEntry.BSPVirtualBase
-				 ) )
+			for( const auto& CurLightmap :
+				 CurBSP.GetBlock(MapDataPtr, ScenarioBSP.Lightmaps) )
 			{
 				const auto& LightmapTextureTag
 					= TargetWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(
@@ -475,12 +486,11 @@ std::optional<Scene>
 				const std::int16_t LightmapTextureIndex
 					= CurLightmap.LightmapIndex;
 
-				const auto Surfaces = ScenarioBSP.Surfaces.GetSpan(
-					BSPData.data(), CurBSPEntry.BSPVirtualBase
-				);
-				for( const auto& CurMaterial : CurLightmap.Materials.GetSpan(
-						 BSPData.data(), CurBSPEntry.BSPVirtualBase
-					 ) )
+				const auto Surfaces
+					= CurBSP.GetBlock(MapDataPtr, ScenarioBSP.Surfaces);
+
+				for( const auto& CurMaterial :
+					 CurBSP.GetBlock(MapDataPtr, CurLightmap.Materials) )
 				{
 
 					std::printf(
@@ -503,7 +513,7 @@ std::optional<Scene>
 						// Copy vertex data into the staging buffer
 						const std::span<const Blam::Vertex> CurVertexData
 							= CurMaterial.GetVertices(
-								BSPData.data(), CurBSPEntry.BSPVirtualBase
+								BSPData.data(), CurBSP.BSPVirtualBase
 							);
 
 						CurLightmapMesh.VertexData = CurVertexData;
@@ -530,7 +540,7 @@ std::optional<Scene>
 							const std::span<const Blam::LightmapVertex>
 								CurLightmapVertexData
 								= CurMaterial.GetLightmapVertices(
-									BSPData.data(), CurBSPEntry.BSPVirtualBase
+									BSPData.data(), CurBSP.BSPVirtualBase
 								);
 							CurLightmapMesh.LightmapVertexData
 								= CurLightmapVertexData;
@@ -755,10 +765,9 @@ std::optional<Scene>
 			for( std::size_t CurSubTextureIdx = 0;
 				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 			{
-				const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-					TargetWorld.GetMapFile().GetMapData().data(),
-					TargetWorld.GetMapFile().TagHeapVirtualBase
-				)[CurSubTextureIdx];
+				const auto& CurSubTexture
+					= TargetWorld.GetMapFile().GetBlock(Bitmap.Bitmaps
+					)[CurSubTextureIdx];
 
 				auto& BitmapDest
 					= NewScene.BitmapHeap
@@ -797,9 +806,8 @@ std::optional<Scene>
 					const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
 					const auto& CurGlobal = Globals;
 					for( const auto& RasterData :
-						 CurGlobal.RasterizerData.GetSpan(
-							 TargetWorld.GetMapFile().GetMapData().data(),
-							 TargetWorld.GetMapFile().TagHeapVirtualBase
+						 TargetWorld.GetMapFile().GetBlock(
+							 CurGlobal.RasterizerData
 						 ) )
 					{
 						NewScene.BitmapHeap.Default2D
@@ -966,10 +974,9 @@ std::optional<Scene>
 					 CurSubTextureIdx < Bitmap.Bitmaps.Count;
 					 ++CurSubTextureIdx )
 				{
-					const auto& CurSubTexture = Bitmap.Bitmaps.GetSpan(
-						TargetWorld.GetMapFile().GetMapData().data(),
-						TargetWorld.GetMapFile().TagHeapVirtualBase
-					)[CurSubTextureIdx];
+					const auto& CurSubTexture
+						= TargetWorld.GetMapFile().GetBlock(Bitmap.Bitmaps
+						)[CurSubTextureIdx];
 					const auto PixelData = std::span<const std::byte>(
 						reinterpret_cast<const std::byte*>(
 							TargetWorld.GetMapFile().GetBitmapData().data()
