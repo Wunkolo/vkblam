@@ -20,8 +20,8 @@ namespace Blam
 class MapFile
 {
 private:
-	std::span<const std::byte> MapFileData;
-	std::span<const std::byte> BitmapFileData;
+	const std::span<const std::byte> MapFileData;
+	const std::span<const std::byte> BitmapFileData;
 
 public:
 	MapFile(
@@ -31,20 +31,15 @@ public:
 
 	const Blam::MapHeader&      MapHeader;
 	const Blam::TagIndexHeader& TagIndexHeader;
-	const std::uint32_t         TagHeapVirtualBase;
 
-	template<typename T>
-	std::span<const T> GetBlock(const TagBlock<T>& Block) const
-	{
-		return Block.GetSpan(GetMapData().data(), TagHeapVirtualBase);
-	}
+	const VirtualHeap TagHeap;
 
-	std::span<const std::byte> GetMapData() const
+	const std::span<const std::byte>& GetMapData() const
 	{
 		return MapFileData;
 	}
 
-	std::span<const std::byte> GetBitmapData() const
+	const std::span<const std::byte>& GetBitmapData() const
 	{
 		return BitmapFileData;
 	}
@@ -63,12 +58,9 @@ public:
 		{
 			if( CurTagEntry.ClassPrimary == TagClassT )
 			{
-				const auto& CurTag
-					= *reinterpret_cast<const Blam::Tag<TagClassT>*>(
-						MapFileData.data()
-						+ (CurTagEntry.TagDataVirtualOffset - TagHeapVirtualBase
-						)
-					);
+				const auto& CurTag = TagHeap.Read<Blam::Tag<TagClassT>>(
+					CurTagEntry.TagDataVirtualOffset
+				);
 				Func(CurTagEntry, CurTag);
 			}
 		}
@@ -90,9 +82,8 @@ public:
 			return nullptr;
 		}
 
-		return reinterpret_cast<const Blam::Tag<TagClassT>*>(
-			MapFileData.data()
-			+ (TagIndexEntryPtr->TagDataVirtualOffset - TagHeapVirtualBase)
+		return &TagHeap.Read<Blam::Tag<TagClassT>>(
+			TagIndexEntryPtr->TagDataVirtualOffset
 		);
 	}
 
@@ -104,10 +95,7 @@ public:
 			return {};
 		}
 
-		return std::string_view(
-			reinterpret_cast<const char*>(MapFileData.data())
-			+ (TagIndexEntryPtr->TagPathVirtualOffset - TagHeapVirtualBase)
-		);
+		return &TagHeap.Read<char>(TagIndexEntryPtr->TagPathVirtualOffset);
 	}
 
 	// Helpers
@@ -121,7 +109,7 @@ public:
 	{
 		if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
 		{
-			return GetBlock(ScenarioTag->StructureBSPs);
+			return TagHeap.GetBlock(ScenarioTag->StructureBSPs);
 		}
 		return {};
 	}

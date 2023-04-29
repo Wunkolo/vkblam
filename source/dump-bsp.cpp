@@ -50,15 +50,14 @@ int main(int argc, char* argv[])
 			std::uint16_t IndexStart = 1;
 
 			for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
-					 CurSBSP : CurMap.GetBlock(Scenario.StructureBSPs) )
+					 CurSBSP : CurMap.TagHeap.GetBlock(Scenario.StructureBSPs) )
 			{
 				const std::span<const std::byte> BSPData
 					= CurSBSP.GetSBSPData(MapFile.data());
 
 				const char* BSPName
-					= (MapFile.data()
-					   + (CurSBSP.BSP.PathVirtualOffset
-						  - CurMap.TagHeapVirtualBase));
+					= &CurMap.TagHeap.Read<char>(CurSBSP.BSP.PathVirtualOffset);
+
 				std::printf(
 					"g %s %s\n", CurSBSP.BSP.PathVirtualOffset ? BSPName : "",
 					TagName.data()

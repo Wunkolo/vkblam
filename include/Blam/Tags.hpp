@@ -1175,7 +1175,7 @@ struct Tag<TagClass::Scenario>
 		std::span<const T>
 			GetBlock(const void* MapFile, const TagBlock<T>& Block) const
 		{
-			return Block.GetSpan(GetSBSPData(MapFile), BSPVirtualBase);
+			return Block.GetSpan(GetSBSPData(MapFile).data(), BSPVirtualBase);
 		}
 
 		// Gets the entire SBSP data

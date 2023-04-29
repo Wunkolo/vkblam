@@ -766,7 +766,7 @@ std::optional<Scene>
 				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 			{
 				const auto& CurSubTexture
-					= TargetWorld.GetMapFile().GetBlock(Bitmap.Bitmaps
+					= TargetWorld.GetMapFile().TagHeap.GetBlock(Bitmap.Bitmaps
 					)[CurSubTextureIdx];
 
 				auto& BitmapDest
@@ -806,7 +806,7 @@ std::optional<Scene>
 					const Blam::Tag<Blam::TagClass::Globals>& Globals) -> void {
 					const auto& CurGlobal = Globals;
 					for( const auto& RasterData :
-						 TargetWorld.GetMapFile().GetBlock(
+						 TargetWorld.GetMapFile().TagHeap.GetBlock(
 							 CurGlobal.RasterizerData
 						 ) )
 					{
@@ -975,7 +975,8 @@ std::optional<Scene>
 					 ++CurSubTextureIdx )
 				{
 					const auto& CurSubTexture
-						= TargetWorld.GetMapFile().GetBlock(Bitmap.Bitmaps
+						= TargetWorld.GetMapFile().TagHeap.GetBlock(
+							Bitmap.Bitmaps
 						)[CurSubTextureIdx];
 					const auto PixelData = std::span<const std::byte>(
 						reinterpret_cast<const std::byte*>(

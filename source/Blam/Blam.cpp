@@ -12,10 +12,11 @@ MapFile::MapFile(
 	  TagIndexHeader(*reinterpret_cast<const Blam::TagIndexHeader*>(
 		  MapFileData.data() + MapHeader.TagIndexOffset
 	  )),
-	  TagHeapVirtualBase(
-		  (TagIndexHeader.TagIndexVirtualOffset - sizeof(Blam::TagIndexHeader))
-		  - MapHeader.TagIndexOffset
-	  )
+	  TagHeap{
+		  (TagIndexHeader.TagIndexVirtualOffset
+		   - std::uint32_t(sizeof(Blam::TagIndexHeader)))
+			  - MapHeader.TagIndexOffset,
+		  MapFileData}
 {
 }
 
