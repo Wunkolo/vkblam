@@ -26,7 +26,7 @@ std::size_t GetVertexStride(VertexFormat Format)
 }
 
 void GenerateVisibleSurfaceIndices(
-	const void* BSPData, std::uint32_t VirtualBase,
+	const VirtualHeap& Heap,
 	std::span<const Tag<TagClass::ScenarioStructureBsp>::Cluster::SubCluster>
 					SubClusters,
 	const Bounds3D& OverlapTest, SurfaceOcclusionBitArray SurfaceOcclusionArray
@@ -40,7 +40,7 @@ void GenerateVisibleSurfaceIndices(
 			// If the subcluster overlaps, then enable each surface index's
 			// visibility-bit
 			for( const std::uint32_t& SurfaceIndex :
-				 SubCluster.SurfaceIndices.GetSpan(BSPData, VirtualBase) )
+				 Heap.GetBlock(SubCluster.SurfaceIndices) )
 			{
 				const std::uint32_t OcclusionWordIndex = SurfaceIndex / 32;
 				const std::uint32_t OcclusionBitIndex  = SurfaceIndex % 32;

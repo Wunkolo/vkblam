@@ -86,13 +86,10 @@ struct TagBlock
 		typename U = T,
 		typename = typename std::enable_if_t<std::is_same_v<U, void> == false>>
 	std::span<const U>
-		GetSpan(const void* Data, std::uint32_t VirtualBase) const
+		GetSpan(const std::byte Data[], std::uint32_t VirtualBase) const
 	{
 		return std::span<const U>(
-			reinterpret_cast<const U*>(
-				reinterpret_cast<const std::byte*>(Data)
-				+ (VirtualOffset - VirtualBase)
-			),
+			reinterpret_cast<const U*>(Data + (VirtualOffset - VirtualBase)),
 			Count
 		);
 	}

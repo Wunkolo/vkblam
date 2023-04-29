@@ -455,29 +455,15 @@ std::optional<Scene>
 		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& CurBSP :
 			 TargetWorld.GetMapFile().GetScenarioBSPs() )
 		{
-			const auto MapDataPtr
-				= TargetWorld.GetMapFile().GetMapData().data();
-
-			const std::span<const std::byte> BSPData
-				= CurBSP.GetSBSPData(MapDataPtr);
+			const Blam::VirtualHeap BSPHeap
+				= CurBSP.GetSBSPHeap(TargetWorld.GetMapFile().GetMapData());
 
 			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-				= CurBSP.GetSBSP(MapDataPtr);
-
-			// Clusters
-			for( const auto& CurCluster :
-				 CurBSP.GetBlock(MapDataPtr, ScenarioBSP.Clusters) )
-			{
-				for( const auto& CurSubCluster :
-					 CurBSP.GetBlock(MapDataPtr, CurCluster.SubClusters) )
-				{
-					static volatile auto Temp = CurSubCluster.WorldBounds;
-				}
-			}
+				= CurBSP.GetSBSP(TargetWorld.GetMapFile().GetMapData());
 
 			// Lightmap
 			for( const auto& CurLightmap :
-				 CurBSP.GetBlock(MapDataPtr, ScenarioBSP.Lightmaps) )
+				 BSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
 			{
 				const auto& LightmapTextureTag
 					= TargetWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(
@@ -486,11 +472,10 @@ std::optional<Scene>
 				const std::int16_t LightmapTextureIndex
 					= CurLightmap.LightmapIndex;
 
-				const auto Surfaces
-					= CurBSP.GetBlock(MapDataPtr, ScenarioBSP.Surfaces);
+				const auto Surfaces = BSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
 				for( const auto& CurMaterial :
-					 CurBSP.GetBlock(MapDataPtr, CurLightmap.Materials) )
+					 BSPHeap.GetBlock(CurLightmap.Materials) )
 				{
 
 					std::printf(
@@ -512,9 +497,7 @@ std::optional<Scene>
 					{
 						// Copy vertex data into the staging buffer
 						const std::span<const Blam::Vertex> CurVertexData
-							= CurMaterial.GetVertices(
-								BSPData.data(), CurBSP.BSPVirtualBase
-							);
+							= CurMaterial.GetVertices(BSPHeap);
 
 						CurLightmapMesh.VertexData = CurVertexData;
 
@@ -539,9 +522,7 @@ std::optional<Scene>
 						{
 							const std::span<const Blam::LightmapVertex>
 								CurLightmapVertexData
-								= CurMaterial.GetLightmapVertices(
-									BSPData.data(), CurBSP.BSPVirtualBase
-								);
+								= CurMaterial.GetLightmapVertices(BSPHeap);
 							CurLightmapMesh.LightmapVertexData
 								= CurLightmapVertexData;
 						}

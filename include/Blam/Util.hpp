@@ -7,31 +7,10 @@
 #include "Tags.hpp"
 #include "Types.hpp"
 
+#include "Util/VirtualHeap.hpp"
+
 namespace Blam
 {
-
-// Represents a runtime chunk of memory mapped
-// to the specified base address. Intended to help "devirtualize" runtime
-// offsets and pointers into regular file-offsets
-struct VirtualHeap
-{
-	const std::uint32_t              BaseAddress;
-	const std::span<const std::byte> Data;
-
-	template<typename T>
-	std::span<const T> GetBlock(const TagBlock<T>& Block) const
-	{
-		return Block.GetSpan(Data.data(), BaseAddress);
-	}
-
-	template<typename T>
-	const T& Read(std::uint32_t Offset) const
-	{
-		return *reinterpret_cast<const T*>(
-			Data.subspan(Offset - BaseAddress).data()
-		);
-	}
-};
 
 std::string FormatTagClass(TagClass Class);
 
@@ -44,7 +23,7 @@ std::size_t GetVertexStride(VertexFormat Format);
 using SurfaceOcclusionBitArray = std::span<std::uint32_t, 0x2'0000 / 32>;
 
 void GenerateVisibleSurfaceIndices(
-	const void* BSPData, std::uint32_t VirtualBase,
+	const VirtualHeap& Heap,
 	std::span<const Tag<TagClass::ScenarioStructureBsp>::Cluster::SubCluster>
 					SubClusters,
 	const Bounds3D& OverlapTest, SurfaceOcclusionBitArray SurfaceOcclusionArray

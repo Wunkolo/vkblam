@@ -22,10 +22,8 @@ std::optional<World> World::Create(const Blam::MapFile& MapFile)
 	for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& CurBSPEntry :
 		 NewWorld.MapFile.GetScenarioBSPs() )
 	{
-		const std::span<const std::byte> BSPData
-			= CurBSPEntry.GetSBSPData(NewWorld.MapFile.GetMapData().data());
 		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-			= CurBSPEntry.GetSBSP(NewWorld.MapFile.GetMapData().data());
+			= CurBSPEntry.GetSBSP(NewWorld.MapFile.GetMapData());
 
 		NewWorld.WorldBoundMin.x = glm::min(
 			NewWorld.WorldBoundMin.x, ScenarioBSP.WorldBounds.BoundsX[0]

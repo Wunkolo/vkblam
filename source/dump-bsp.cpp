@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 		{}
 	);
 
-	const auto MapDataPtr = CurMap.GetMapData().data();
+	const auto MapData = CurMap.GetMapData();
 
 	if( const auto BaseTagPtr
 		= CurMap.GetTagIndexEntry(CurMap.TagIndexHeader.BaseTag);
@@ -52,8 +52,7 @@ int main(int argc, char* argv[])
 			for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
 					 CurSBSP : CurMap.TagHeap.GetBlock(Scenario.StructureBSPs) )
 			{
-				const std::span<const std::byte> BSPData
-					= CurSBSP.GetSBSPData(MapFile.data());
+				const Blam::VirtualHeap BSPHeap = CurSBSP.GetSBSPHeap(MapData);
 
 				const char* BSPName
 					= &CurMap.TagHeap.Read<char>(CurSBSP.BSP.PathVirtualOffset);
@@ -65,22 +64,20 @@ int main(int argc, char* argv[])
 
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
 					ScenarioBSP
-					= CurSBSP.GetSBSP(MapDataPtr);
+					= CurSBSP.GetSBSP(MapData);
 
-				const auto Surfaces
-					= CurSBSP.GetBlock(MapDataPtr, ScenarioBSP.Surfaces);
+				const auto Surfaces = BSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
 				// Lightmap
 				for( const auto& CurLightmap :
-					 CurSBSP.GetBlock(MapDataPtr, ScenarioBSP.Lightmaps) )
+					 BSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
 				{
 					for( const auto& CurMaterial :
-						 CurSBSP.GetBlock(MapDataPtr, CurLightmap.Materials) )
+						 BSPHeap.GetBlock(CurLightmap.Materials) )
 					{
 						auto Test = CurMaterial;
-						for( const auto& CurVert : CurMaterial.GetVertices(
-								 BSPData.data(), CurSBSP.BSPVirtualBase
-							 ) )
+						for( const auto& CurVert :
+							 CurMaterial.GetVertices(BSPHeap) )
 						{
 							std::printf(
 								"v %f %f %f\n"
@@ -96,10 +93,10 @@ int main(int argc, char* argv[])
 				}
 
 				for( const auto& CurLightmap :
-					 CurSBSP.GetBlock(MapDataPtr, ScenarioBSP.Lightmaps) )
+					 BSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
 				{
 					for( const auto& CurMaterial :
-						 CurSBSP.GetBlock(MapDataPtr, CurLightmap.Materials) )
+						 BSPHeap.GetBlock(CurLightmap.Materials) )
 					{
 						const auto CurSurfaces = Surfaces.subspan(
 							CurMaterial.SurfacesIndexStart,

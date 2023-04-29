@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstddef>
+
 #include "Enums.hpp"
 #include "Types.hpp"
-#include <cstddef>
+#include "Util/VirtualHeap.hpp"
 
 namespace Blam
 {
@@ -1171,19 +1173,10 @@ struct Tag<TagClass::Scenario>
 		std::uint32_t _PaddingC;
 		TagReference  BSP;
 
-		template<typename T>
-		std::span<const T>
-			GetBlock(const void* MapFile, const TagBlock<T>& Block) const
+		VirtualHeap GetSBSPHeap(std::span<const std::byte> MapFile) const
 		{
-			return Block.GetSpan(GetSBSPData(MapFile).data(), BSPVirtualBase);
-		}
-
-		// Gets the entire SBSP data
-		std::span<const std::byte> GetSBSPData(const void* MapFile) const
-		{
-			return std::span<const std::byte>(
-				reinterpret_cast<const std::byte*>(MapFile) + BSPStart, BSPSize
-			);
+			return VirtualHeap{
+				BSPVirtualBase, MapFile.subspan(BSPStart).first(BSPSize)};
 		}
 
 		struct SBSPHeader
@@ -1197,20 +1190,21 @@ struct Tag<TagClass::Scenario>
 			TagClass      Class; // `sbsp`
 		};
 
-		const SBSPHeader& GetSBSPHeader(const void* MapFile) const
+		const SBSPHeader& GetSBSPHeader(std::span<const std::byte> MapData
+		) const
 		{
 			return *reinterpret_cast<const SBSPHeader*>(
-				reinterpret_cast<const std::byte*>(MapFile) + BSPStart
+				MapData.subspan(BSPStart).data()
 			);
 		}
 
-		const Tag<TagClass::ScenarioStructureBsp>& GetSBSP(const void* MapFile
-		) const
+		const Tag<TagClass::ScenarioStructureBsp>&
+			GetSBSP(std::span<const std::byte> MapData) const
 		{
-			const auto& SBSPHeader = GetSBSPHeader(MapFile);
+			const SBSPHeader& SBSPHeader = GetSBSPHeader(MapData);
 			return *reinterpret_cast<
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
-				reinterpret_cast<const std::byte*>(MapFile)
+				MapData.data()
 				+ ((SBSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart)
 			);
 		}
@@ -1357,25 +1351,25 @@ struct Tag<TagClass::ScenarioStructureBsp>
 				);
 			}
 
-			std::span<const Vertex>
-				GetVertices(const void* Data, std::uint32_t VirtualBase) const
+			std::span<const Vertex> GetVertices(const VirtualHeap& Heap) const
 			{
 				return std::span<const Vertex>(
 					reinterpret_cast<const Vertex*>(
-						reinterpret_cast<const std::byte*>(Data)
-						+ (UncompressedVertices.VirtualOffset - VirtualBase)
+						Heap.Data.data()
+						+ (UncompressedVertices.VirtualOffset - Heap.BaseAddress
+						)
 					),
 					Geometry.VertexBufferCount
 				);
 			}
-			std::span<const LightmapVertex> GetLightmapVertices(
-				const void* Data, std::uint32_t VirtualBase
-			) const
+			std::span<const LightmapVertex>
+				GetLightmapVertices(const VirtualHeap& Heap) const
 			{
 				return std::span<const LightmapVertex>(
 					reinterpret_cast<const LightmapVertex*>(
-						reinterpret_cast<const std::byte*>(Data)
-						+ (UncompressedVertices.VirtualOffset - VirtualBase)
+						Heap.Data.data()
+						+ (UncompressedVertices.VirtualOffset - Heap.BaseAddress
+						)
 						+ (Geometry.VertexBufferCount * sizeof(Vertex))
 					),
 					LightmapGeometry.VertexBufferCount
