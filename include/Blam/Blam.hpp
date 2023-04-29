@@ -44,21 +44,21 @@ public:
 		return BitmapFileData;
 	}
 
-	std::span<const Blam::TagIndexEntry> GetTagIndexArray() const;
+	std::span<const TagIndexEntry> GetTagIndexArray() const;
 
 	const TagIndexEntry* GetTagIndexEntry(std::uint16_t TagIndex) const;
 
 	template<TagClass TagClassT>
 	void VisitTagClass(
-		const std::function<
-			void(const Blam::TagIndexEntry, const Blam::Tag<TagClassT>&)>& Func
+		const std::function<void(const TagIndexEntry, const Tag<TagClassT>&)>&
+			Func
 	) const
 	{
 		for( const auto& CurTagEntry : GetTagIndexArray() )
 		{
 			if( CurTagEntry.ClassPrimary == TagClassT )
 			{
-				const auto& CurTag = TagHeap.Read<Blam::Tag<TagClassT>>(
+				const auto& CurTag = TagHeap.Read<Tag<TagClassT>>(
 					CurTagEntry.TagDataVirtualOffset
 				);
 				Func(CurTagEntry, CurTag);
@@ -82,7 +82,7 @@ public:
 			return nullptr;
 		}
 
-		return &TagHeap.Read<Blam::Tag<TagClassT>>(
+		return &TagHeap.Read<Tag<TagClassT>>(
 			TagIndexEntryPtr->TagDataVirtualOffset
 		);
 	}
@@ -99,12 +99,12 @@ public:
 	}
 
 	// Helpers
-	const Tag<Blam::TagClass::Scenario>* GetScenarioTag() const
+	const Tag<TagClass::Scenario>* GetScenarioTag() const
 	{
-		return GetTag<Blam::TagClass::Scenario>(TagIndexHeader.BaseTag);
+		return GetTag<TagClass::Scenario>(TagIndexHeader.BaseTag);
 	}
 
-	std::span<const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP>
+	std::span<const Tag<TagClass::Scenario>::StructureBSP>
 		GetScenarioBSPs() const
 	{
 		if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
