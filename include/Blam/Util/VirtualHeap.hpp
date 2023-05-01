@@ -22,7 +22,7 @@ struct VirtualHeap
 	}
 
 	template<typename T>
-	const T& Read(std::uint32_t Offset) const
+	const T& Read(std::uint32_t Offset = 0u) const
 	{
 		return *reinterpret_cast<const T*>(
 			Data.subspan(Offset - BaseAddress).data()
