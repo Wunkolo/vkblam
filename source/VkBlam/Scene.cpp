@@ -740,15 +740,15 @@ std::optional<Scene>
 
 		const auto CreateBitmap
 			= [&](const Blam::TagIndexEntry&               TagEntry,
-				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap,
+				  const Blam::MapFile&                     Map) -> void {
 			// std::printf("%s\n",
 			// CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 			for( std::size_t CurSubTextureIdx = 0;
 				 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 			{
 				const auto& CurSubTexture
-					= TargetWorld.GetMapFile().TagHeap.GetBlock(Bitmap.Bitmaps
-					)[CurSubTextureIdx];
+					= Map.TagHeap.GetBlock(Bitmap.Bitmaps)[CurSubTextureIdx];
 
 				auto& BitmapDest
 					= NewScene.BitmapHeap
@@ -759,8 +759,7 @@ std::optional<Scene>
 				Vulkan::SetObjectName(
 					VulkanContext.LogicalDevice, BitmapDest.Image.get(),
 					"VkBlam::Scene: Bitmap %08X[%2zu] | %s", TagEntry.TagID,
-					CurSubTextureIdx,
-					TargetWorld.GetMapFile().GetTagName(TagEntry.TagID).data()
+					CurSubTextureIdx, Map.GetTagName(TagEntry.TagID).data()
 				);
 			}
 		};
@@ -777,7 +776,7 @@ std::optional<Scene>
 			{
 				const auto& CurBitmap
 					= Map.GetTag<Blam::TagClass::Bitmap>(TagIndexEntry.TagID);
-				CreateBitmap(TagIndexEntry, *CurBitmap);
+				CreateBitmap(TagIndexEntry, *CurBitmap, Map);
 			}
 		};
 
