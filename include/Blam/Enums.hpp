@@ -218,19 +218,24 @@ enum class VertexFormat : std::uint32_t
 	// D3DVERTEXELEMENT9 <0, 18h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_BINORMAL, 0>
 	// D3DVERTEXELEMENT9 <0, 24h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_TANGENT, 0>
 	// D3DVERTEXELEMENT9 <0, 30h, D3DDECLTYPE_FLOAT2, D3DDECLUSAGE_TEXCOORD, 0>
+	// SBSP uncompressed rendered geometry
 	// Size: 56
 	SBSPVertexUncompressed = 0,
+	// SBSP compressed rendered geometry
 	// Size: 32
 	SBSPVertexCompressed = 1,
-	// Lightmapped BSP vertices, shader_environment
 	// D3DVERTEXELEMENT9 <1, 00h, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_NORMAL, 1>
 	// D3DVERTEXELEMENT9 <1, 0Ch, D3DDECLTYPE_FLOAT2, D3DDECLUSAGE_TEXCOORD, 1>
+	// SBSP uncompressed lightmap geometry
 	// Size: 20
 	SBSPLightmapVertexUncompressed = 2,
+	// SBSL compressed lightmap geometry
 	// Size: 8
 	SBSPLightmapVertexCompressed = 3,
+	// GBX uncompressed model geometry
 	// Size: 68
 	ModelUncompressed = 4,
+	// GBX compressed model geometry
 	// Size: 32
 	ModelCompressed = 5,
 	// Size: 24
