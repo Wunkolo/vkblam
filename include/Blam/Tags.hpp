@@ -1349,11 +1349,7 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			std::span<const Vertex> GetVertices(const VirtualHeap& Heap) const
 			{
 				return std::span<const Vertex>(
-					reinterpret_cast<const Vertex*>(
-						Heap.Data.data()
-						+ (UncompressedVertices.VirtualOffset - Heap.BaseAddress
-						)
-					),
+					&Heap.Read<Vertex>(UncompressedVertices.VirtualOffset),
 					Geometry.VertexBufferCount
 				);
 			}
@@ -1361,11 +1357,9 @@ struct Tag<TagClass::ScenarioStructureBsp>
 				GetLightmapVertices(const VirtualHeap& Heap) const
 			{
 				return std::span<const LightmapVertex>(
-					reinterpret_cast<const LightmapVertex*>(
-						Heap.Data.data()
-						+ (UncompressedVertices.VirtualOffset - Heap.BaseAddress
-						)
-						+ (Geometry.VertexBufferCount * sizeof(Vertex))
+					&Heap.Read<LightmapVertex>(
+						UncompressedVertices.VirtualOffset
+						+ Geometry.VertexBufferCount * sizeof(Vertex)
 					),
 					LightmapGeometry.VertexBufferCount
 				);
