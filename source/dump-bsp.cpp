@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 			for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
 					 CurSBSP : CurMap.TagHeap.GetBlock(Scenario.StructureBSPs) )
 			{
-				const Blam::VirtualHeap BSPHeap = CurSBSP.GetSBSPHeap(MapData);
+				const Blam::VirtualHeap SBSPHeap = CurSBSP.GetSBSPHeap(MapData);
 
 				const char* BSPName
 					= &CurMap.TagHeap.Read<char>(CurSBSP.BSP.PathVirtualOffset);
@@ -64,20 +64,20 @@ int main(int argc, char* argv[])
 
 				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
 					ScenarioBSP
-					= CurSBSP.GetSBSP(MapData);
+					= CurSBSP.GetSBSP(SBSPHeap);
 
-				const auto Surfaces = BSPHeap.GetBlock(ScenarioBSP.Surfaces);
+				const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
 				// Lightmap
 				for( const auto& CurLightmap :
-					 BSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
+					 SBSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
 				{
 					for( const auto& CurMaterial :
-						 BSPHeap.GetBlock(CurLightmap.Materials) )
+						 SBSPHeap.GetBlock(CurLightmap.Materials) )
 					{
 						auto Test = CurMaterial;
 						for( const auto& CurVert :
-							 CurMaterial.GetVertices(BSPHeap) )
+							 CurMaterial.GetVertices(SBSPHeap) )
 						{
 							std::printf(
 								"v %f %f %f\n"
@@ -93,10 +93,10 @@ int main(int argc, char* argv[])
 				}
 
 				for( const auto& CurLightmap :
-					 BSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
+					 SBSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
 				{
 					for( const auto& CurMaterial :
-						 BSPHeap.GetBlock(CurLightmap.Materials) )
+						 SBSPHeap.GetBlock(CurLightmap.Materials) )
 					{
 						const auto CurSurfaces = Surfaces.subspan(
 							CurMaterial.SurfacesIndexStart,

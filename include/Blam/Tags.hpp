@@ -1190,23 +1190,18 @@ struct Tag<TagClass::Scenario>
 			TagClass      Class; // `sbsp`
 		};
 
-		const SBSPHeader& GetSBSPHeader(std::span<const std::byte> MapData
-		) const
+		const SBSPHeader& GetSBSPHeader(const VirtualHeap& SBSPHeap) const
 		{
-			return *reinterpret_cast<const SBSPHeader*>(
-				MapData.subspan(BSPStart).data()
-			);
+			return *reinterpret_cast<const SBSPHeader*>(SBSPHeap.Data.data());
 		}
 
 		const Tag<TagClass::ScenarioStructureBsp>&
-			GetSBSP(std::span<const std::byte> MapData) const
+			GetSBSP(const VirtualHeap& SBSPHeap) const
 		{
-			const SBSPHeader& SBSPHeader = GetSBSPHeader(MapData);
-			return *reinterpret_cast<
-				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>*>(
-				MapData.data()
-				+ ((SBSPHeader.VirtualOffset - BSPVirtualBase) + BSPStart)
-			);
+			return SBSPHeap
+				.Read<Blam::Tag<Blam::TagClass::ScenarioStructureBsp>>(
+					GetSBSPHeader(SBSPHeap).VirtualOffset
+				);
 		}
 	};
 	static_assert(sizeof(StructureBSP) == 0x20);

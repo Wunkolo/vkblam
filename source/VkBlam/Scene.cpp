@@ -452,18 +452,18 @@ std::optional<Scene>
 		std::uint32_t VertexHeapIndexOffset = 0;
 		std::uint32_t IndexHeapIndexOffset  = 0;
 
-		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& CurBSP :
+		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& CurSBSP :
 			 TargetWorld.GetMapFile().GetScenarioBSPs() )
 		{
-			const Blam::VirtualHeap BSPHeap
-				= CurBSP.GetSBSPHeap(TargetWorld.GetMapFile().GetMapData());
+			const Blam::VirtualHeap SBSPHeap
+				= CurSBSP.GetSBSPHeap(TargetWorld.GetMapFile().GetMapData());
 
 			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
-				= CurBSP.GetSBSP(TargetWorld.GetMapFile().GetMapData());
+				= CurSBSP.GetSBSP(SBSPHeap);
 
 			// Lightmap
 			for( const auto& CurLightmap :
-				 BSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
+				 SBSPHeap.GetBlock(ScenarioBSP.Lightmaps) )
 			{
 				const auto& LightmapTextureTag
 					= TargetWorld.GetMapFile().GetTag<Blam::TagClass::Bitmap>(
@@ -472,10 +472,10 @@ std::optional<Scene>
 				const std::int16_t LightmapTextureIndex
 					= CurLightmap.LightmapIndex;
 
-				const auto Surfaces = BSPHeap.GetBlock(ScenarioBSP.Surfaces);
+				const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
 				for( const auto& CurMaterial :
-					 BSPHeap.GetBlock(CurLightmap.Materials) )
+					 SBSPHeap.GetBlock(CurLightmap.Materials) )
 				{
 
 					std::printf(
@@ -497,7 +497,7 @@ std::optional<Scene>
 					{
 						// Copy vertex data into the staging buffer
 						const std::span<const Blam::Vertex> CurVertexData
-							= CurMaterial.GetVertices(BSPHeap);
+							= CurMaterial.GetVertices(SBSPHeap);
 
 						CurLightmapMesh.VertexData = CurVertexData;
 
@@ -522,7 +522,7 @@ std::optional<Scene>
 						{
 							const std::span<const Blam::LightmapVertex>
 								CurLightmapVertexData
-								= CurMaterial.GetLightmapVertices(BSPHeap);
+								= CurMaterial.GetLightmapVertices(SBSPHeap);
 							CurLightmapMesh.LightmapVertexData
 								= CurLightmapVertexData;
 						}
