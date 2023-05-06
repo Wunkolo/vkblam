@@ -54,7 +54,6 @@ private:
 
 		std::span<const Blam::Vertex>         VertexData;
 		std::span<const Blam::LightmapVertex> LightmapVertexData;
-		std::span<const std::byte>            IndexData;
 
 		std::uint32_t ShaderTag;
 

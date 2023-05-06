@@ -448,9 +448,9 @@ std::optional<Scene>
 
 	// Load BSP
 	{
-		// Offset is in elements, not bytes
-		std::uint32_t VertexHeapIndexOffset = 0;
-		std::uint32_t IndexHeapIndexOffset  = 0;
+		// Index in elements, not bytes
+		std::uint32_t VertexHeapIndexEnd = 0;
+		std::uint32_t IndexHeapIndexEnd  = 0;
 
 		for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& CurSBSP :
 			 TargetWorld.GetMapFile().GetScenarioBSPs() )
@@ -460,6 +460,10 @@ std::optional<Scene>
 
 			const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
 				= CurSBSP.GetSBSP(SBSPHeap);
+
+			const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
+
+			std::uint32_t SBSPIndexHeapEnd = IndexHeapIndexEnd;
 
 			// Lightmap
 			for( const auto& CurLightmap :
@@ -471,8 +475,6 @@ std::optional<Scene>
 					);
 				const std::int16_t LightmapTextureIndex
 					= CurLightmap.LightmapIndex;
-
-				const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
 				for( const auto& CurMaterial :
 					 SBSPHeap.GetBlock(CurLightmap.Materials) )
@@ -504,8 +506,7 @@ std::optional<Scene>
 						// Add the offset needed to begin indexing into
 						// this particular part of the vertex buffer,
 						// used when drawing
-						CurLightmapMesh.VertexIndexOffset
-							= VertexHeapIndexOffset;
+						CurLightmapMesh.VertexIndexOffset = VertexHeapIndexEnd;
 
 						CurLightmapMesh.ShaderTag = CurMaterial.Shader.TagID;
 
@@ -527,34 +528,22 @@ std::optional<Scene>
 								= CurLightmapVertexData;
 						}
 
-						VertexHeapIndexOffset += CurVertexData.size();
+						VertexHeapIndexEnd += CurVertexData.size();
 					}
 
 					//// Index Buffer data
-					{
-						const std::span<const std::byte> CurIndexData
-							= std::as_bytes(Surfaces.subspan(
-								CurMaterial.SurfacesIndexStart,
-								CurMaterial.SurfacesCount
-							));
-
-						CurLightmapMesh.IndexData = CurIndexData;
-
-						CurLightmapMesh.IndexCount
-							= CurMaterial.SurfacesCount * 3;
-
-						CurLightmapMesh.IndexOffset = IndexHeapIndexOffset;
-
-						// Increment offsets
-						IndexHeapIndexOffset += CurMaterial.SurfacesCount * 3;
-					}
+					CurLightmapMesh.IndexOffset = SBSPIndexHeapEnd;
+					CurLightmapMesh.IndexCount  = CurMaterial.SurfacesCount * 3;
+					SBSPIndexHeapEnd += CurMaterial.SurfacesCount * 3;
 				}
 			}
+
+			IndexHeapIndexEnd += ScenarioBSP.Surfaces.Count * 3;
 		}
 
 		//// Create Vertex buffer heap
 		vk::BufferCreateInfo BSPVertexBufferInfo = {};
-		BSPVertexBufferInfo.size = VertexHeapIndexOffset * sizeof(Blam::Vertex);
+		BSPVertexBufferInfo.size  = VertexHeapIndexEnd * sizeof(Blam::Vertex);
 		BSPVertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer
 								  | vk::BufferUsageFlagBits::eTransferDst;
 
@@ -584,7 +573,7 @@ std::optional<Scene>
 		vk::BufferCreateInfo BSPLightmapVertexBufferInfo = {};
 
 		BSPLightmapVertexBufferInfo.size
-			= VertexHeapIndexOffset * sizeof(Blam::LightmapVertex);
+			= VertexHeapIndexEnd * sizeof(Blam::LightmapVertex);
 		BSPLightmapVertexBufferInfo.usage
 			= vk::BufferUsageFlagBits::eVertexBuffer
 			| vk::BufferUsageFlagBits::eTransferDst;
@@ -613,7 +602,7 @@ std::optional<Scene>
 
 		//// Create Index buffer heap
 		vk::BufferCreateInfo BSPIndexBufferInfo = {};
-		BSPIndexBufferInfo.size  = IndexHeapIndexOffset * sizeof(std::uint16_t);
+		BSPIndexBufferInfo.size  = IndexHeapIndexEnd * sizeof(std::uint16_t);
 		BSPIndexBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer
 								 | vk::BufferUsageFlagBits::eTransferDst;
 
@@ -679,12 +668,30 @@ std::optional<Scene>
 				NewScene.BSPLightmapVertexBuffer.get(),
 				CurLightmapMesh.VertexIndexOffset * sizeof(Blam::LightmapVertex)
 			);
+		}
 
-			TargetRenderer.GetStreamBuffer().QueueBufferUpload(
-				std::as_bytes(CurLightmapMesh.IndexData),
-				NewScene.BSPIndexBuffer.get(),
-				CurLightmapMesh.IndexOffset * sizeof(std::uint16_t)
-			);
+		// Index Buffer
+		{
+			std::uint32_t IndexOffset = 0;
+			for( const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP&
+					 CurSBSP : TargetWorld.GetMapFile().GetScenarioBSPs() )
+			{
+				const Blam::VirtualHeap SBSPHeap
+					= CurSBSP.GetSBSPHeap(TargetWorld.GetMapFile().GetMapData()
+					);
+
+				const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&
+					ScenarioBSP
+					= CurSBSP.GetSBSP(SBSPHeap);
+
+				const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
+
+				TargetRenderer.GetStreamBuffer().QueueBufferUpload(
+					std::as_bytes(Surfaces), NewScene.BSPIndexBuffer.get(),
+					IndexOffset
+				);
+				IndexOffset += Surfaces.size_bytes();
+			}
 		}
 	}
 
