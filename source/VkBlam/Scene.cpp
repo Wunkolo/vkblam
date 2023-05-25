@@ -771,8 +771,7 @@ std::optional<Scene>
 			}
 		};
 
-		TagVisitors.push_back({});
-		Blam::TagVisitorProc& BitmapLoader = TagVisitors.back();
+		Blam::TagVisitorProc& BitmapLoader = TagVisitors.emplace_back();
 
 		BitmapLoader.VisitClass = Blam::TagClass::Bitmap;
 
@@ -808,8 +807,7 @@ std::optional<Scene>
 			);
 		};
 
-		TagVisitors.push_back({});
-		Blam::TagVisitorProc& BitmapCommitter = TagVisitors.back();
+		Blam::TagVisitorProc& BitmapCommitter = TagVisitors.emplace_back();
 
 		BitmapCommitter.VisitClass = Blam::TagClass::Bitmap;
 
@@ -1150,8 +1148,8 @@ std::optional<Scene>
 			);
 		};
 
-		TagVisitors.push_back({});
-		Blam::TagVisitorProc& ShaderEnvironmentProc = TagVisitors.back();
+		Blam::TagVisitorProc& ShaderEnvironmentProc
+			= TagVisitors.emplace_back();
 
 		ShaderEnvironmentProc.VisitClass = Blam::TagClass::ShaderEnvironment;
 
