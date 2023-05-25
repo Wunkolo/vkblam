@@ -48,7 +48,7 @@ StreamBuffer::StreamBuffer(
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, FlushSemaphore.get(),
-			"Staging Ring Buffer Semaphore"
+			"StreamBuffer: Flush Semaphore"
 		);
 	}
 
@@ -75,7 +75,7 @@ StreamBuffer::StreamBuffer(
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, RingBuffer.get(),
-			"Staging Ring Buffer( %s )",
+			"StreamBuffer: Ring Buffer( %s )",
 			Common::FormatByteCount(BufferSize).c_str()
 		);
 	}
@@ -129,7 +129,7 @@ StreamBuffer::StreamBuffer(
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, RingBufferMemory.get(),
-			"Staging Ring Buffer Memory( %s )",
+			"StreamBuffer: Ring Buffer Memory( %s )",
 			Common::FormatByteCount(BufferSize).c_str()
 		);
 
@@ -191,6 +191,11 @@ StreamBuffer::StreamBuffer(
 			);
 			/// ??? should we exit the program
 		}
+
+		Vulkan::SetObjectName(
+			VulkanContext.LogicalDevice, CommandPool.get(),
+			"StreamBuffer: Command Pool"
+		);
 	}
 }
 
@@ -398,6 +403,11 @@ std::uint64_t StreamBuffer::Flush()
 			);
 			/// ??? should we exit the program
 		}
+
+		Vulkan::SetObjectName(
+			VulkanContext.LogicalDevice, FlushCommandBuffer,
+			"StreamBuffer: Command Buffer %zu", CommandBuffers.size()
+		);
 	}
 
 	vk::CommandBufferBeginInfo BeginInfo;
