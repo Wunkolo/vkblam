@@ -134,6 +134,18 @@ add_custom_target(
 	DEPENDS ${SPIRV_BINARY_FILES}
 )
 
+cmrc_add_resource_library(
+	vkblam-resources
+	ALIAS Resource::vkblam
+	NAMESPACE vkblam
+	WHENCE ${PROJECT_BINARY_DIR}
+	${SPIRV_BINARY_FILES}
+)
+add_dependencies(vkblam-resources shaders)
+
+# LTO by default
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 ### common
 add_library(
 	common
@@ -198,15 +210,6 @@ target_link_libraries(
 )
 
 ### vkblam
-
-cmrc_add_resource_library(
-	vkblam-resources
-	ALIAS Resource::vkblam
-	NAMESPACE vkblam
-	WHENCE ${PROJECT_BINARY_DIR}
-	${SPIRV_BINARY_FILES}
-)
-add_dependencies(vkblam-resources shaders)
 
 add_executable(
 	vkblam
