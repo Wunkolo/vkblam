@@ -9,6 +9,7 @@
 #include <vulkan/vulkan_format_traits.hpp>
 #include <vulkan/vulkan_hash.hpp>
 
+#include <cstdint>
 namespace Vulkan
 {
 // Lightweight object to encapsulate everything minimally needed to interface
