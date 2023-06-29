@@ -1067,7 +1067,36 @@ struct Tag<TagClass::Scenario>
 	std::byte _Padding124[0xE0];
 
 	TagBlock<std::array<char, 32>> ObjectNames;
-	TagBlock<void> /*Todo*/        Scenery;
+
+	struct SceneryEntry
+	{
+		std::uint16_t TypeIndex;
+		std::uint16_t NameIndex;
+
+		// Mask: 1:Auto, 2Easy, 4:Normal, 8:Hard
+		std::uint16_t NotPlaced;
+
+		// Determines which model permutaiton to use
+		std::uint16_t DesiredPermutation;
+
+		Vector3f Position;
+		Vector3f Rotation;
+
+		std::uint16_t Unknown20;
+		std::uint16_t Unknown22;
+
+		std::uint32_t Unknown24;
+		std::uint32_t Unknown28;
+		std::uint32_t Unknown2C;
+		std::uint32_t Unknown30;
+		std::uint32_t Unknown34;
+		std::uint32_t Unknown38;
+		std::uint32_t Unknown3C;
+		std::uint32_t Unknown40;
+		std::uint32_t Unknown44;
+	};
+	static_assert(sizeof(SceneryEntry) == 0x48);
+	TagBlock<SceneryEntry> Scenery;
 
 	// A lot of the palettes are really just TagReference aligned up to a
 	// size of 0x30. So this is just a utility-wrapper for TagReference that
@@ -1078,22 +1107,31 @@ struct Tag<TagClass::Scenario>
 	};
 	static_assert(sizeof(PaletteEntry) == 0x30);
 
-	TagBlock<PaletteEntry>  SceneryPalette;
+	TagBlock<PaletteEntry> SceneryPalette;
+
 	TagBlock<void> /*Todo*/ Bipeds;
 	TagBlock<PaletteEntry>  BipedPalette;
+
 	TagBlock<void> /*Todo*/ Vehicles;
 	TagBlock<PaletteEntry>  VehiclePalette;
+
 	TagBlock<void> /*Todo*/ Equipment;
 	TagBlock<PaletteEntry>  EquipmentPalette;
+
 	TagBlock<void> /*Todo*/ Weapons;
 	TagBlock<PaletteEntry>  WeaponPalette;
+
 	TagBlock<void> /*Todo*/ DeviceGroups;
+
 	TagBlock<void> /*Todo*/ Machines;
 	TagBlock<PaletteEntry>  MachinePalette;
+
 	TagBlock<void> /*Todo*/ Controls;
 	TagBlock<PaletteEntry>  ControlPalette;
+
 	TagBlock<void> /*Todo*/ LightFixtures;
 	TagBlock<PaletteEntry>  LightFixturePalette;
+
 	TagBlock<void> /*Todo*/ SoundScenery;
 	TagBlock<PaletteEntry>  SoundSceneryPalette;
 
