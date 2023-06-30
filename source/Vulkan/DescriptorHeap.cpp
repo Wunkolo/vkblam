@@ -14,6 +14,8 @@ DescriptorHeap::DescriptorHeap(const Vulkan::Context& VulkanContext)
 
 std::optional<vk::DescriptorSet> DescriptorHeap::AllocateDescriptorSet()
 {
+	std::scoped_lock DescriptorHeapLock{*DescriptorHeapMutex};
+
 	// Find a free slot
 	const auto FreeSlot
 		= std::find(AllocationMap.begin(), AllocationMap.end(), false);
@@ -62,6 +64,7 @@ std::optional<vk::DescriptorSet> DescriptorHeap::AllocateDescriptorSet()
 
 bool DescriptorHeap::FreeDescriptorSet(vk::DescriptorSet Set)
 {
+	std::scoped_lock DescriptorHeapLock{*DescriptorHeapMutex};
 	// Find the descriptor set
 	const auto Found = std::find_if(
 		DescriptorSets.begin(), DescriptorSets.end(),

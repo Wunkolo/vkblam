@@ -2,6 +2,8 @@
 
 #include <Vulkan/VulkanAPI.hpp>
 
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <span>
 
@@ -17,6 +19,9 @@ class DescriptorHeap
 {
 private:
 	const Vulkan::Context& VulkanContext;
+
+	std::unique_ptr<std::mutex> DescriptorHeapMutex
+		= std::make_unique<std::mutex>();
 
 	vk::UniqueDescriptorPool             DescriptorPool;
 	vk::UniqueDescriptorSetLayout        DescriptorSetLayout;
