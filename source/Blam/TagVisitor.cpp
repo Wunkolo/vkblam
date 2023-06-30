@@ -74,6 +74,7 @@ void DispatchTagVisitors(
 
 			if( CurVisitor->Parallel )
 			{
+				std::mutex Barrier;
 				for( auto& Thread :
 					 std::span(ThreadPool).first(CurVisitorThreads) )
 				{
@@ -82,8 +83,6 @@ void DispatchTagVisitors(
 
 					if( TagsThisThread == 0 )
 						continue;
-
-					std::mutex Barrier;
 
 					auto ThreadProc
 						= [&Barrier](
