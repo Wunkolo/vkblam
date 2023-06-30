@@ -776,8 +776,10 @@ std::optional<Scene>
 		BitmapLoader.VisitClass = Blam::TagClass::Bitmap;
 
 		BitmapLoader.VisitTags
-			= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
-				  const Blam::MapFile&                 Map) -> void {
+			= [CreateBitmap](
+				  std::span<const Blam::TagIndexEntry> TagIndexEntries,
+				  const Blam::MapFile&                 Map
+			  ) -> void {
 			for( const auto& TagIndexEntry : TagIndexEntries )
 			{
 				const auto& CurBitmap
@@ -1021,8 +1023,10 @@ std::optional<Scene>
 			};
 
 			BitmapCommitter.VisitTags
-				= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
-					  const Blam::MapFile&                 Map) -> void {
+				= [StreamBitmap](
+					  std::span<const Blam::TagIndexEntry> TagIndexEntries,
+					  const Blam::MapFile&                 Map
+				  ) -> void {
 				for( const auto& TagIndexEntry : TagIndexEntries )
 				{
 					const auto& CurBitmap
@@ -1158,8 +1162,10 @@ std::optional<Scene>
 			   Blam::TagClass::Bitmap};
 
 		ShaderEnvironmentProc.VisitTags
-			= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
-				  const Blam::MapFile&                 Map) -> void {
+			= [CreateShaderEnvironmentDescriptor](
+				  std::span<const Blam::TagIndexEntry> TagIndexEntries,
+				  const Blam::MapFile&                 Map
+			  ) -> void {
 			for( const auto& TagIndexEntry : TagIndexEntries )
 			{
 				const auto& CurShader
