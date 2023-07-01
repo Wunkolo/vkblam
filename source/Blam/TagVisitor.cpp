@@ -64,19 +64,23 @@ void DispatchTagVisitors(
 		{
 			auto TagList = std::span(Tags.at(CurVisitor->VisitClass));
 
-			const std::size_t TagsPerThread
-				= std::max<std::size_t>(TagList.size() / ThreadCount, 1);
-
-			// If there are less tags than threads, then emit a smaller amount
-			// of threads
-			const std::size_t CurVisitorThreads
-				= std::min<std::size_t>(TagsPerThread, TagList.size());
-
 			if( CurVisitor->Parallel )
 			{
-				std::mutex Barrier;
-				for( auto& Thread :
-					 std::span(ThreadPool).first(CurVisitorThreads) )
+				// If there are less tags than threads, then emit a smaller
+				// amount of threads
+				const std::size_t CurThreadCount
+					= std::min<std::size_t>(ThreadCount, TagList.size());
+
+				// Number of tags per thread, rounded up
+				// In the case of an uneven amount of divisions, there will be
+				// at least one thread doing a bit less work.
+				const std::size_t TagsPerThread
+					= (TagList.size() + (CurThreadCount - 1)) / CurThreadCount;
+
+				const auto VisitorThreads
+					= std::span(ThreadPool).first(CurThreadCount);
+
+				for( auto& Thread : VisitorThreads )
 				{
 					const std::size_t TagsThisThread
 						= std::min(TagsPerThread, TagList.size());
@@ -85,23 +89,20 @@ void DispatchTagVisitors(
 						continue;
 
 					auto ThreadProc
-						= [&Barrier](
-							  const Blam::TagVisitorProc*          Visitor,
-							  const Blam::MapFile&                 Map,
-							  std::span<const Blam::TagIndexEntry> Tags
-						  ) -> void {
-						std::scoped_lock Lock{Barrier};
-						Visitor->VisitTags(Tags, Map);
-					};
+						= [](const Blam::TagVisitorProc*          Visitor,
+							 const Blam::MapFile&                 Map,
+							 std::span<const Blam::TagIndexEntry> Tags
+						  ) -> void { Visitor->VisitTags(Tags, Map); };
+
 					Thread = std::thread(
 						ThreadProc, CurVisitor, std::ref(Map),
-						TagList.first(TagsPerThread)
+						TagList.first(TagsThisThread)
 					);
-					TagList = TagList.subspan(TagsPerThread);
+
+					TagList = TagList.subspan(TagsThisThread);
 				}
 
-				for( auto& Thread :
-					 std::span(ThreadPool).first(CurVisitorThreads) )
+				for( auto& Thread : VisitorThreads )
 				{
 					Thread.join();
 				}
