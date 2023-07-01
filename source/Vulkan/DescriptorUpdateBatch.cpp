@@ -8,6 +8,8 @@ namespace Vulkan
 
 void DescriptorUpdateBatch::Flush()
 {
+	std::scoped_lock UpdateBatchLock{UpdateBatchMutex};
+
 	VulkanContext.LogicalDevice.updateDescriptorSets(
 		{std::span(DescriptorWrites.get(), DescriptorWriteEnd)},
 		{std::span(DescriptorCopies.get(), DescriptorCopyEnd)}
@@ -22,6 +24,8 @@ void DescriptorUpdateBatch::AddImage(
 	vk::ImageView ImageView, vk::ImageLayout ImageLayout
 )
 {
+	std::scoped_lock UpdateBatchLock{UpdateBatchMutex};
+
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
 		Flush();
@@ -45,6 +49,7 @@ void DescriptorUpdateBatch::AddSampler(
 	vk::Sampler Sampler
 )
 {
+	std::scoped_lock UpdateBatchLock{UpdateBatchMutex};
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
 		Flush();
@@ -68,6 +73,7 @@ void DescriptorUpdateBatch::AddImageSampler(
 	vk::ImageView ImageView, vk::Sampler Sampler, vk::ImageLayout ImageLayout
 )
 {
+	std::scoped_lock UpdateBatchLock{UpdateBatchMutex};
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
 		Flush();
@@ -91,6 +97,7 @@ void DescriptorUpdateBatch::AddBuffer(
 	vk::Buffer Buffer, vk::DeviceSize Offset, vk::DeviceSize Size
 )
 {
+	std::scoped_lock UpdateBatchLock{UpdateBatchMutex};
 	if( DescriptorWriteEnd >= DescriptorWriteMax )
 	{
 		Flush();
@@ -116,6 +123,7 @@ void DescriptorUpdateBatch::CopyBinding(
 	std::uint8_t DescriptorCount
 )
 {
+	std::scoped_lock UpdateBatchLock{UpdateBatchMutex};
 	if( DescriptorCopyEnd >= DescriptorCopyMax )
 	{
 		Flush();
@@ -129,24 +137,26 @@ void DescriptorUpdateBatch::CopyBinding(
 	++DescriptorCopyEnd;
 }
 
-std::optional<DescriptorUpdateBatch> DescriptorUpdateBatch::Create(
+std::unique_ptr<DescriptorUpdateBatch> DescriptorUpdateBatch::Create(
 	const Vulkan::Context& VulkanContext, std::size_t DescriptorWriteMax,
 	std::size_t DescriptorCopyMax
 )
 
 {
-	DescriptorUpdateBatch NewDescriptorUpdateBatch(
-		VulkanContext, DescriptorWriteMax, DescriptorCopyMax
+	std::unique_ptr<DescriptorUpdateBatch> NewDescriptorUpdateBatch(
+		new DescriptorUpdateBatch(
+			VulkanContext, DescriptorWriteMax, DescriptorCopyMax
+		)
 	);
 
-	NewDescriptorUpdateBatch.DescriptorInfos
+	NewDescriptorUpdateBatch->DescriptorInfos
 		= std::make_unique<DescriptorInfoUnion[]>(DescriptorWriteMax);
-	NewDescriptorUpdateBatch.DescriptorWrites
+	NewDescriptorUpdateBatch->DescriptorWrites
 		= std::make_unique<vk::WriteDescriptorSet[]>(DescriptorWriteMax);
-	NewDescriptorUpdateBatch.DescriptorCopies
+	NewDescriptorUpdateBatch->DescriptorCopies
 		= std::make_unique<vk::CopyDescriptorSet[]>(DescriptorCopyMax);
 
-	return {std::move(NewDescriptorUpdateBatch)};
+	return NewDescriptorUpdateBatch;
 }
 
 } // namespace Vulkan

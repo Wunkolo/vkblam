@@ -129,14 +129,9 @@ std::optional<Renderer> Renderer::Create(
 		Vulkan::ShaderModuleCache::Create(VulkanContext).value()
 	);
 
-	NewRenderer.DescriptorUpdateBatch
-		= std::make_unique<Vulkan::DescriptorUpdateBatch>(
-			Vulkan::DescriptorUpdateBatch::Create(
-				VulkanContext, Config.DescriptorWriteMax,
-				Config.DescriptorCopyMax
-			)
-				.value()
-		);
+	NewRenderer.DescriptorUpdateBatch = Vulkan::DescriptorUpdateBatch::Create(
+		VulkanContext, Config.DescriptorWriteMax, Config.DescriptorCopyMax
+	);
 
 	return {std::move(NewRenderer)};
 }

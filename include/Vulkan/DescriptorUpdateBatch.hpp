@@ -3,7 +3,7 @@
 #include <Vulkan/VulkanAPI.hpp>
 
 #include <memory>
-#include <optional>
+#include <mutex>
 #include <variant>
 
 namespace Vulkan
@@ -21,6 +21,8 @@ private:
 
 	using DescriptorInfoUnion = std::variant<
 		vk::DescriptorImageInfo, vk::DescriptorBufferInfo, vk::BufferView>;
+
+	std::recursive_mutex UpdateBatchMutex;
 
 	// Todo: Maybe some kind of hash so that these structures can be re-used
 	// among descriptor writes.
@@ -41,10 +43,6 @@ private:
 	}
 
 public:
-	~DescriptorUpdateBatch() = default;
-
-	DescriptorUpdateBatch(DescriptorUpdateBatch&&) = default;
-
 	void Flush();
 
 	void AddImage(
@@ -75,7 +73,7 @@ public:
 		std::uint8_t TargetArrayElement = 0, std::uint8_t DescriptorCount = 1
 	);
 
-	static std::optional<DescriptorUpdateBatch> Create(
+	static std::unique_ptr<DescriptorUpdateBatch> Create(
 		const Vulkan::Context& VulkanContext,
 		std::size_t            DescriptorWriteMax = 256,
 		std::size_t            DescriptorCopyMax  = 256
