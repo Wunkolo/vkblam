@@ -209,6 +209,8 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 	vk::DeviceSize Offset
 )
 {
+	std::scoped_lock StreamBufferLock{StreamBufferMutex};
+
 	if( Data.empty() )
 	{
 		return FlushTick;
@@ -266,6 +268,8 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 	vk::ImageLayout DstLayout
 )
 {
+	std::scoped_lock StreamBufferLock{StreamBufferMutex};
+
 	if( Data.empty() )
 	{
 		return FlushTick;
@@ -339,6 +343,8 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 
 std::uint64_t StreamBuffer::Flush()
 {
+	std::scoped_lock StreamBufferLock{StreamBufferMutex};
+
 	if( RingOffset == 0 )
 	{
 		return FlushTick;

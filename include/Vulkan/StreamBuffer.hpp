@@ -2,7 +2,9 @@
 
 #include <Vulkan/VulkanAPI.hpp>
 
-#include <optional>
+#include <atomic>
+#include <memory>
+#include <mutex>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -18,6 +20,8 @@ class StreamBuffer
 private:
 	const Vulkan::Context& VulkanContext;
 	const vk::DeviceSize   BufferSize;
+
+	std::recursive_mutex StreamBufferMutex;
 
 	// This is a timeline semaphore with a value that increases with each flush.
 	vk::UniqueSemaphore FlushSemaphore;
