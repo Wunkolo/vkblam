@@ -162,6 +162,9 @@ int main(int argc, char* argv[])
 		std::vector<vk::PhysicalDevice> PhysicalDevices
 			= std::move(EnumerateResult.value);
 
+		std::vector<vk::PhysicalDevice>::iterator PartitionEnd
+			= PhysicalDevices.end();
+
 		// Prefer Discrete GPUs
 		const auto IsDiscrete
 			= [](const vk::PhysicalDevice& PhysicalDevice) -> bool {
@@ -169,8 +172,8 @@ int main(int argc, char* argv[])
 				== vk::PhysicalDeviceType::eDiscreteGpu;
 		};
 
-		std::partition(
-			PhysicalDevices.begin(), PhysicalDevices.end(), IsDiscrete
+		PartitionEnd = std::stable_partition(
+			PhysicalDevices.begin(), PartitionEnd, IsDiscrete
 		);
 
 		// Pick the "best" out of all of the previous criteria
