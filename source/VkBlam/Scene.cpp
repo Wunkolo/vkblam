@@ -746,9 +746,11 @@ std::optional<Scene>
 		};
 
 		const auto CreateBitmap
-			= [&](const Blam::TagIndexEntry&               TagEntry,
+			= [&, CreateBitmapImage](
+				  const Blam::TagIndexEntry&               TagEntry,
 				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap,
-				  const Blam::MapFile&                     Map) -> void {
+				  const Blam::MapFile&                     Map
+			  ) -> void {
 			// std::printf("%s\n",
 			// CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
 			for( std::size_t CurSubTextureIdx = 0;
@@ -757,9 +759,14 @@ std::optional<Scene>
 				const auto& CurSubTexture
 					= Map.TagHeap.GetBlock(Bitmap.Bitmaps)[CurSubTextureIdx];
 
+				// Create bitmap and descriptor set
 				auto& BitmapDest
 					= NewScene.BitmapHeap
 						  .Bitmaps[TagEntry.TagID][CurSubTextureIdx];
+
+				auto& BitmapDescriptorDest
+					= NewScene.BitmapHeap
+						  .Sets[TagEntry.TagID][CurSubTextureIdx];
 
 				CreateBitmapImage(BitmapDest, CurSubTexture);
 
@@ -811,6 +818,7 @@ std::optional<Scene>
 
 		Blam::TagVisitorProc& BitmapCommitter = TagVisitors.emplace_back();
 
+		BitmapCommitter.Parallel   = true;
 		BitmapCommitter.VisitClass = Blam::TagClass::Bitmap;
 
 		// Allocate and bind memory for all bitmaps
@@ -847,9 +855,11 @@ std::optional<Scene>
 			// Todo: This would be the draft of a bitmap manager's stream
 			// function
 			const auto StreamBitmapImage =
-				[&](VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
+				[&TargetRenderer](
+					VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
 					Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry,
-					std::span<const std::byte> PixelData) -> bool {
+					std::span<const std::byte>                     PixelData
+				) -> bool {
 				// Upload image data
 				const std::size_t MipCount
 					= std::max<std::uint16_t>(BitmapEntry.MipmapCount, 1);
@@ -936,9 +946,10 @@ std::optional<Scene>
 				BitmapImageViewInfo.subresourceRange.layerCount = LayerCount;
 
 				if( auto CreateResult
-					= VulkanContext.LogicalDevice.createImageViewUnique(
-						BitmapImageViewInfo
-					);
+					= TargetRenderer.GetVulkanContext()
+						  .LogicalDevice.createImageViewUnique(
+							  BitmapImageViewInfo
+						  );
 					CreateResult.result == vk::Result::eSuccess )
 				{
 					TargetBitmap.View = std::move(CreateResult.value);
@@ -946,7 +957,7 @@ std::optional<Scene>
 				else
 				{
 					std::fprintf(
-						stderr, "Error bitmap view: %s\n",
+						stderr, "Error creating bitmap view: %s\n",
 						vk::to_string(CreateResult.result).c_str()
 					);
 					return false;
@@ -955,8 +966,10 @@ std::optional<Scene>
 			};
 
 			const auto StreamBitmap
-				= [&](const Blam::TagIndexEntry&               TagEntry,
-					  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap) -> void {
+				= [&NewScene, &TargetWorld, &TargetRenderer, StreamBitmapImage](
+					  const Blam::TagIndexEntry&               TagEntry,
+					  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap
+				  ) -> void {
 				for( std::size_t CurSubTextureIdx = 0;
 					 CurSubTextureIdx < Bitmap.Bitmaps.Count;
 					 ++CurSubTextureIdx )
@@ -973,13 +986,14 @@ std::optional<Scene>
 					);
 
 					auto& BitmapDest
-						= NewScene.BitmapHeap
-							  .Bitmaps[TagEntry.TagID][CurSubTextureIdx];
+						= NewScene.BitmapHeap.Bitmaps.at(TagEntry.TagID)
+							  .at(CurSubTextureIdx);
 
 					StreamBitmapImage(BitmapDest, CurSubTexture, PixelData);
 
 					Vulkan::SetObjectName(
-						VulkanContext.LogicalDevice, BitmapDest.View.get(),
+						TargetRenderer.GetVulkanContext().LogicalDevice,
+						BitmapDest.View.get(),
 						"VkBlam::Scene: Bitmap View %08X[%2zu] | %s",
 						TagEntry.TagID, CurSubTextureIdx,
 						TargetWorld.GetMapFile()
@@ -989,8 +1003,8 @@ std::optional<Scene>
 
 					// Create descriptor set
 					vk::DescriptorSet& TargetSet
-						= NewScene.BitmapHeap
-							  .Sets[TagEntry.TagID][CurSubTextureIdx];
+						= NewScene.BitmapHeap.Sets.at(TagEntry.TagID)
+							  .at(CurSubTextureIdx);
 
 					if( auto NewSet = NewScene.DebugDrawDescriptorPool
 										  ->AllocateDescriptorSet();
@@ -1007,7 +1021,8 @@ std::optional<Scene>
 					}
 
 					Vulkan::SetObjectName(
-						VulkanContext.LogicalDevice, TargetSet,
+						TargetRenderer.GetVulkanContext().LogicalDevice,
+						TargetSet,
 						"VkBlam::Scene: Bitmap Descriptor Set %08X[%2zu] | %s",
 						TagEntry.TagID, CurSubTextureIdx,
 						TargetWorld.GetMapFile()
@@ -1029,11 +1044,15 @@ std::optional<Scene>
 				  ) -> void {
 				for( const auto& TagIndexEntry : TagIndexEntries )
 				{
-					const auto& CurBitmap
+					const auto CurBitmap
 						= Map.GetTag<Blam::TagClass::Bitmap>(TagIndexEntry.TagID
 						);
 					StreamBitmap(TagIndexEntry, *CurBitmap);
 				}
+			};
+
+			BitmapCommitter.EndVisits = [&](const Blam::MapFile& Map) -> void {
+				TargetRenderer.GetDescriptorUpdateBatch().Flush();
 			};
 		}
 	}
@@ -1168,7 +1187,7 @@ std::optional<Scene>
 			  ) -> void {
 			for( const auto& TagIndexEntry : TagIndexEntries )
 			{
-				const auto& CurShader
+				const auto CurShader
 					= Map.GetTag<Blam::TagClass::ShaderEnvironment>(
 						TagIndexEntry.TagID
 					);
