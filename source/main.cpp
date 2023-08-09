@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 {
 	using namespace Common::Literals;
 
-	if( argc < 3 )
+	if( argc < 2 )
 	{
 		// Not enough arguments
 		return EXIT_FAILURE;
@@ -85,7 +85,32 @@ int main(int argc, char* argv[])
 #endif
 
 	std::filesystem::path MapPath(argv[1]);
-	std::filesystem::path BitmapPath(argv[2]);
+
+	std::filesystem::path BitmapPath;
+	if( argc >= 3 )
+	{
+		BitmapPath = argv[2];
+	}
+	else
+	{
+		// Bitmap path not specified, attempting to autodetect
+		BitmapPath = MapPath;
+		BitmapPath.replace_filename(L"bitmaps.map");
+		std::printf(
+			"Bitmap path not specified, trying '%s'",
+			BitmapPath.string().c_str()
+		);
+
+		std::error_code ErrorCode;
+		if( !std::filesystem::exists(BitmapPath, ErrorCode) )
+		{
+			std::printf(
+				"Error accessing %s: %s", BitmapPath.string().c_str(),
+				ErrorCode.message().c_str()
+			);
+			return EXIT_FAILURE;
+		}
+	}
 
 	auto MapFile    = mio::mmap_source(MapPath.c_str());
 	auto BitmapFile = mio::mmap_source(BitmapPath.c_str());
