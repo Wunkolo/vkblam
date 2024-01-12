@@ -80,8 +80,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
 )
 {
 	return DebugMessengerCallback(
-		vk::DebugUtilsMessageSeverityFlagBitsEXT{Severity},
-		vk::DebugUtilsMessageTypeFlagsEXT{Type},
+		vk::DebugUtilsMessageSeverityFlagBitsEXT(Severity),
+		vk::DebugUtilsMessageTypeFlagsEXT(Type),
 		reinterpret_cast<const vk::DebugUtilsMessengerCallbackDataEXT*>(
 			CallbackData
 		),
