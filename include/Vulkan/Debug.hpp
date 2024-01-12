@@ -4,16 +4,6 @@
 #include <fmt/core.h>
 #include <string_view>
 
-#ifdef _MSC_VER
-#include <sal.h>
-#define VK_PRINTF_FORMAT _Printf_format_string_
-#define VK_PRINTF_FORMAT_ATTR(format_arg_index, dots_arg_index)
-#else
-#define VK_PRINTF_FORMAT
-#define VK_PRINTF_FORMAT_ATTR(format_arg_index, dots_arg_index)                \
-	__attribute__((__format__(__printf__, format_arg_index, dots_arg_index)))
-#endif
-
 namespace Vulkan
 {
 
