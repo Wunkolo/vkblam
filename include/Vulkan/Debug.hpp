@@ -17,6 +17,8 @@
 namespace Vulkan
 {
 
+vk::UniqueDebugUtilsMessengerEXT CreateDebugMessenger(vk::Instance Instance);
+
 void SetObjectName(
 	vk::Device Device, vk::ObjectType ObjectType, const void* ObjectHandle,
 	std::string_view ObjectName

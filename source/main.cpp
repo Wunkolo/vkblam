@@ -178,6 +178,10 @@ int main(int argc, char* argv[])
 	}
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(Instance.get());
 
+	//// Register debug messenger
+	const vk::UniqueDebugUtilsMessengerEXT DebugMessenger
+		= Vulkan::CreateDebugMessenger(Instance.get());
+
 	//// Pick physical device
 	vk::PhysicalDevice PhysicalDevice = {};
 
