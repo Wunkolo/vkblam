@@ -70,6 +70,18 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugMessengerCallback(
 		vk::to_string(Type).c_str(), CallbackData->pMessage
 	);
 
+	switch( Severity )
+	{
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
+		break;
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
+		break;
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
+		break;
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
+		break;
+	}
+
 	return false;
 }
 
