@@ -7,3 +7,6 @@
 [submodule "external/glm"]
 	path = external/glm
 	url = git@github.com:g-truc/glm.git
+[submodule "external/fmt"]
+	path = external/fmt
+	url = git@github.com:fmtlib/fmt.git

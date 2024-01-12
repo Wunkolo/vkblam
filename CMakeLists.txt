@@ -84,6 +84,18 @@ find_package(
 
 find_package( Threads REQUIRED )
 
+#cmrc
+include( external/cmrc/CMakeRC.cmake )
+
+
+#fmt
+find_package(fmt REQUIRED)
+if( fmt_FOUND )
+else()
+	add_subdirectory( external/fmt EXCLUDE_FROM_ALL )
+endif()
+
+#glm
 find_package( glm 0.9.9.9 QUIET )
 
 if( glm_FOUND )
@@ -93,9 +105,6 @@ endif()
 
 # mio
 add_subdirectory( external/mio EXCLUDE_FROM_ALL )
-
-#cmrc
-include( external/cmrc/CMakeRC.cmake )
 
 ### shaders build target
 file(
@@ -245,6 +254,7 @@ target_link_libraries(
 	blam
 	Vulkan::Vulkan
 	mio::mio
+	fmt
 	glm
 	${CMAKE_DL_LIBS}
 )
