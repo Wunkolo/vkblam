@@ -2,9 +2,6 @@
 
 #include <Vulkan/VulkanAPI.hpp>
 
-#include <type_traits>
-#include <utility>
-
 #ifdef _MSC_VER
 #include <sal.h>
 #define VK_PRINTF_FORMAT _Printf_format_string_
@@ -24,10 +21,10 @@ void SetObjectName(
 	VK_PRINTF_FORMAT const char* Format, ...
 );
 
-template<
-	typename T,
-	typename = std::enable_if_t<vk::isVulkanHandleType<T>::value == true>,
-	typename... ArgsT>
+template<typename T>
+concept VulkanHandleType = vk::isVulkanHandleType<T>::value;
+
+template<VulkanHandleType T, typename... ArgsT>
 inline void SetObjectName(
 	vk::Device Device, const T ObjectHandle,
 	VK_PRINTF_FORMAT const char* Format, ArgsT&&... Args
