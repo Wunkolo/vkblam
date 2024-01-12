@@ -89,7 +89,7 @@ include( external/cmrc/CMakeRC.cmake )
 
 
 #fmt
-find_package(fmt REQUIRED)
+find_package(fmt QUIET)
 if( fmt_FOUND )
 else()
 	add_subdirectory( external/fmt EXCLUDE_FROM_ALL )
