@@ -64,10 +64,10 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugMessengerCallback(
 	const vk::DebugUtilsMessengerCallbackDataEXT* CallbackData, void* UserData
 )
 {
-	std::printf(
-		"[\033[%um%s\033[0m]\033[%um%s\033[0m: %s\n", SeverityColor(Severity),
-		vk::to_string(Severity).c_str(), MessageTypeColor(Type),
-		vk::to_string(Type).c_str(), CallbackData->pMessage
+	fmt::println(
+		"[\033[{}m{}\033[0m]\033[{}m{}\033[0m: {}", SeverityColor(Severity),
+		vk::to_string(Severity), MessageTypeColor(Type), vk::to_string(Type),
+		CallbackData->pMessage
 	);
 
 	switch( Severity )
