@@ -30,10 +30,13 @@ inline void SetObjectName(
 	VK_PRINTF_FORMAT const char* Format, ArgsT&&... Args
 )
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
 	SetObjectName(
 		Device, T::objectType, ObjectHandle, Format,
 		std::forward<ArgsT>(Args)...
 	);
+#pragma GCC diagnostic pop
 }
 
 VK_PRINTF_FORMAT_ATTR(3, 4)
@@ -64,9 +67,12 @@ public:
 	)
 		: CommandBuffer(TargetCommandBuffer)
 	{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
 		BeginDebugLabel(
 			CommandBuffer, Color, Format, std::forward<ArgsT>(Args)...
 		);
+#pragma GCC diagnostic pop
 	}
 
 	template<typename... ArgsT>
