@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Vulkan/VulkanAPI.hpp>
-#include <format>
+#include <fmt/core.h>
 #include <string_view>
 
 #ifdef _MSC_VER
@@ -38,34 +38,34 @@ concept VulkanHandleType = vk::isVulkanHandleType<T>::value;
 template<VulkanHandleType T, typename... ArgsT>
 inline void SetObjectName(
 	vk::Device Device, const T ObjectHandle,
-	std::format_string<ArgsT...> Format, ArgsT&&... Args
+	fmt::format_string<ArgsT...> Format, ArgsT&&... Args
 )
 {
 	SetObjectName(
 		Device, T::objectType, ObjectHandle,
-		std::format(Format, std::forward<ArgsT>(Args)...)
+		fmt::format(Format, std::forward<ArgsT>(Args)...)
 	);
 }
 
 template<typename... ArgsT>
 void BeginDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
-	std::format_string<ArgsT...> Format, ArgsT&&... Args
+	fmt::format_string<ArgsT...> Format, ArgsT&&... Args
 )
 {
 	BeginDebugLabel(
-		CommandBuffer, Color, std::format(Format, std::forward<ArgsT>(Args)...)
+		CommandBuffer, Color, fmt::format(Format, std::forward<ArgsT>(Args)...)
 	);
 }
 
 template<typename... ArgsT>
 void InsertDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
-	std::format_string<ArgsT...> Format, ArgsT&&... Args
+	fmt::format_string<ArgsT...> Format, ArgsT&&... Args
 )
 {
 	InsertDebugLabel(
-		CommandBuffer, Color, std::format(Format, std::forward<ArgsT>(Args)...)
+		CommandBuffer, Color, fmt::format(Format, std::forward<ArgsT>(Args)...)
 	);
 }
 
@@ -80,26 +80,26 @@ public:
 	template<typename... ArgsT>
 	DebugLabelScope(
 		vk::CommandBuffer           TargetCommandBuffer,
-		const std::array<float, 4>& Color, std::format_string<ArgsT...> Format,
+		const std::array<float, 4>& Color, fmt::format_string<ArgsT...> Format,
 		ArgsT&&... Args
 	)
 		: CommandBuffer(TargetCommandBuffer)
 	{
 		BeginDebugLabel(
 			CommandBuffer, Color,
-			std::format(Format, std::forward<ArgsT>(Args)...)
+			fmt::format(Format, std::forward<ArgsT>(Args)...)
 		);
 	}
 
 	template<typename... ArgsT>
 	void operator()(
-		const std::array<float, 4>& Color, std::format_string<ArgsT...> Format,
+		const std::array<float, 4>& Color, fmt::format_string<ArgsT...> Format,
 		ArgsT&&... Args
 	) const
 	{
 		InsertDebugLabel(
 			CommandBuffer, Color,
-			std::format(Format, std::forward<ArgsT>(Args)...)
+			fmt::format(Format, std::forward<ArgsT>(Args)...)
 		);
 	}
 
