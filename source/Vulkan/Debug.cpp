@@ -8,6 +8,56 @@
 
 namespace
 {
+std::uint8_t SeverityColor(vk::DebugUtilsMessageSeverityFlagBitsEXT Severity)
+{
+	switch( Severity )
+	{
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
+	{
+		// Dark Gray
+		return 90u;
+	}
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
+	{
+		// Light Gray
+		return 90u;
+	}
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
+	{
+		// Light Magenta
+		return 95u;
+	}
+	case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
+	{
+		// Light red
+		return 91u;
+	}
+	}
+	// Default Foreground Color
+	return 39u;
+}
+
+std::uint8_t MessageTypeColor(vk::DebugUtilsMessageTypeFlagsEXT MessageType)
+{
+	if( MessageType & vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral )
+	{
+		// Dim
+		return 2u;
+	}
+	if( MessageType & vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance )
+	{
+		// Bold/Bright
+		return 1u;
+	}
+	if( MessageType & vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation )
+	{
+		// Light Gray
+		return 90u;
+	}
+	// Default Foreground Color
+	return 39u;
+}
+
 static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugMessengerCallback(
 	vk::DebugUtilsMessageSeverityFlagBitsEXT      Severity,
 	vk::DebugUtilsMessageTypeFlagsEXT             Type,
@@ -15,7 +65,8 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugMessengerCallback(
 )
 {
 	std::printf(
-		"[%s]%s: %s\n", vk::to_string(Severity).c_str(),
+		"[\033[%um%s\033[0m]\033[%um%s\033[0m: %s\n", SeverityColor(Severity),
+		vk::to_string(Severity).c_str(), MessageTypeColor(Type),
 		vk::to_string(Type).c_str(), CallbackData->pMessage
 	);
 
