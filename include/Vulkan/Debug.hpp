@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Vulkan/VulkanAPI.hpp>
+#include <format>
+#include <string_view>
 
 #ifdef _MSC_VER
 #include <sal.h>
@@ -15,10 +17,19 @@
 namespace Vulkan
 {
 
-VK_PRINTF_FORMAT_ATTR(4, 5)
 void SetObjectName(
 	vk::Device Device, vk::ObjectType ObjectType, const void* ObjectHandle,
-	VK_PRINTF_FORMAT const char* Format, ...
+	std::string_view ObjectName
+);
+
+void BeginDebugLabel(
+	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
+	std::string_view LabelName
+);
+
+void InsertDebugLabel(
+	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
+	std::string_view LabelName
 );
 
 template<typename T>
@@ -27,29 +38,36 @@ concept VulkanHandleType = vk::isVulkanHandleType<T>::value;
 template<VulkanHandleType T, typename... ArgsT>
 inline void SetObjectName(
 	vk::Device Device, const T ObjectHandle,
-	VK_PRINTF_FORMAT const char* Format, ArgsT&&... Args
+	std::format_string<ArgsT...> Format, ArgsT&&... Args
 )
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-security"
 	SetObjectName(
-		Device, T::objectType, ObjectHandle, Format,
-		std::forward<ArgsT>(Args)...
+		Device, T::objectType, ObjectHandle,
+		std::format(Format, std::forward<ArgsT>(Args)...)
 	);
-#pragma GCC diagnostic pop
 }
 
-VK_PRINTF_FORMAT_ATTR(3, 4)
+template<typename... ArgsT>
 void BeginDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
-	VK_PRINTF_FORMAT const char* Format, ...
-);
+	std::format_string<ArgsT...> Format, ArgsT&&... Args
+)
+{
+	BeginDebugLabel(
+		CommandBuffer, Color, std::format(Format, std::forward<ArgsT>(Args)...)
+	);
+}
 
-VK_PRINTF_FORMAT_ATTR(3, 4)
+template<typename... ArgsT>
 void InsertDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
-	VK_PRINTF_FORMAT const char* Format, ...
-);
+	std::format_string<ArgsT...> Format, ArgsT&&... Args
+)
+{
+	InsertDebugLabel(
+		CommandBuffer, Color, std::format(Format, std::forward<ArgsT>(Args)...)
+	);
+}
 
 void EndDebugLabel(vk::CommandBuffer CommandBuffer);
 
@@ -62,27 +80,26 @@ public:
 	template<typename... ArgsT>
 	DebugLabelScope(
 		vk::CommandBuffer           TargetCommandBuffer,
-		const std::array<float, 4>& Color, VK_PRINTF_FORMAT const char* Format,
+		const std::array<float, 4>& Color, std::format_string<ArgsT...> Format,
 		ArgsT&&... Args
 	)
 		: CommandBuffer(TargetCommandBuffer)
 	{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-security"
 		BeginDebugLabel(
-			CommandBuffer, Color, Format, std::forward<ArgsT>(Args)...
+			CommandBuffer, Color,
+			std::format(Format, std::forward<ArgsT>(Args)...)
 		);
-#pragma GCC diagnostic pop
 	}
 
 	template<typename... ArgsT>
 	void operator()(
-		const std::array<float, 4>& Color, VK_PRINTF_FORMAT const char* Format,
+		const std::array<float, 4>& Color, std::format_string<ArgsT...> Format,
 		ArgsT&&... Args
 	) const
 	{
 		InsertDebugLabel(
-			CommandBuffer, Color, Format, std::forward<ArgsT>(Args)...
+			CommandBuffer, Color,
+			std::format(Format, std::forward<ArgsT>(Args)...)
 		);
 	}
 
