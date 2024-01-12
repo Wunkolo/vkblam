@@ -75,8 +75,8 @@ StreamBuffer::StreamBuffer(
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, RingBuffer.get(),
-			"StreamBuffer: Ring Buffer( %s )",
-			Common::FormatByteCount(BufferSize).c_str()
+			"StreamBuffer: Ring Buffer( {} )",
+			Common::FormatByteCount(BufferSize)
 		);
 	}
 
@@ -129,8 +129,8 @@ StreamBuffer::StreamBuffer(
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, RingBufferMemory.get(),
-			"StreamBuffer: Ring Buffer Memory( %s )",
-			Common::FormatByteCount(BufferSize).c_str()
+			"StreamBuffer: Ring Buffer Memory( {} )",
+			Common::FormatByteCount(BufferSize)
 		);
 
 		if( auto BindResult = VulkanContext.LogicalDevice.bindBufferMemory(
@@ -412,7 +412,7 @@ std::uint64_t StreamBuffer::Flush()
 
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, FlushCommandBuffer,
-			"StreamBuffer: Command Buffer %zu", CommandBuffers.size()
+			"StreamBuffer: Command Buffer {}", CommandBuffers.size()
 		);
 	}
 

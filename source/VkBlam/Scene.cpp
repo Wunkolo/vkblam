@@ -263,7 +263,7 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 	{
 		const auto& CurLightmapMesh = LightmapMeshs[i];
 		Vulkan::InsertDebugLabel(
-			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: %zu", i
+			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: {}", i
 		);
 
 		// Bind Shader descriptors
@@ -565,8 +565,8 @@ std::optional<Scene>
 
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, NewScene.BSPVertexBuffer.get(),
-			"VkBlam::Scene: BSP Vertex Buffer( %s )",
-			Common::FormatByteCount(BSPVertexBufferInfo.size).c_str()
+			"VkBlam::Scene: BSP Vertex Buffer( {} )",
+			Common::FormatByteCount(BSPVertexBufferInfo.size)
 		);
 
 		//// Create Vertex buffer heap
@@ -596,8 +596,8 @@ std::optional<Scene>
 
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, NewScene.BSPLightmapVertexBuffer.get(),
-			"VkBlam::Scene: BSP Lightmap Vertex Buffer( %s )",
-			Common::FormatByteCount(BSPLightmapVertexBufferInfo.size).c_str()
+			"VkBlam::Scene: BSP Lightmap Vertex Buffer( {} )",
+			Common::FormatByteCount(BSPLightmapVertexBufferInfo.size)
 		);
 
 		//// Create Index buffer heap
@@ -623,8 +623,8 @@ std::optional<Scene>
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, NewScene.BSPIndexBuffer.get(),
-			"VkBlam::Scene: BSP Index Buffer( %s )",
-			Common::FormatByteCount(BSPIndexBufferInfo.size).c_str()
+			"VkBlam::Scene: BSP Index Buffer( {} )",
+			Common::FormatByteCount(BSPIndexBufferInfo.size)
 		);
 
 		// Create singular allocation of device memory for all vertex and index
@@ -650,8 +650,8 @@ std::optional<Scene>
 		}
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, NewScene.BSPGeometryMemory.get(),
-			"VkBlam::Scene: BSP Geometry Device Memory( %s )",
-			Common::FormatByteCount(BSPIndexBufferInfo.size).c_str()
+			"VkBlam::Scene: BSP Geometry Device Memory( {} )",
+			Common::FormatByteCount(BSPIndexBufferInfo.size)
 		);
 
 		// Buffers are all now binded to device memory, begin streaming
@@ -772,8 +772,8 @@ std::optional<Scene>
 
 				Vulkan::SetObjectName(
 					VulkanContext.LogicalDevice, BitmapDest.Image.get(),
-					"VkBlam::Scene: Bitmap %08X[%2zu] | %s", TagEntry.TagID,
-					CurSubTextureIdx, Map.GetTagName(TagEntry.TagID).data()
+					"VkBlam::Scene: Bitmap {:08X}[{:2}] | {}", TagEntry.TagID,
+					CurSubTextureIdx, Map.GetTagName(TagEntry.TagID)
 				);
 			}
 		};
@@ -994,11 +994,9 @@ std::optional<Scene>
 					Vulkan::SetObjectName(
 						TargetRenderer.GetVulkanContext().LogicalDevice,
 						BitmapDest.View.get(),
-						"VkBlam::Scene: Bitmap View %08X[%2zu] | %s",
+						"VkBlam::Scene: Bitmap View {:08X}[{:2}] | {}",
 						TagEntry.TagID, CurSubTextureIdx,
-						TargetWorld.GetMapFile()
-							.GetTagName(TagEntry.TagID)
-							.data()
+						TargetWorld.GetMapFile().GetTagName(TagEntry.TagID)
 					);
 
 					// Create descriptor set
@@ -1023,11 +1021,10 @@ std::optional<Scene>
 					Vulkan::SetObjectName(
 						TargetRenderer.GetVulkanContext().LogicalDevice,
 						TargetSet,
-						"VkBlam::Scene: Bitmap Descriptor Set %08X[%2zu] | %s",
+						"VkBlam::Scene: Bitmap Descriptor Set {:08X}[{:2}] | "
+						"{}",
 						TagEntry.TagID, CurSubTextureIdx,
-						TargetWorld.GetMapFile()
-							.GetTagName(TagEntry.TagID)
-							.data()
+						TargetWorld.GetMapFile().GetTagName(TagEntry.TagID)
 					);
 
 					TargetRenderer.GetDescriptorUpdateBatch().AddImage(
@@ -1071,8 +1068,8 @@ std::optional<Scene>
 
 			Vulkan::SetObjectName(
 				VulkanContext.LogicalDevice, NewSet,
-				"senv: %08X \'%s\' Descriptor Set", TagEntry.TagID,
-				TargetWorld.GetMapFile().GetTagName(TagEntry.TagID).data()
+				"senv: {:08X} \'{}\' Descriptor Set", TagEntry.TagID,
+				TargetWorld.GetMapFile().GetTagName(TagEntry.TagID)
 			);
 
 			const vk::ImageView BaseMapView

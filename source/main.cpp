@@ -325,8 +325,8 @@ int main(int argc, char* argv[])
 	}
 
 	Vulkan::SetObjectName(
-		Device.get(), StagingBuffer.get(), "Staging Buffer( %s )",
-		Common::FormatByteCount(StagingBufferInfo.size).c_str()
+		Device.get(), StagingBuffer.get(), "Staging Buffer( {} )",
+		Common::FormatByteCount(StagingBufferInfo.size)
 	);
 
 	// Allocate memory for staging buffer
