@@ -32,13 +32,20 @@ public:
 			return reinterpret_cast<ImplementationT*>(Tags.at(TagID).get());
 		}
 
+		const Blam::TagIndexEntry* TagIndexEntryPtr
+			= TargetScene.GetWorld().GetMapFile().GetTagIndexEntry(
+				std::uint16_t(TagID)
+			);
+
 		const Blam::Tag<ImplementationT::ClassT>* Tag
 			= TargetScene.GetWorld()
 				  .GetMapFile()
 				  .GetTag<ImplementationT::ClassT>(TagID);
 
 		const auto& NewTag
-			= (Tags[TagID] = ImplementationT::LoadTag(*Tag, TargetScene));
+			= (Tags[TagID]
+			   = ImplementationT::LoadTag(*TagIndexEntryPtr, *Tag, TargetScene)
+			);
 
 		return reinterpret_cast<ImplementationT*>(NewTag.get());
 	}

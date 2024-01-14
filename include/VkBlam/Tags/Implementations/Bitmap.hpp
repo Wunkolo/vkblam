@@ -26,6 +26,7 @@ public:
 	static constexpr Blam::TagClass ClassT = Blam::TagClass::Bitmap;
 
 	static std::unique_ptr<Bitmap> LoadTag(
+		const Blam::TagIndexEntry&               TagIndexEntry,
 		const Blam::Tag<Blam::TagClass::Bitmap>& Tag, Scene& TargetScene
 	);
 };
