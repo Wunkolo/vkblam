@@ -16,7 +16,8 @@ private:
 
 	struct SubBitmap
 	{
-		vk::UniqueImage Image;
+		vk::UniqueImage     Image;
+		vk::UniqueImageView View;
 	};
 	std::vector<SubBitmap> Bitmaps;
 
