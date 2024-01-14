@@ -68,6 +68,12 @@ std::unique_ptr<Bitmap> Bitmap::LoadTag(
 			);
 		}
 
+		Vulkan::SetObjectName(
+			VulkanContext.LogicalDevice, CurSubBitmap.Image.get(),
+			"Bitmap {:08X}[{:2}] | {}", TagIndexEntry.TagID, CurSubTextureIdx,
+			TargetScene.GetMapFile().GetTagName(TagIndexEntry.TagID)
+		);
+
 		NewBitmap->Bitmaps.emplace_back(std::move(CurSubBitmap));
 	}
 
