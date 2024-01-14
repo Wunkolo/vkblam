@@ -709,7 +709,8 @@ std::optional<Scene>
 		{
 			const auto CurBitmap
 				= Map.GetTag<Blam::TagClass::Bitmap>(TagIndexEntry.TagID);
-			NewScene.Pool->OpenTag<Tags::Bitmap>(TagIndexEntry.TagID);
+			const auto NewBitmap
+				= NewScene.Pool->OpenTag<Tags::Bitmap>(TagIndexEntry.TagID);
 		}
 	};
 
