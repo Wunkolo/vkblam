@@ -93,6 +93,11 @@ public:
 		return TargetRenderer;
 	};
 
+	const Vulkan::Context& GetVulkanContext() const
+	{
+		return TargetRenderer.GetVulkanContext();
+	};
+
 	void Render(const SceneView& View, vk::CommandBuffer CommandBuffer);
 
 	static std::optional<Scene>
