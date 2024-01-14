@@ -1,5 +1,7 @@
 #include <VkBlam/Format.hpp>
 #include <VkBlam/Scene.hpp>
+#include <VkBlam/Tags/TagImplementations.hpp>
+#include <VkBlam/Tags/TagPool.hpp>
 
 #include <Blam/TagVisitor.hpp>
 
@@ -213,6 +215,7 @@ namespace VkBlam
 Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 	: TargetWorld(TargetWorld), TargetRenderer(TargetRenderer)
 {
+	Pool = std::make_unique<TagPool>(*this);
 }
 
 Scene::~Scene()
@@ -694,6 +697,23 @@ std::optional<Scene>
 			}
 		}
 	}
+
+	std::vector<Blam::TagVisitorProc> TagPoolVisitors = {};
+	Blam::TagVisitorProc& TagPoolVisitor = TagVisitors.emplace_back();
+	TagPoolVisitor.VisitClass            = Blam::TagClass::Bitmap;
+
+	TagPoolVisitor.VisitTags
+		= [&](std::span<const Blam::TagIndexEntry> TagIndexEntries,
+			  const Blam::MapFile&                 Map) -> void {
+		for( const auto& TagIndexEntry : TagIndexEntries )
+		{
+			const auto CurBitmap
+				= Map.GetTag<Blam::TagClass::Bitmap>(TagIndexEntry.TagID);
+			NewScene.Pool->OpenTag<Tags::Bitmap>(TagIndexEntry.TagID);
+		}
+	};
+
+	Blam::DispatchTagVisitors(TagPoolVisitors, TargetWorld.GetMapFile());
 
 	// Load bitmaps
 	{
