@@ -11,12 +11,15 @@
 namespace VkBlam
 {
 
+class TagPool;
+
 // All rendering state associated with a world.
 class Scene
 {
 private:
-	const World& TargetWorld;
-	Renderer&    TargetRenderer;
+	const World&             TargetWorld;
+	Renderer&                TargetRenderer;
+	std::unique_ptr<TagPool> Pool;
 
 	Scene(Renderer& TargetRenderer, const World& TargetWorld);
 
@@ -74,6 +77,26 @@ public:
 	~Scene();
 
 	Scene(Scene&&) = default;
+
+	const World& GetWorld() const
+	{
+		return TargetWorld;
+	};
+
+	const Blam::MapFile& GetMapFile() const
+	{
+		return TargetWorld.GetMapFile();
+	};
+
+	Renderer& GetRenderer() const
+	{
+		return TargetRenderer;
+	};
+
+	const Vulkan::Context& GetVulkanContext() const
+	{
+		return TargetRenderer.GetVulkanContext();
+	};
 
 	void Render(const SceneView& View, vk::CommandBuffer CommandBuffer);
 

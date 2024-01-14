@@ -224,12 +224,15 @@ add_executable(
 	vkblam
 	source/main.cpp
 	source/stb_image_write.cpp
+	source/VkBlam/Format.cpp
 	source/VkBlam/Renderer.cpp
 	source/VkBlam/Scene.cpp
-	source/VkBlam/Format.cpp
 	source/VkBlam/SceneView.cpp
 	source/VkBlam/Shader.cpp
 	source/VkBlam/Shaders/ShaderEnvironment.cpp
+	source/VkBlam/Tags/Implementations/Bitmap.cpp
+	source/VkBlam/Tags/TagImplementation.cpp
+	source/VkBlam/Tags/TagPool.cpp
 	source/VkBlam/VkBlam.cpp
 	source/VkBlam/World.cpp
 	source/Vulkan/Debug.cpp

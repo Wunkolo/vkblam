@@ -21,6 +21,7 @@
 #include <VkBlam/Renderer.hpp>
 #include <VkBlam/Scene.hpp>
 #include <VkBlam/Shaders/ShaderEnvironment.hpp>
+#include <VkBlam/Tags/TagPool.hpp>
 #include <VkBlam/VkBlam.hpp>
 #include <VkBlam/World.hpp>
 
