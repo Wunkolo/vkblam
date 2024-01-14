@@ -13,14 +13,22 @@ Bitmap::~Bitmap()
 }
 
 std::unique_ptr<Bitmap> Bitmap::LoadTag(
+	const Blam::TagIndexEntry&               TagIndexEntry,
 	const Blam::Tag<Blam::TagClass::Bitmap>& Tag, Scene& TargetScene
 )
 {
 	std::unique_ptr<Bitmap> NewBitmap(new Bitmap());
+	const Vulkan::Context&  VulkanContext = TargetScene.GetVulkanContext();
 
-	for( const auto& CurBitmapEntry :
-		 TargetScene.GetMapFile().TagHeap.GetBlock(Tag.Bitmaps) )
+	const auto SubTextures
+		= TargetScene.GetMapFile().TagHeap.GetBlock(Tag.Bitmaps);
+
+	for( std::size_t CurSubTextureIdx = 0;
+		 CurSubTextureIdx < SubTextures.size(); ++CurSubTextureIdx )
 	{
+		const auto& CurBitmapEntry = SubTextures[CurSubTextureIdx];
+
+		// Create Image handles
 		vk::ImageCreateInfo ImageInfo = {};
 		ImageInfo.imageType           = VkBlam::BlamToVk(CurBitmapEntry.Type);
 		ImageInfo.format              = VkBlam::BlamToVk(CurBitmapEntry.Format);
@@ -46,8 +54,7 @@ std::unique_ptr<Bitmap> Bitmap::LoadTag(
 
 		SubBitmap CurSubBitmap = {};
 
-		if( auto CreateResult = TargetScene.GetRenderer()
-									.GetVulkanContext()
+		if( auto CreateResult = TargetScene.GetVulkanContext()
 									.LogicalDevice.createImageUnique(ImageInfo);
 			CreateResult.result == vk::Result::eSuccess )
 		{
