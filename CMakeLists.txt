@@ -243,6 +243,7 @@ add_executable(
 	source/Vulkan/DescriptorUpdateBatch.cpp
 	source/Vulkan/Memory.cpp
 	source/Vulkan/Pipeline.cpp
+	source/Vulkan/QueryPool.cpp
 	source/Vulkan/SamplerCache.cpp
 	source/Vulkan/ShaderModuleCache.cpp
 	source/Vulkan/StreamBuffer.cpp
