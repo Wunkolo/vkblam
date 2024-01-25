@@ -125,15 +125,21 @@ else()
 	set( SPIRV_OPT "spirv-opt" )
 endif()
 
+# Compile shaders
 foreach( GLSL ${GLSL_SOURCE_FILES} )
 	get_filename_component( FILE_NAME ${GLSL} NAME )
 	set( SPIRV "${PROJECT_BINARY_DIR}/shaders/${FILE_NAME}.spv" )
+	set( DEPFILE "${PROJECT_BINARY_DIR}/shaders/${FILE_NAME}.d" )
 	add_custom_command(
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
-		COMMAND Vulkan::glslangValidator -t --target-env vulkan1.1 -g -V ${GLSL} -o ${SPIRV}
+		COMMAND Vulkan::glslangValidator -t --target-env vulkan1.1 -g
+			-V ${GLSL} -o ${SPIRV} --depfile ${DEPFILE}
 		#COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
+		COMMENT "Compiling SPIRV: ${FILE_NAME}.spv"
 		DEPENDS ${GLSL}
+		DEPFILE ${DEPFILE}
+		BYPRODUCTS ${DEPFILE}
 	)
 	list( APPEND SPIRV_BINARY_FILES ${SPIRV} )
 endforeach()
