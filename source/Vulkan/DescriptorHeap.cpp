@@ -38,11 +38,11 @@ std::optional<vk::DescriptorSet> DescriptorHeap::AllocateDescriptorSet()
 	if( !NewDescriptorSet )
 	{
 		// Descriptor set doesn't exist yet. Allocate a new one
-		vk::DescriptorSetAllocateInfo AllocateInfo = {};
-
-		AllocateInfo.descriptorPool     = DescriptorPool.get();
-		AllocateInfo.pSetLayouts        = &DescriptorSetLayout.get();
-		AllocateInfo.descriptorSetCount = 1;
+		const vk::DescriptorSetAllocateInfo AllocateInfo = {
+			.descriptorPool     = DescriptorPool.get(),
+			.descriptorSetCount = 1,
+			.pSetLayouts        = &DescriptorSetLayout.get(),
+		};
 
 		if( auto AllocateResult
 			= VulkanContext.LogicalDevice.allocateDescriptorSetsUnique(
@@ -121,11 +121,13 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 
 	// Create descriptor pool
 	{
-		vk::DescriptorPoolCreateInfo PoolInfo;
-		PoolInfo.flags   = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-		PoolInfo.maxSets = DescriptorHeapCount;
-		PoolInfo.pPoolSizes    = PoolSizes.data();
-		PoolInfo.poolSizeCount = PoolSizes.size();
+		const vk::DescriptorPoolCreateInfo PoolInfo = {
+			.flags   = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+			.maxSets = DescriptorHeapCount,
+			.poolSizeCount = static_cast<std::uint32_t>(PoolSizes.size()),
+			.pPoolSizes    = PoolSizes.data(),
+		};
+
 		if( auto CreateResult
 			= VulkanContext.LogicalDevice.createDescriptorPoolUnique(PoolInfo);
 			CreateResult.result == vk::Result::eSuccess )
@@ -140,9 +142,10 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 
 	// Create descriptor set layout
 	{
-		vk::DescriptorSetLayoutCreateInfo LayoutInfo;
-		LayoutInfo.pBindings    = Bindings.data();
-		LayoutInfo.bindingCount = Bindings.size();
+		const vk::DescriptorSetLayoutCreateInfo LayoutInfo = {
+			.bindingCount = static_cast<std::uint32_t>(Bindings.size()),
+			.pBindings    = Bindings.data(),
+		};
 
 		if( auto CreateResult
 			= VulkanContext.LogicalDevice.createDescriptorSetLayoutUnique(

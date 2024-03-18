@@ -13,59 +13,51 @@ namespace VkBlam
 
 vk::SamplerCreateInfo Sampler2D(bool Filtered, bool Clamp)
 {
-	vk::SamplerCreateInfo SamplerInfo = {};
-	SamplerInfo.magFilter             = Filtered ? vk::Filter::eLinear
-												 : vk::Filter::eNearest;
-	SamplerInfo.minFilter             = Filtered ? vk::Filter::eLinear
-												 : vk::Filter::eNearest;
+	const vk::Filter Filter = Filtered ? vk::Filter::eLinear
+									   : vk::Filter::eNearest;
 
-	SamplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-
-	SamplerInfo.addressModeU = Clamp ? vk::SamplerAddressMode::eClampToEdge
-									 : vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.addressModeV = Clamp ? vk::SamplerAddressMode::eClampToEdge
-									 : vk::SamplerAddressMode::eRepeat;
-	SamplerInfo.addressModeW = Clamp ? vk::SamplerAddressMode::eClampToEdge
-									 : vk::SamplerAddressMode::eRepeat;
-
-	SamplerInfo.mipLodBias       = 0.0f;
-	SamplerInfo.anisotropyEnable = VK_TRUE;
-	SamplerInfo.maxAnisotropy    = 16.0f;
-
-	SamplerInfo.compareEnable = VK_FALSE;
-	SamplerInfo.compareOp     = vk::CompareOp::eAlways;
-
-	SamplerInfo.minLod      = 0.0f;
-	SamplerInfo.maxLod      = VK_LOD_CLAMP_NONE;
-	SamplerInfo.borderColor = vk::BorderColor::eFloatTransparentBlack;
-	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+	const vk::SamplerCreateInfo SamplerInfo = {
+		.magFilter               = Filter,
+		.minFilter               = Filter,
+		.mipmapMode              = vk::SamplerMipmapMode::eLinear,
+		.addressModeU            = Clamp ? vk::SamplerAddressMode::eClampToEdge
+										 : vk::SamplerAddressMode::eRepeat,
+		.addressModeV            = Clamp ? vk::SamplerAddressMode::eClampToEdge
+										 : vk::SamplerAddressMode::eRepeat,
+		.addressModeW            = Clamp ? vk::SamplerAddressMode::eClampToEdge
+										 : vk::SamplerAddressMode::eRepeat,
+		.mipLodBias              = 0.0f,
+		.anisotropyEnable        = VK_TRUE,
+		.maxAnisotropy           = 16.0f,
+		.compareEnable           = VK_FALSE,
+		.compareOp               = vk::CompareOp::eAlways,
+		.minLod                  = 0.0f,
+		.maxLod                  = VK_LOD_CLAMP_NONE,
+		.borderColor             = vk::BorderColor::eFloatTransparentBlack,
+		.unnormalizedCoordinates = VK_FALSE,
+	};
 	return SamplerInfo;
-}
+} // namespace VkBlam
 
 vk::SamplerCreateInfo SamplerCube()
 {
-	vk::SamplerCreateInfo SamplerInfo = {};
-
-	SamplerInfo.magFilter = vk::Filter::eLinear;
-	SamplerInfo.minFilter = vk::Filter::eLinear;
-
-	SamplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-
-	SamplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
-	SamplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
-	SamplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
-
-	SamplerInfo.mipLodBias       = 0.0f;
-	SamplerInfo.anisotropyEnable = VK_FALSE;
-	SamplerInfo.maxAnisotropy    = 1.0f;
-
-	SamplerInfo.compareEnable = VK_FALSE;
-	SamplerInfo.compareOp     = vk::CompareOp::eAlways;
-
-	SamplerInfo.minLod      = 0.0f;
-	SamplerInfo.maxLod      = VK_LOD_CLAMP_NONE;
-	SamplerInfo.borderColor = vk::BorderColor::eFloatTransparentBlack;
-	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+	const vk::SamplerCreateInfo SamplerInfo = {
+		.magFilter               = vk::Filter::eLinear,
+		.minFilter               = vk::Filter::eLinear,
+		.mipmapMode              = vk::SamplerMipmapMode::eLinear,
+		.addressModeU            = vk::SamplerAddressMode::eClampToEdge,
+		.addressModeV            = vk::SamplerAddressMode::eClampToEdge,
+		.addressModeW            = vk::SamplerAddressMode::eClampToEdge,
+		.mipLodBias              = 0.0f,
+		.anisotropyEnable        = VK_FALSE,
+		.maxAnisotropy           = 1.0f,
+		.compareEnable           = VK_FALSE,
+		.compareOp               = vk::CompareOp::eAlways,
+		.minLod                  = 0.0f,
+		.maxLod                  = VK_LOD_CLAMP_NONE,
+		.borderColor             = vk::BorderColor::eFloatTransparentBlack,
+		.unnormalizedCoordinates = VK_FALSE,
+	};
 	return SamplerInfo;
 }
 
@@ -86,14 +78,15 @@ std::vector<vk::VertexInputBindingDescription>
 {
 	std::vector<vk::VertexInputBindingDescription> Result;
 
-	std::size_t BindingIndex = 0;
+	std::uint32_t BindingIndex = 0;
 	for( const Blam::VertexFormat& CurFormat : Formats )
 	{
-		Result.push_back(vk::VertexInputBindingDescription(
-			BindingIndex, Blam::GetVertexStride(CurFormat),
-			vk::VertexInputRate::eVertex
-		));
-
+		const vk::VertexInputBindingDescription VertexBinding = {
+			.binding   = BindingIndex,
+			.stride    = Blam::GetVertexStride(CurFormat),
+			.inputRate = vk::VertexInputRate::eVertex,
+		};
+		Result.push_back(VertexBinding);
 		++BindingIndex;
 	}
 

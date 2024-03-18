@@ -20,10 +20,10 @@ std::optional<const vk::ShaderModule> ShaderModuleCache::GetShaderModule(
 		return {ShaderModuleMap.at(Hash).get()};
 	}
 
-	vk::ShaderModuleCreateInfo ShaderModuleInfo = {};
-	ShaderModuleInfo.pCode
-		= reinterpret_cast<const std::uint32_t*>(ShaderCode.data());
-	ShaderModuleInfo.codeSize = ShaderCode.size_bytes();
+	const vk::ShaderModuleCreateInfo ShaderModuleInfo = {
+		.codeSize = ShaderCode.size_bytes(),
+		.pCode    = reinterpret_cast<const std::uint32_t*>(ShaderCode.data()),
+	};
 
 	if( auto CreateResult
 		= VulkanContext.LogicalDevice.createShaderModuleUnique(ShaderModuleInfo

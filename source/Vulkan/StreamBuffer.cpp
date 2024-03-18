@@ -16,19 +16,15 @@ StreamBuffer::StreamBuffer(
 {
 	//// Create Semaphore
 	{
-		vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>
-			FlushSemaphoreInfoChain = {};
-
-		auto& FlushSemaphoreInfo
-			= FlushSemaphoreInfoChain.get<vk::SemaphoreCreateInfo>();
-
-		FlushSemaphoreInfo.flags = {};
-
-		auto& FlushSemaphoreTypeInfo
-			= FlushSemaphoreInfoChain.get<vk::SemaphoreTypeCreateInfo>();
-
-		FlushSemaphoreTypeInfo.initialValue  = 0;
-		FlushSemaphoreTypeInfo.semaphoreType = vk::SemaphoreType::eTimeline;
+		const vk::StructureChain<
+			vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>
+			FlushSemaphoreInfoChain = {
+				vk::SemaphoreCreateInfo{},
+				vk::SemaphoreTypeCreateInfo{
+					.semaphoreType = vk::SemaphoreType::eTimeline,
+					.initialValue  = 0,
+				},
+			};
 
 		if( auto CreateResult
 			= VulkanContext.LogicalDevice.createSemaphoreUnique(
@@ -50,14 +46,15 @@ StreamBuffer::StreamBuffer(
 			VulkanContext.LogicalDevice, FlushSemaphore.get(),
 			"StreamBuffer: Flush Semaphore"
 		);
-	}
+	} // namespace Vulkan
 
 	//// Create buffer
 	{
-		vk::BufferCreateInfo RingBufferInfo;
-		RingBufferInfo.size  = BufferSize;
-		RingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferSrc
-							 | vk::BufferUsageFlagBits::eTransferDst;
+		const vk::BufferCreateInfo RingBufferInfo = {
+			.size  = BufferSize,
+			.usage = vk::BufferUsageFlagBits::eTransferSrc
+				   | vk::BufferUsageFlagBits::eTransferDst,
+		};
 
 		if( auto CreateResult
 			= VulkanContext.LogicalDevice.createBufferUnique(RingBufferInfo);
@@ -87,9 +84,6 @@ StreamBuffer::StreamBuffer(
 				RingBuffer.get()
 			);
 
-		vk::MemoryAllocateInfo RingBufferAllocInfo = {};
-		RingBufferAllocInfo.allocationSize = RingBufferMemoryRequirements.size;
-
 		// Try to get some shared memory
 		std::int32_t RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
 			VulkanContext.PhysicalDevice,
@@ -110,7 +104,10 @@ StreamBuffer::StreamBuffer(
 			);
 		}
 
-		RingBufferAllocInfo.memoryTypeIndex = RingBufferHeapIndex;
+		const vk::MemoryAllocateInfo RingBufferAllocInfo = {
+			.allocationSize  = RingBufferMemoryRequirements.size,
+			.memoryTypeIndex = static_cast<std::uint32_t>(RingBufferHeapIndex),
+		};
 
 		if( auto AllocResult = VulkanContext.LogicalDevice.allocateMemoryUnique(
 				RingBufferAllocInfo
@@ -171,11 +168,10 @@ StreamBuffer::StreamBuffer(
 
 	//// Allocate command pool
 	{
-		vk::CommandPoolCreateInfo CommandPoolInfo;
-		CommandPoolInfo.flags
-			= vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		CommandPoolInfo.queueFamilyIndex
-			= VulkanContext.TransferQueueFamilyIndex;
+		const vk::CommandPoolCreateInfo CommandPoolInfo = {
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = VulkanContext.TransferQueueFamilyIndex,
+		};
 
 		if( auto CreateResult = VulkanContext.LogicalDevice
 									.createCommandPoolUnique(CommandPoolInfo);
@@ -234,10 +230,12 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 		// entirely free todo, attach timestamps to particular regions of the
 		// ring buffer so that we can use parts of the buffer immediately when
 		// it is ready
-		vk::SemaphoreWaitInfo WaitInfo;
-		WaitInfo.semaphoreCount = 1;
-		WaitInfo.pSemaphores    = &GetSemaphore();
-		WaitInfo.pValues        = &CurFlushTick;
+		const vk::SemaphoreWaitInfo WaitInfo = {
+			.semaphoreCount = 1,
+			.pSemaphores    = &GetSemaphore(),
+			.pValues        = &CurFlushTick,
+		};
+
 		if( auto WaitResult
 			= VulkanContext.LogicalDevice.waitSemaphores(WaitInfo, ~0ULL);
 			WaitResult != vk::Result::eSuccess )
@@ -257,7 +255,10 @@ std::uint64_t StreamBuffer::QueueBufferUpload(
 	);
 
 	BufferCopies[Buffer].emplace_back(vk::BufferCopy{
-		CurRingOffset, Offset, Data.size_bytes()});
+		.srcOffset = CurRingOffset,
+		.dstOffset = Offset,
+		.size      = Data.size_bytes(),
+	});
 
 	return FlushTick;
 }
@@ -295,10 +296,12 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 		// entirely free todo, attach timestamps to particular regions of the
 		// ring buffer so that we can use parts of the buffer immediately when
 		// it is ready
-		vk::SemaphoreWaitInfo WaitInfo;
-		WaitInfo.semaphoreCount = 1;
-		WaitInfo.pSemaphores    = &GetSemaphore();
-		WaitInfo.pValues        = &CurFlushTick;
+		const vk::SemaphoreWaitInfo WaitInfo = {
+			.semaphoreCount = 1,
+			.pSemaphores    = &GetSemaphore(),
+			.pValues        = &CurFlushTick,
+		};
+
 		if( VulkanContext.LogicalDevice.waitSemaphores(WaitInfo, ~0ULL)
 			!= vk::Result::eSuccess )
 		{
@@ -316,27 +319,42 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 	);
 
 	ImageCopies[Image].emplace_back(vk::BufferImageCopy{
-		CurRingOffset, 0, 0, SubresourceLayers, Offset, Extent});
+		.bufferOffset      = CurRingOffset,
+		.bufferRowLength   = 0,
+		.bufferImageHeight = 0,
+		.imageSubresource  = SubresourceLayers,
+		.imageOffset       = Offset,
+		.imageExtent       = Extent,
+	});
 
-	ImagePreBarrier.emplace_back(vk::ImageMemoryBarrier(
-		vk::AccessFlagBits::eMemoryWrite, vk::AccessFlagBits::eMemoryRead,
-		vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-		VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, Image,
-		vk::ImageSubresourceRange(
-			SubresourceLayers.aspectMask, SubresourceLayers.mipLevel, 1,
-			SubresourceLayers.baseArrayLayer, SubresourceLayers.layerCount
-		)
-	));
-	ImagePostBarrier.emplace_back(vk::ImageMemoryBarrier(
-		vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eMemoryRead,
-		vk::ImageLayout::eTransferDstOptimal,
-		vk::ImageLayout::eShaderReadOnlyOptimal, VK_QUEUE_FAMILY_IGNORED,
-		VK_QUEUE_FAMILY_IGNORED, Image,
-		vk::ImageSubresourceRange(
-			SubresourceLayers.aspectMask, SubresourceLayers.mipLevel, 1,
-			SubresourceLayers.baseArrayLayer, SubresourceLayers.layerCount
-		)
-	));
+	const vk::ImageSubresourceRange SubresourceRange = {
+		.aspectMask     = SubresourceLayers.aspectMask,
+		.baseMipLevel   = SubresourceLayers.mipLevel,
+		.levelCount     = 1,
+		.baseArrayLayer = SubresourceLayers.baseArrayLayer,
+		.layerCount     = SubresourceLayers.layerCount,
+	};
+
+	ImagePreBarrier.emplace_back(vk::ImageMemoryBarrier{
+		.srcAccessMask       = vk::AccessFlagBits::eMemoryWrite,
+		.dstAccessMask       = vk::AccessFlagBits::eMemoryRead,
+		.oldLayout           = vk::ImageLayout::eUndefined,
+		.newLayout           = vk::ImageLayout::eTransferDstOptimal,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image               = Image,
+		.subresourceRange    = SubresourceRange,
+	});
+	ImagePostBarrier.emplace_back(vk::ImageMemoryBarrier{
+		.srcAccessMask       = vk::AccessFlagBits::eTransferWrite,
+		.dstAccessMask       = vk::AccessFlagBits::eMemoryRead,
+		.oldLayout           = vk::ImageLayout::eTransferDstOptimal,
+		.newLayout           = vk::ImageLayout::eShaderReadOnlyOptimal,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image               = Image,
+		.subresourceRange    = SubresourceRange,
+	});
 
 	return FlushTick;
 }
@@ -388,9 +406,10 @@ std::uint64_t StreamBuffer::Flush()
 		// No command buffer was free, we need to push a new one
 		CommandBufferTimeStamps.push_back(FlushTick);
 
-		vk::CommandBufferAllocateInfo CommandBufferInfo;
-		CommandBufferInfo.commandPool        = CommandPool.get();
-		CommandBufferInfo.commandBufferCount = 1;
+		const vk::CommandBufferAllocateInfo CommandBufferInfo = {
+			.commandPool        = CommandPool.get(),
+			.commandBufferCount = 1,
+		};
 
 		if( auto AllocateResult
 			= VulkanContext.LogicalDevice.allocateCommandBuffersUnique(
@@ -416,10 +435,10 @@ std::uint64_t StreamBuffer::Flush()
 		);
 	}
 
-	vk::CommandBufferBeginInfo BeginInfo;
-	BeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	if( auto BeginResult
-		= FlushCommandBuffer.begin(vk::CommandBufferBeginInfo{});
+	const vk::CommandBufferBeginInfo BeginInfo = {
+		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+	};
+	if( auto BeginResult = FlushCommandBuffer.begin(BeginInfo);
 		BeginResult != vk::Result::eSuccess )
 	{
 		std::fprintf(
@@ -472,31 +491,27 @@ std::uint64_t StreamBuffer::Flush()
 		);
 	}
 
-	vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
-		SubmitInfoChain = {};
-
-	auto& SubmitInfo              = SubmitInfoChain.get<vk::SubmitInfo>();
-	SubmitInfo.commandBufferCount = 1;
-	SubmitInfo.pCommandBuffers    = &FlushCommandBuffer;
-
-	SubmitInfo.waitSemaphoreCount = 1;
-	SubmitInfo.pWaitSemaphores    = &FlushSemaphore.get();
-
 	static const vk::PipelineStageFlags WaitStage
 		= vk::PipelineStageFlagBits::eTransfer;
-	SubmitInfo.pWaitDstStageMask = &WaitStage;
 
-	SubmitInfo.signalSemaphoreCount = 1;
-	SubmitInfo.pSignalSemaphores    = &FlushSemaphore.get();
-
-	auto& SubmitTimelineInfo
-		= SubmitInfoChain.get<vk::TimelineSemaphoreSubmitInfo>();
-
-	SubmitTimelineInfo.waitSemaphoreValueCount = 1;
-	SubmitTimelineInfo.pWaitSemaphoreValues    = &PrevFlushTick;
-
-	SubmitTimelineInfo.signalSemaphoreValueCount = 1;
-	SubmitTimelineInfo.pSignalSemaphoreValues    = &FlushTick;
+	const vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
+		SubmitInfoChain = {
+			vk::SubmitInfo{
+				.waitSemaphoreCount   = 1,
+				.pWaitSemaphores      = &FlushSemaphore.get(),
+				.pWaitDstStageMask    = &WaitStage,
+				.commandBufferCount   = 1,
+				.pCommandBuffers      = &FlushCommandBuffer,
+				.signalSemaphoreCount = 1,
+				.pSignalSemaphores    = &FlushSemaphore.get(),
+			},
+			vk::TimelineSemaphoreSubmitInfo{
+				.waitSemaphoreValueCount   = 1,
+				.pWaitSemaphoreValues      = &PrevFlushTick,
+				.signalSemaphoreValueCount = 1,
+				.pSignalSemaphoreValues    = &FlushTick,
+			},
+		};
 
 	if( auto SubmitResult
 		= VulkanContext.TransferQueue.submit(SubmitInfoChain.get());
@@ -516,7 +531,7 @@ std::uint64_t StreamBuffer::Flush()
 	ImagePostBarrier.clear();
 
 	return FlushTick;
-}
+} // namespace Vulkan
 
 const vk::Semaphore& StreamBuffer::GetSemaphore() const
 {

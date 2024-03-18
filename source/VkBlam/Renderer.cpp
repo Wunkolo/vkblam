@@ -7,69 +7,88 @@
 vk::UniqueRenderPass
 	CreateMainRenderPass(vk::Device Device, vk::SampleCountFlagBits SampleCount)
 {
-	vk::RenderPassCreateInfo RenderPassInfo = {};
-
 	const vk::AttachmentDescription Attachments[] = {
 		// Color Attachment
 		// We just care about it storing its color data
-		vk::AttachmentDescription(
-			vk::AttachmentDescriptionFlags(), vk::Format::eR8G8B8A8Srgb,
-			vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare,
-			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eTransferSrcOptimal
-		),
+		vk::AttachmentDescription{
+			.flags          = vk::AttachmentDescriptionFlags(),
+			.format         = vk::Format::eR8G8B8A8Srgb,
+			.samples        = vk::SampleCountFlagBits::e1,
+			.loadOp         = vk::AttachmentLoadOp::eClear,
+			.storeOp        = vk::AttachmentStoreOp::eStore,
+			.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare,
+			.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+			.initialLayout  = vk::ImageLayout::eUndefined,
+			.finalLayout    = vk::ImageLayout::eTransferSrcOptimal
+		},
 		// Depth Attachment
 		// Dont care about reading or storing it
-		vk::AttachmentDescription(
-			vk::AttachmentDescriptionFlags(), vk::Format::eD32Sfloat,
-			SampleCount, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eDepthStencilAttachmentOptimal
-		),
+		vk::AttachmentDescription{
+			.flags          = vk::AttachmentDescriptionFlags(),
+			.format         = vk::Format::eD32Sfloat,
+			.samples        = SampleCount,
+			.loadOp         = vk::AttachmentLoadOp::eClear,
+			.storeOp        = vk::AttachmentStoreOp::eDontCare,
+			.stencilLoadOp  = vk::AttachmentLoadOp::eClear,
+			.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+			.initialLayout  = vk::ImageLayout::eUndefined,
+			.finalLayout    = vk::ImageLayout::eDepthStencilAttachmentOptimal
+		},
 		// Color Attachment(MSAA)
 		// We just care about it storing its color data
-		vk::AttachmentDescription(
-			vk::AttachmentDescriptionFlags(), vk::Format::eR8G8B8A8Srgb,
-			SampleCount, vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare,
-			vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eColorAttachmentOptimal
-		)};
-
-	const vk::AttachmentReference AttachmentRefs[] = {
-		vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
-		vk::AttachmentReference(
-			1, vk::ImageLayout::eDepthStencilAttachmentOptimal
-		),
-		vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal),
+		vk::AttachmentDescription{
+			.flags          = vk::AttachmentDescriptionFlags(),
+			.format         = vk::Format::eR8G8B8A8Srgb,
+			.samples        = SampleCount,
+			.loadOp         = vk::AttachmentLoadOp::eClear,
+			.storeOp        = vk::AttachmentStoreOp::eDontCare,
+			.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare,
+			.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+			.initialLayout  = vk::ImageLayout::eUndefined,
+			.finalLayout    = vk::ImageLayout::eColorAttachmentOptimal
+		},
 	};
 
-	RenderPassInfo.attachmentCount = std::size(Attachments);
-	RenderPassInfo.pAttachments    = Attachments;
+	const vk::AttachmentReference AttachmentRefs[] = {
+		vk::AttachmentReference{
+			.attachment = 0,
+			.layout     = vk::ImageLayout::eColorAttachmentOptimal,
+		},
+		vk::AttachmentReference{
+			.attachment = 1,
+			.layout     = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+		},
+		vk::AttachmentReference{
+			.attachment = 2,
+			.layout     = vk::ImageLayout::eColorAttachmentOptimal,
+		},
+	};
 
-	vk::SubpassDescription Subpasses[1] = {{}};
+	const vk::SubpassDescription Subpasses[1] = {{
+		.colorAttachmentCount    = 1,
+		.pColorAttachments       = &AttachmentRefs[2],
+		.pResolveAttachments     = &AttachmentRefs[0],
+		.pDepthStencilAttachment = &AttachmentRefs[1],
+	}};
 
-	// First subpass
-	Subpasses[0].colorAttachmentCount    = 1;
-	Subpasses[0].pColorAttachments       = &AttachmentRefs[2];
-	Subpasses[0].pDepthStencilAttachment = &AttachmentRefs[1];
-	Subpasses[0].pResolveAttachments     = &AttachmentRefs[0];
+	const vk::SubpassDependency SubpassDependencies[] = {vk::SubpassDependency{
+		.srcSubpass      = VK_SUBPASS_EXTERNAL,
+		.dstSubpass      = 0,
+		.srcStageMask    = vk::PipelineStageFlagBits::eTransfer,
+		.dstStageMask    = vk::PipelineStageFlagBits::eVertexInput,
+		.srcAccessMask   = vk::AccessFlagBits::eTransferWrite,
+		.dstAccessMask   = vk::AccessFlagBits::eVertexAttributeRead,
+		.dependencyFlags = vk::DependencyFlagBits::eByRegion
+	}};
 
-	RenderPassInfo.subpassCount = std::size(Subpasses);
-	RenderPassInfo.pSubpasses   = Subpasses;
-
-	const vk::SubpassDependency SubpassDependencies[] = {vk::SubpassDependency(
-		VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eTransfer,
-		vk::PipelineStageFlagBits::eVertexInput,
-		vk::AccessFlagBits::eTransferWrite,
-		vk::AccessFlagBits::eVertexAttributeRead,
-		vk::DependencyFlagBits::eByRegion
-	)};
-
-	RenderPassInfo.dependencyCount = std::size(SubpassDependencies);
-	RenderPassInfo.pDependencies   = SubpassDependencies;
+	const vk::RenderPassCreateInfo RenderPassInfo = {
+		.attachmentCount = std::size(Attachments),
+		.pAttachments    = Attachments,
+		.subpassCount    = std::size(Subpasses),
+		.pSubpasses      = Subpasses,
+		.dependencyCount = std::size(SubpassDependencies),
+		.pDependencies   = SubpassDependencies,
+	};
 
 	if( auto CreateResult = Device.createRenderPassUnique(RenderPassInfo);
 		CreateResult.result == vk::Result::eSuccess )

@@ -140,19 +140,18 @@ vk::UniqueDebugUtilsMessengerEXT CreateDebugMessenger(vk::Instance Instance)
 
 	// Create debug messenger
 
-	vk::DebugUtilsMessengerCreateInfoEXT DebugMessengerInfo = {};
-	DebugMessengerInfo.messageSeverity
-		= vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
-		| vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
-		| vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-		| vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose;
-	DebugMessengerInfo.messageType
+	const vk::DebugUtilsMessengerCreateInfoEXT DebugMessengerInfo = {
+		.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
+						 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
+						 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+						 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose,
+		.messageType
 		= vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
 		| vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
 		| vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding
-		| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-
-	DebugMessengerInfo.pfnUserCallback = DebugMessengerCallback;
+		| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+		.pfnUserCallback = DebugMessengerCallback,
+	};
 
 	if( auto CreateResult
 		= Instance.createDebugUtilsMessengerEXTUnique(DebugMessengerInfo);
@@ -169,10 +168,11 @@ void SetObjectName(
 	std::string_view ObjectName
 )
 {
-	vk::DebugUtilsObjectNameInfoEXT NameInfo = {};
-	NameInfo.objectType                      = ObjectType;
-	NameInfo.objectHandle = reinterpret_cast<std::uintptr_t>(ObjectHandle);
-	NameInfo.pObjectName  = ObjectName.data();
+	const vk::DebugUtilsObjectNameInfoEXT NameInfo = {
+		.objectType   = ObjectType,
+		.objectHandle = reinterpret_cast<std::uintptr_t>(ObjectHandle),
+		.pObjectName  = ObjectName.data(),
+	};
 
 	if( Device.setDebugUtilsObjectNameEXT(NameInfo) != vk::Result::eSuccess )
 	{
@@ -185,12 +185,10 @@ void BeginDebugLabel(
 	std::string_view LabelName
 )
 {
-	vk::DebugUtilsLabelEXT LabelInfo = {};
-	LabelInfo.pLabelName             = LabelName.data();
-	LabelInfo.color[0]               = Color[0];
-	LabelInfo.color[1]               = Color[1];
-	LabelInfo.color[2]               = Color[2];
-	LabelInfo.color[3]               = Color[3];
+	const vk::DebugUtilsLabelEXT LabelInfo = {
+		.pLabelName = LabelName.data(),
+		.color      = Color,
+	};
 
 	CommandBuffer.beginDebugUtilsLabelEXT(LabelInfo);
 }
@@ -200,12 +198,10 @@ void InsertDebugLabel(
 	std::string_view LabelName
 )
 {
-	vk::DebugUtilsLabelEXT LabelInfo = {};
-	LabelInfo.pLabelName             = LabelName.data();
-	LabelInfo.color[0]               = Color[0];
-	LabelInfo.color[1]               = Color[1];
-	LabelInfo.color[2]               = Color[2];
-	LabelInfo.color[3]               = Color[3];
+	const vk::DebugUtilsLabelEXT LabelInfo = {
+		.pLabelName = LabelName.data(),
+		.color      = Color,
+	};
 
 	CommandBuffer.insertDebugUtilsLabelEXT(LabelInfo);
 }

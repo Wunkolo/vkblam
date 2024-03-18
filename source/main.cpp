@@ -134,18 +134,13 @@ int main(int argc, char* argv[])
 
 	//// Create Instance
 
-	vk::ApplicationInfo ApplicationInfo = {};
-	ApplicationInfo.apiVersion          = VK_API_VERSION_1_1;
-
-	ApplicationInfo.pEngineName   = "VkBlam";
-	ApplicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-
-	ApplicationInfo.pApplicationName   = "VkBlam";
-	ApplicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-
-	vk::InstanceCreateInfo InstanceInfo = {};
-
-	InstanceInfo.pApplicationInfo = &ApplicationInfo;
+	static const vk::ApplicationInfo ApplicationInfo = {
+		.pApplicationName   = "VkBlam",
+		.applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+		.pEngineName        = "VkBlam",
+		.engineVersion      = VK_MAKE_VERSION(1, 0, 0),
+		.apiVersion         = VK_API_VERSION_1_1,
+	};
 
 	static const std::array InstanceExtensions = std::to_array({
 #if defined(__APPLE__)
@@ -154,12 +149,14 @@ int main(int argc, char* argv[])
 			VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	});
 
+	const vk::InstanceCreateInfo InstanceInfo = {
 #if defined(__APPLE__)
-	InstanceInfo.flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+		.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR,
 #endif
-
-	InstanceInfo.ppEnabledExtensionNames = InstanceExtensions.data();
-	InstanceInfo.enabledExtensionCount   = InstanceExtensions.size();
+		.pApplicationInfo        = &ApplicationInfo,
+		.enabledExtensionCount   = InstanceExtensions.size(),
+		.ppEnabledExtensionNames = InstanceExtensions.data(),
+	};
 
 	vk::UniqueInstance Instance = {};
 
@@ -294,8 +291,9 @@ int main(int argc, char* argv[])
 	// Todo: Pick the fastest transfer queue here
 	vk::Queue TransferQueue = Device->getQueue(0, 0);
 
-	const Vulkan::Context VulkanContext{
-		Device.get(), PhysicalDevice, RenderQueue, 0, TransferQueue, 0};
+	const Vulkan::Context VulkanContext{Device.get(),  PhysicalDevice,
+										RenderQueue,   0,
+										TransferQueue, 0};
 
 	VkBlam::Renderer Renderer = VkBlam::Renderer::Create(VulkanContext).value();
 
@@ -400,52 +398,52 @@ int main(int argc, char* argv[])
 	}
 
 	// Render Target images
-	vk::UniqueImage RenderImage;
-
-	vk::UniqueImage RenderImageAA;
-
-	vk::UniqueImage RenderImageDepth;
+	vk::UniqueImage RenderImage      = {};
+	vk::UniqueImage RenderImageAA    = {};
+	vk::UniqueImage RenderImageDepth = {};
 
 	// Render-image, R8G8B8A8_SRGB
-	vk::ImageCreateInfo RenderImageInfo = {};
-	RenderImageInfo.imageType           = vk::ImageType::e2D;
-	RenderImageInfo.format              = vk::Format::eR8G8B8A8Srgb;
-	RenderImageInfo.extent      = vk::Extent3D(RenderSize.x, RenderSize.y, 1);
-	RenderImageInfo.mipLevels   = 1;
-	RenderImageInfo.arrayLayers = 1;
-	RenderImageInfo.samples     = vk::SampleCountFlagBits::e1;
-	RenderImageInfo.tiling      = vk::ImageTiling::eOptimal;
-	RenderImageInfo.usage       = vk::ImageUsageFlagBits::eColorAttachment
-						  | vk::ImageUsageFlagBits::eTransferSrc;
-	RenderImageInfo.sharingMode   = vk::SharingMode::eExclusive;
-	RenderImageInfo.initialLayout = vk::ImageLayout::eUndefined;
+	const vk::ImageCreateInfo RenderImageInfo = {
+		.imageType   = vk::ImageType::e2D,
+		.format      = vk::Format::eR8G8B8A8Srgb,
+		.extent      = vk::Extent3D{RenderSize.x, RenderSize.y, 1},
+		.mipLevels   = 1,
+		.arrayLayers = 1,
+		.samples     = vk::SampleCountFlagBits::e1,
+		.tiling      = vk::ImageTiling::eOptimal,
+		.usage       = vk::ImageUsageFlagBits::eColorAttachment
+			   | vk::ImageUsageFlagBits::eTransferSrc,
+		.sharingMode   = vk::SharingMode::eExclusive,
+		.initialLayout = vk::ImageLayout::eUndefined,
+	};
 
 	// Render-image(MSAA), R8G8B8A8_SRGB
-	vk::ImageCreateInfo RenderImageAAInfo = {};
-	RenderImageAAInfo.imageType           = vk::ImageType::e2D;
-	RenderImageAAInfo.format              = vk::Format::eR8G8B8A8Srgb;
-	RenderImageAAInfo.samples             = VkBlam::RenderSamples;
-	RenderImageAAInfo.extent      = vk::Extent3D(RenderSize.x, RenderSize.y, 1);
-	RenderImageAAInfo.mipLevels   = 1;
-	RenderImageAAInfo.arrayLayers = 1;
-	RenderImageAAInfo.tiling      = vk::ImageTiling::eOptimal;
-	RenderImageAAInfo.usage       = vk::ImageUsageFlagBits::eColorAttachment;
-	RenderImageAAInfo.sharingMode = vk::SharingMode::eExclusive;
-	RenderImageAAInfo.initialLayout = vk::ImageLayout::eUndefined;
+	const vk::ImageCreateInfo RenderImageAAInfo = {
+		.imageType     = vk::ImageType::e2D,
+		.format        = vk::Format::eR8G8B8A8Srgb,
+		.extent        = vk::Extent3D{RenderSize.x, RenderSize.y, 1},
+		.mipLevels     = 1,
+		.arrayLayers   = 1,
+		.samples       = VkBlam::RenderSamples,
+		.tiling        = vk::ImageTiling::eOptimal,
+		.usage         = vk::ImageUsageFlagBits::eColorAttachment,
+		.sharingMode   = vk::SharingMode::eExclusive,
+		.initialLayout = vk::ImageLayout::eUndefined,
+	};
 
 	// Render-image-depth(MSAA), D32_sfloat
-	vk::ImageCreateInfo RenderImageDepthInfo = {};
-	RenderImageDepthInfo.imageType           = vk::ImageType::e2D;
-	RenderImageDepthInfo.format              = vk::Format::eD32Sfloat;
-	RenderImageDepthInfo.samples             = VkBlam::RenderSamples;
-	RenderImageDepthInfo.extent = vk::Extent3D(RenderSize.x, RenderSize.y, 1);
-	RenderImageDepthInfo.mipLevels   = 1;
-	RenderImageDepthInfo.arrayLayers = 1;
-	RenderImageDepthInfo.tiling      = vk::ImageTiling::eOptimal;
-	RenderImageDepthInfo.usage
-		= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	RenderImageDepthInfo.sharingMode   = vk::SharingMode::eExclusive;
-	RenderImageDepthInfo.initialLayout = vk::ImageLayout::eUndefined;
+	const vk::ImageCreateInfo RenderImageDepthInfo = {
+		.imageType     = vk::ImageType::e2D,
+		.format        = vk::Format::eR8G8B8A8Srgb,
+		.extent        = vk::Extent3D{RenderSize.x, RenderSize.y, 1},
+		.mipLevels     = 1,
+		.arrayLayers   = 1,
+		.samples       = VkBlam::RenderSamples,
+		.tiling        = vk::ImageTiling::eOptimal,
+		.usage         = vk::ImageUsageFlagBits::eColorAttachment,
+		.sharingMode   = vk::SharingMode::eExclusive,
+		.initialLayout = vk::ImageLayout::eUndefined,
+	};
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -525,22 +523,19 @@ int main(int argc, char* argv[])
 
 	//// Image Views
 	// Create the image views for the render-targets
-	vk::ImageViewCreateInfo ImageViewInfoTemplate = {};
-	ImageViewInfoTemplate.viewType                = vk::ImageViewType::e2D;
-	ImageViewInfoTemplate.components.r            = vk::ComponentSwizzle::eR;
-	ImageViewInfoTemplate.components.g            = vk::ComponentSwizzle::eG;
-	ImageViewInfoTemplate.components.b            = vk::ComponentSwizzle::eB;
-	ImageViewInfoTemplate.components.a            = vk::ComponentSwizzle::eA;
-	ImageViewInfoTemplate.subresourceRange.aspectMask
-		= vk::ImageAspectFlagBits::eColor;
-	ImageViewInfoTemplate.subresourceRange.baseMipLevel   = 0;
-	ImageViewInfoTemplate.subresourceRange.levelCount     = 1;
-	ImageViewInfoTemplate.subresourceRange.baseArrayLayer = 0;
-	ImageViewInfoTemplate.subresourceRange.layerCount     = 1;
+	vk::ImageViewCreateInfo ImageViewInfoTemplate = {
+		.viewType         = vk::ImageViewType::e2D,
+		.subresourceRange = vk::ImageSubresourceRange({
+			.aspectMask     = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel   = 0,
+			.levelCount     = 1,
+			.baseArrayLayer = 0,
+			.layerCount     = 1,
+		}),
+	};
 
-	ImageViewInfoTemplate.image  = RenderImage.get();
-	ImageViewInfoTemplate.format = RenderImageInfo.format;
-
+	ImageViewInfoTemplate.image         = RenderImageAA.get();
+	ImageViewInfoTemplate.format        = RenderImageAAInfo.format;
 	vk::UniqueImageView RenderImageView = {};
 	if( auto CreateResult
 		= Device->createImageViewUnique(ImageViewInfoTemplate);
@@ -614,9 +609,10 @@ int main(int argc, char* argv[])
 	Renderer.GetDescriptorUpdateBatch().Flush();
 
 	//// Create Command Pool
-	vk::CommandPoolCreateInfo CommandPoolInfo = {};
-	CommandPoolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-	CommandPoolInfo.queueFamilyIndex = 0;
+	const vk::CommandPoolCreateInfo CommandPoolInfo = {
+		.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+		.queueFamilyIndex = 0,
+	};
 
 	vk::UniqueCommandPool CommandPool = {};
 	if( auto CreateResult = Device->createCommandPoolUnique(CommandPoolInfo);
@@ -634,10 +630,11 @@ int main(int argc, char* argv[])
 	}
 
 	//// Create Command Buffer
-	vk::CommandBufferAllocateInfo CommandBufferInfo = {};
-	CommandBufferInfo.commandPool                   = CommandPool.get();
-	CommandBufferInfo.level              = vk::CommandBufferLevel::ePrimary;
-	CommandBufferInfo.commandBufferCount = 1;
+	const vk::CommandBufferAllocateInfo CommandBufferInfo = {
+		.commandPool        = CommandPool.get(),
+		.level              = vk::CommandBufferLevel::ePrimary,
+		.commandBufferCount = 1,
+	};
 
 	vk::UniqueCommandBuffer CommandBuffer = {};
 
@@ -676,8 +673,6 @@ int main(int argc, char* argv[])
 				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Main Render Pass"
 			);
 
-			vk::RenderPassBeginInfo RenderBeginInfo   = {};
-			RenderBeginInfo.renderPass                = MainRenderPass.get();
 			static const vk::ClearValue ClearColors[] = {
 				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 				),
@@ -685,11 +680,14 @@ int main(int argc, char* argv[])
 				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 				),
 			};
-			RenderBeginInfo.pClearValues             = ClearColors;
-			RenderBeginInfo.clearValueCount          = std::size(ClearColors);
-			RenderBeginInfo.renderArea.extent.width  = RenderSize.x;
-			RenderBeginInfo.renderArea.extent.height = RenderSize.y;
-			RenderBeginInfo.framebuffer              = RenderFramebuffer.get();
+
+			const vk::RenderPassBeginInfo RenderBeginInfo = {
+				.renderPass      = MainRenderPass.get(),
+				.framebuffer     = RenderFramebuffer.get(),
+				.renderArea      = vk::Rect2D{{}, {RenderSize.x, RenderSize.y}},
+				.clearValueCount = std::size(ClearColors),
+				.pClearValues    = ClearColors,
+			};
 			CommandBuffer->beginRenderPass(
 				RenderBeginInfo, vk::SubpassContents::eInline
 			);
@@ -740,28 +738,33 @@ int main(int argc, char* argv[])
 				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
 				{},
 				{// Source Image
-				 vk::ImageMemoryBarrier(
-					 vk::AccessFlagBits::eColorAttachmentWrite,
-					 vk::AccessFlagBits::eTransferRead,
-					 vk::ImageLayout::eTransferSrcOptimal,
-					 vk::ImageLayout::eTransferSrcOptimal,
-					 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
-					 RenderImage.get(),
-					 vk::ImageSubresourceRange(
-						 vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
-					 )
-				 )}
+				 vk::ImageMemoryBarrier{
+					 .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+					 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
+					 .oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
+					 .newLayout     = vk::ImageLayout::eTransferSrcOptimal,
+					 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+					 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+					 .image               = RenderImage.get(),
+					 .subresourceRange    = vk::ImageSubresourceRange(
+                         vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
+                     )
+				 }
+				}
 			);
 			CommandBuffer->copyImageToBuffer(
 				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
 				StagingBuffer.get(),
-				{vk::BufferImageCopy(
-					0, RenderSize.x, RenderSize.y,
-					vk::ImageSubresourceLayers(
-						vk::ImageAspectFlagBits::eColor, 0, 0, 1
-					),
-					vk::Offset3D(), vk::Extent3D(RenderSize.x, RenderSize.y, 1)
-				)}
+				{vk::BufferImageCopy{
+					.bufferOffset      = 0,
+					.bufferRowLength   = RenderSize.x,
+					.bufferImageHeight = RenderSize.y,
+					.imageSubresource  = vk::ImageSubresourceLayers(
+                        vk::ImageAspectFlagBits::eColor, 0, 0, 1
+                    ),
+					.imageOffset = {},
+					.imageExtent = vk::Extent3D(RenderSize.x, RenderSize.y, 1)
+				}}
 			);
 		}
 	}
@@ -794,28 +797,26 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
-		SubmitInfoChain;
-
-	auto& SubmitInfo = SubmitInfoChain.get<vk::SubmitInfo>();
-
-	SubmitInfo.commandBufferCount = 1;
-	SubmitInfo.pCommandBuffers    = &CommandBuffer.get();
-
-	SubmitInfo.waitSemaphoreCount = 1;
-	SubmitInfo.pWaitSemaphores    = &Renderer.GetStreamBuffer().GetSemaphore();
-
 	static const vk::PipelineStageFlags WaitStage
 		= vk::PipelineStageFlagBits::eTransfer;
-	SubmitInfo.pWaitDstStageMask = &WaitStage;
 
-	auto& SubmitTimelineInfo
-		= SubmitInfoChain.get<vk::TimelineSemaphoreSubmitInfo>();
+	const vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
+		SubmitInfoChain = {
+			vk::SubmitInfo{
+				.waitSemaphoreCount = 1,
+				.pWaitSemaphores   = &Renderer.GetStreamBuffer().GetSemaphore(),
+				.pWaitDstStageMask = &WaitStage,
+				.commandBufferCount = 1,
+				.pCommandBuffers    = &CommandBuffer.get(),
+			},
+			vk::TimelineSemaphoreSubmitInfo{
+				.waitSemaphoreValueCount = 1,
+				.pWaitSemaphoreValues    = &UploadTick,
+			},
+		};
 
-	SubmitTimelineInfo.waitSemaphoreValueCount = 1;
-	SubmitTimelineInfo.pWaitSemaphoreValues    = &UploadTick;
-
-	if( auto SubmitResult = RenderQueue.submit(SubmitInfo, Fence.get());
+	if( auto SubmitResult
+		= RenderQueue.submit(SubmitInfoChain.get(), Fence.get());
 		SubmitResult != vk::Result::eSuccess )
 	{
 		std::fprintf(
@@ -857,16 +858,16 @@ vk::UniqueFramebuffer CreateMainFrameBuffer(
 	vk::ImageView ColorAA, glm::uvec2 ImageSize, vk::RenderPass RenderPass
 )
 {
-	vk::FramebufferCreateInfo FramebufferInfo = {};
-
-	FramebufferInfo.width      = ImageSize.x;
-	FramebufferInfo.height     = ImageSize.y;
-	FramebufferInfo.layers     = 1;
-	FramebufferInfo.renderPass = RenderPass;
-
 	const vk::ImageView Attachments[] = {Color, DepthAA, ColorAA};
-	FramebufferInfo.attachmentCount   = std::size(Attachments);
-	FramebufferInfo.pAttachments      = Attachments;
+
+	const vk::FramebufferCreateInfo FramebufferInfo = {
+		.renderPass      = RenderPass,
+		.attachmentCount = std::size(Attachments),
+		.pAttachments    = Attachments,
+		.width           = ImageSize.x,
+		.height          = ImageSize.y,
+		.layers          = 1,
+	};
 
 	if( auto CreateResult = Device.createFramebufferUnique(FramebufferInfo);
 		CreateResult.result == vk::Result::eSuccess )

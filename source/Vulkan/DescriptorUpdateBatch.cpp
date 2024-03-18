@@ -36,10 +36,14 @@ void DescriptorUpdateBatch::AddImage(
 			vk::Sampler(), ImageView, ImageLayout
 		);
 
-	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
-		TargetDescriptor, TargetBinding, 0, 1,
-		vk::DescriptorType::eSampledImage, &ImageInfo, nullptr, nullptr
-	);
+	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
+		.dstSet          = TargetDescriptor,
+		.dstBinding      = TargetBinding,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType  = vk::DescriptorType::eSampledImage,
+		.pImageInfo      = &ImageInfo,
+	};
 
 	++DescriptorWriteEnd;
 }
@@ -60,10 +64,14 @@ void DescriptorUpdateBatch::AddSampler(
 			Sampler, vk::ImageView(), vk::ImageLayout()
 		);
 
-	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
-		TargetDescriptor, TargetBinding, 0, 1, vk::DescriptorType::eSampler,
-		&ImageInfo, nullptr, nullptr
-	);
+	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
+		.dstSet          = TargetDescriptor,
+		.dstBinding      = TargetBinding,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType  = vk::DescriptorType::eSampler,
+		.pImageInfo      = &ImageInfo,
+	};
 
 	++DescriptorWriteEnd;
 }
@@ -84,10 +92,14 @@ void DescriptorUpdateBatch::AddImageSampler(
 			Sampler, ImageView, ImageLayout
 		);
 
-	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
-		TargetDescriptor, TargetBinding, 0, 1,
-		vk::DescriptorType::eCombinedImageSampler, &ImageInfo, nullptr, nullptr
-	);
+	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
+		.dstSet          = TargetDescriptor,
+		.dstBinding      = TargetBinding,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType  = vk::DescriptorType::eCombinedImageSampler,
+		.pImageInfo      = &ImageInfo,
+	};
 
 	++DescriptorWriteEnd;
 }
@@ -108,10 +120,14 @@ void DescriptorUpdateBatch::AddBuffer(
 			Buffer, Offset, Size
 		);
 
-	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet(
-		TargetDescriptor, TargetBinding, 0, 1,
-		vk::DescriptorType::eStorageImage, nullptr, &BufferInfo, nullptr
-	);
+	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
+		.dstSet          = TargetDescriptor,
+		.dstBinding      = TargetBinding,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType  = vk::DescriptorType::eStorageImage,
+		.pBufferInfo     = &BufferInfo,
+	};
 
 	++DescriptorWriteEnd;
 }
@@ -129,10 +145,15 @@ void DescriptorUpdateBatch::CopyBinding(
 		Flush();
 	}
 
-	DescriptorCopies[DescriptorCopyEnd] = vk::CopyDescriptorSet(
-		SourceDescriptor, SourceBinding, SourceArrayElement, TargetDescriptor,
-		TargetBinding, TargetArrayElement, DescriptorCount
-	);
+	DescriptorCopies[DescriptorCopyEnd] = vk::CopyDescriptorSet{
+		.srcSet          = SourceDescriptor,
+		.srcBinding      = SourceBinding,
+		.srcArrayElement = SourceArrayElement,
+		.dstSet          = TargetDescriptor,
+		.dstBinding      = TargetBinding,
+		.dstArrayElement = TargetArrayElement,
+		.descriptorCount = DescriptorCount
+	};
 
 	++DescriptorCopyEnd;
 }

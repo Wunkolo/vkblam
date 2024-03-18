@@ -96,7 +96,10 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 
 		// Put nullptr for the device memory for now
 		ImageHeapBinds.emplace_back(vk::BindImageMemoryInfo{
-			CurImage, nullptr, CurBindOffset});
+			.image        = CurImage,
+			.memory       = nullptr,
+			.memoryOffset = CurBindOffset,
+		});
 	}
 
 	const std::int32_t MemoryTypeIndex = FindMemoryTypeIndex(
@@ -178,7 +181,10 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 
 		// Put nullptr for the device memory for now
 		BufferHeapBinds.emplace_back(vk::BindBufferMemoryInfo{
-			CurBuffer, nullptr, CurBindOffset});
+			.buffer       = CurBuffer,
+			.memory       = nullptr,
+			.memoryOffset = CurBindOffset,
+		});
 	}
 
 	const std::int32_t MemoryTypeIndex = FindMemoryTypeIndex(
