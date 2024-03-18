@@ -303,65 +303,76 @@ int main(int argc, char* argv[])
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), VkBlam::RenderSamples);
 
-	vk::UniqueBuffer       StagingBuffer       = {};
-	vk::UniqueDeviceMemory StagingBufferMemory = {};
+	//// Download buffer
+	vk::UniqueDeviceMemory DownloadBufferMemory = {};
+	vk::UniqueBuffer       DownloadBuffer       = {};
 
-	vk::BufferCreateInfo StagingBufferInfo = {};
-	StagingBufferInfo.size
-		= RenderSize.x * RenderSize.y * sizeof(std::uint32_t);
-	StagingBufferInfo.usage = vk::BufferUsageFlagBits::eTransferDst
-							| vk::BufferUsageFlagBits::eTransferSrc;
+	const vk::BufferCreateInfo DownloadBufferInfo = {
+		.size  = RenderSize.x * RenderSize.y * sizeof(std::uint32_t),
+		.usage = vk::BufferUsageFlagBits::eTransferDst
+			   | vk::BufferUsageFlagBits::eTransferSrc,
+	};
 
-	if( auto CreateResult = Device->createBufferUnique(StagingBufferInfo);
+	if( auto CreateResult = Device->createBufferUnique(DownloadBufferInfo);
 		CreateResult.result == vk::Result::eSuccess )
 	{
-		StagingBuffer = std::move(CreateResult.value);
+		DownloadBuffer = std::move(CreateResult.value);
 	}
 	else
 	{
 		std::fprintf(
-			stderr, "Error creating staging buffer: %s\n",
+			stderr, "Error creating download buffer: %s\n",
 			vk::to_string(CreateResult.result).c_str()
 		);
 		return EXIT_FAILURE;
 	}
 
 	Vulkan::SetObjectName(
-		Device.get(), StagingBuffer.get(), "Staging Buffer( {} )",
-		Common::FormatByteCount(StagingBufferInfo.size)
+		Device.get(), DownloadBuffer.get(), "Download Buffer( {} )",
+		Common::FormatByteCount(DownloadBufferInfo.size)
 	);
 
-	// Allocate memory for staging buffer
+	// Allocate memory for download buffer
 	{
-		const vk::MemoryRequirements StagingBufferMemoryRequirements
-			= Device->getBufferMemoryRequirements(StagingBuffer.get());
+		const vk::MemoryRequirements DownloadBufferMemoryRequirements
+			= Device->getBufferMemoryRequirements(DownloadBuffer.get());
 
-		vk::MemoryAllocateInfo StagingBufferAllocInfo = {};
-		StagingBufferAllocInfo.allocationSize
-			= StagingBufferMemoryRequirements.size;
-		StagingBufferAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
-			PhysicalDevice, StagingBufferMemoryRequirements.memoryTypeBits,
+		vk::MemoryAllocateInfo DownloadBufferAllocInfo = {
+			.allocationSize = DownloadBufferMemoryRequirements.size,
+		};
+
+		const vk::MemoryPropertyFlags DownloadBufferTypes[] = {
 			vk::MemoryPropertyFlagBits::eHostVisible
 				| vk::MemoryPropertyFlagBits::eHostCoherent
+				| vk::MemoryPropertyFlagBits::eDeviceLocal,
+			vk::MemoryPropertyFlagBits::eHostVisible
+				| vk::MemoryPropertyFlagBits::eDeviceLocal,
+			vk::MemoryPropertyFlagBits::eHostVisible
+				| vk::MemoryPropertyFlagBits::eHostCoherent,
+			vk::MemoryPropertyFlagBits::eHostVisible,
+		};
+		DownloadBufferAllocInfo.memoryTypeIndex = Vulkan::FindMemoryTypeIndex(
+			PhysicalDevice, DownloadBufferMemoryRequirements.memoryTypeBits,
+			DownloadBufferTypes
 		);
 
 		if( auto AllocResult
-			= Device->allocateMemoryUnique(StagingBufferAllocInfo);
+			= Device->allocateMemoryUnique(DownloadBufferAllocInfo);
 			AllocResult.result == vk::Result::eSuccess )
 		{
-			StagingBufferMemory = std::move(AllocResult.value);
+			DownloadBufferMemory = std::move(AllocResult.value);
 		}
 		else
 		{
 			std::fprintf(
-				stderr, "Error allocating memory for staging buffer: %s\n",
+				stderr, "Error allocating memory for download buffer: %s\n",
 				vk::to_string(AllocResult.result).c_str()
 			);
 			return EXIT_FAILURE;
 		}
 
 		if( auto BindResult = Device->bindBufferMemory(
-				StagingBuffer.get(), StagingBufferMemory.get(), 0
+				DownloadBuffer.get(), DownloadBufferMemory.get(), 0
 			);
 			BindResult == vk::Result::eSuccess )
 		{
@@ -370,28 +381,28 @@ int main(int argc, char* argv[])
 		else
 		{
 			std::fprintf(
-				stderr, "Error binding memory to staging buffer: %s\n",
+				stderr, "Error binding memory to download buffer: %s\n",
 				vk::to_string(BindResult).c_str()
 			);
 			return EXIT_FAILURE;
 		}
 	}
 
-	std::span<std::byte> StagingBufferData;
+	std::span<std::byte> DownloadBufferData;
 	if( auto MapResult = Device->mapMemory(
-			StagingBufferMemory.get(), 0, StagingBufferInfo.size
+			DownloadBufferMemory.get(), 0, DownloadBufferInfo.size
 		);
 		MapResult.result == vk::Result::eSuccess )
 	{
-		StagingBufferData = std::span<std::byte>(
+		DownloadBufferData = std::span<std::byte>(
 			reinterpret_cast<std::byte*>(MapResult.value),
-			StagingBufferInfo.size
+			DownloadBufferInfo.size
 		);
 	}
 	else
 	{
 		std::fprintf(
-			stderr, "Error mapping staging buffer memory: %s\n",
+			stderr, "Error mapping download buffer memory: %s\n",
 			vk::to_string(MapResult.result).c_str()
 		);
 		return EXIT_FAILURE;
@@ -731,7 +742,7 @@ int main(int argc, char* argv[])
 		{
 			Vulkan::DebugLabelScope DebugCopyScope(
 				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
-				"Upload framebuffer to staging buffer"
+				"Upload framebuffer to download buffer"
 			);
 			CommandBuffer->pipelineBarrier(
 				vk::PipelineStageFlagBits::eColorAttachmentOutput,
@@ -754,7 +765,7 @@ int main(int argc, char* argv[])
 			);
 			CommandBuffer->copyImageToBuffer(
 				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
-				StagingBuffer.get(),
+				DownloadBuffer.get(),
 				{vk::BufferImageCopy{
 					.bufferOffset      = 0,
 					.bufferRowLength   = RenderSize.x,
@@ -844,10 +855,29 @@ int main(int argc, char* argv[])
 		);
 #endif
 
+	// Ensure all GPU writes are ready to be read
+	const vk::MappedMemoryRange MappedMemoryRanges[] = {
+		{
+			.memory = DownloadBufferMemory.get(),
+			.offset = 0,
+			.size   = VK_WHOLE_SIZE,
+		},
+	};
+	if( const vk::Result InvalidateResult
+		= Device->invalidateMappedMemoryRanges(MappedMemoryRanges);
+		InvalidateResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error invalidating download buffer: %s\n",
+			vk::to_string(InvalidateResult).c_str()
+		);
+		return EXIT_FAILURE;
+	}
+
 	stbi_write_png_compression_level = 0;
 	stbi_write_png(
 		("./" + MapPath.stem().string() + ".png").c_str(), RenderSize.x,
-		RenderSize.y, 4, StagingBufferData.data(), 0
+		RenderSize.y, 4, DownloadBufferData.data(), 0
 	);
 
 	return EXIT_SUCCESS;
