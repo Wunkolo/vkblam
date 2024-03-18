@@ -64,6 +64,25 @@ std::int32_t FindMemoryTypeIndex(
 	return -1;
 }
 
+std::int32_t FindMemoryTypeIndex(
+	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
+	std::span<const vk::MemoryPropertyFlags> MemoryProperties,
+	vk::MemoryPropertyFlags                  MemoryExcludeProperties
+)
+{
+	std::int32_t MemoryHeapIndex = -1;
+
+	for( const auto& MemoryProperty : MemoryProperties )
+	{
+		MemoryHeapIndex = FindMemoryTypeIndex(
+			PhysicalDevice, MemoryTypeMask, MemoryProperty,
+			MemoryExcludeProperties
+		);
+	}
+
+	return MemoryHeapIndex;
+}
+
 std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
 	const std::span<const vk::Image> Images,

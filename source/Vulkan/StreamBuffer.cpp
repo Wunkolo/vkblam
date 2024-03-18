@@ -84,23 +84,34 @@ StreamBuffer::StreamBuffer(
 				RingBuffer.get()
 			);
 
-		// Try to get some shared memory
-		std::int32_t RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
-			VulkanContext.PhysicalDevice,
-			RingBufferMemoryRequirements.memoryTypeBits,
+		// Stream-bufer memory types ordered from best to worst
+		static const vk::MemoryPropertyFlags HostMemoryTypes[] = {
+			// DeviceLocal memory
 			vk::MemoryPropertyFlagBits::eHostVisible
 				| vk::MemoryPropertyFlagBits::eHostCoherent
-				| vk::MemoryPropertyFlagBits::eDeviceLocal
+				| vk::MemoryPropertyFlagBits::eDeviceLocal,
+			// DeviceLocal memory
+			// vk{Flush,Invalidate}MappedMemoryRanges must be used
+			vk::MemoryPropertyFlagBits::eHostVisible
+				| vk::MemoryPropertyFlagBits::eDeviceLocal,
+			// Host memory
+			vk::MemoryPropertyFlagBits::eHostCoherent
+				| vk::MemoryPropertyFlagBits::eHostVisible,
+			// Host memory
+			// vk{Flush,Invalidate}MappedMemoryRanges must be used
+			vk::MemoryPropertyFlagBits::eHostVisible,
+		};
+
+		// Try to get some shared memory
+		const std::int32_t RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
+			VulkanContext.PhysicalDevice,
+			RingBufferMemoryRequirements.memoryTypeBits, HostMemoryTypes
 		);
 
-		// If that failed, then just get some host memory
 		if( RingBufferHeapIndex < 0 )
 		{
-			RingBufferHeapIndex = Vulkan::FindMemoryTypeIndex(
-				VulkanContext.PhysicalDevice,
-				RingBufferMemoryRequirements.memoryTypeBits,
-				vk::MemoryPropertyFlagBits::eHostVisible
-					| vk::MemoryPropertyFlagBits::eHostCoherent
+			std::fprintf(
+				stderr, "Unable to find candidate streambuffer memory heap\n"
 			);
 		}
 
@@ -513,7 +524,29 @@ std::uint64_t StreamBuffer::Flush()
 			},
 		};
 
-	if( auto SubmitResult
+	// Wait until the last possible moment to ensure all writes from the host
+	// are completely flushed and ready for the GPU to consume. Don't have to do
+	// this if we are using VK_MEMORY_PROPERTY_HOST_COHERENT_BIT memory. Rather
+	// than putting a branch for non-coherent memory, just do it in all cases
+	const vk::MappedMemoryRange MappedMemoryRanges[] = {
+		{
+			.memory = RingBufferMemory.get(),
+			.offset = 0,
+			.size   = VK_WHOLE_SIZE,
+		},
+	};
+	if( const vk::Result MapResult
+		= VulkanContext.LogicalDevice.flushMappedMemoryRanges(MappedMemoryRanges
+		);
+		MapResult != vk::Result::eSuccess )
+	{
+		std::fprintf(
+			stderr, "Error flushing streaming buffer mapped memory: %s\n",
+			vk::to_string(MapResult).c_str()
+		);
+	};
+
+	if( const auto SubmitResult
 		= VulkanContext.TransferQueue.submit(SubmitInfoChain.get());
 		SubmitResult != vk::Result::eSuccess )
 	{

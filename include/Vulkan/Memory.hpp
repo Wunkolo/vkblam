@@ -9,10 +9,19 @@ namespace Vulkan
 
 // Will try to find a memory type that is suitable for the given requirements.
 // Returns -1 if no suitable memory type was found.
-std::int32_t FindMemoryTypeIndex(
+[[nodiscard]] std::int32_t FindMemoryTypeIndex(
 	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
 	vk::MemoryPropertyFlags MemoryProperties,
 	vk::MemoryPropertyFlags MemoryExcludeProperties
+	= vk::MemoryPropertyFlagBits::eProtected
+);
+
+// Will try to find a memory type that is suitable for the given requirements.
+// Returns -1 if no suitable memory type was found.
+[[nodiscard]] std::int32_t FindMemoryTypeIndex(
+	vk::PhysicalDevice PhysicalDevice, std::uint32_t MemoryTypeMask,
+	std::span<const vk::MemoryPropertyFlags> MemoryProperties,
+	vk::MemoryPropertyFlags                  MemoryExcludeProperties
 	= vk::MemoryPropertyFlagBits::eProtected
 );
 
@@ -22,7 +31,7 @@ std::int32_t FindMemoryTypeIndex(
 //
 // There may be a case that all the buffers or images cannot be allocated
 // to the same device memory due to their required memory-type.
-std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
+[[nodiscard]] std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
 	const std::span<const vk::Image> Images,
 	vk::MemoryPropertyFlags          MemoryProperties
@@ -31,7 +40,7 @@ std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitImageHeap(
 	= vk::MemoryPropertyFlagBits::eProtected
 );
 
-std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
+[[nodiscard]] std::tuple<vk::Result, vk::UniqueDeviceMemory> CommitBufferHeap(
 	vk::Device Device, vk::PhysicalDevice PhysicalDevice,
 	const std::span<const vk::Buffer> Buffers,
 	vk::MemoryPropertyFlags           MemoryProperties
