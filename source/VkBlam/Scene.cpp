@@ -70,7 +70,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 
 	const vk::PipelineInputAssemblyStateCreateInfo InputAssemblyState = {
 		.topology               = vk::PrimitiveTopology::eTriangleList,
-		.primitiveRestartEnable = false,
+		.primitiveRestartEnable = VK_FALSE,
 	};
 
 	static const vk::Viewport DefaultViewport = {0, 0, 16, 16, 0.0f, 1.0f};
@@ -83,12 +83,12 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	};
 
 	const vk::PipelineRasterizationStateCreateInfo RasterizationState = {
-		.depthClampEnable        = false,
-		.rasterizerDiscardEnable = false,
+		.depthClampEnable        = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
 		.polygonMode             = PolygonMode,
 		.cullMode                = vk::CullModeFlagBits::eBack,
 		.frontFace               = vk::FrontFace::eClockwise,
-		.depthBiasEnable         = false,
+		.depthBiasEnable         = VK_FALSE,
 		.depthBiasConstantFactor = 0.0f,
 		.depthBiasClamp          = 0.0f,
 		.depthBiasSlopeFactor    = 0.0,
@@ -97,19 +97,19 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 
 	const vk::PipelineMultisampleStateCreateInfo MultisampleState = {
 		.rasterizationSamples  = RenderSamples,
-		.sampleShadingEnable   = true,
+		.sampleShadingEnable   = VK_FALSE,
 		.minSampleShading      = 1.0f,
 		.pSampleMask           = nullptr,
-		.alphaToCoverageEnable = true,
-		.alphaToOneEnable      = false,
+		.alphaToCoverageEnable = VK_TRUE,
+		.alphaToOneEnable      = VK_FALSE,
 	};
 
 	const vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {
-		.depthTestEnable       = true,
-		.depthWriteEnable      = true,
+		.depthTestEnable       = VK_TRUE,
+		.depthWriteEnable      = VK_TRUE,
 		.depthCompareOp        = vk::CompareOp::eLessOrEqual,
-		.depthBoundsTestEnable = false,
-		.stencilTestEnable     = false,
+		.depthBoundsTestEnable = VK_FALSE,
+		.stencilTestEnable     = VK_FALSE,
 		.front                 = {},
 		.back                  = {},
 		.minDepthBounds        = 0.0f,
@@ -117,7 +117,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	};
 
 	const vk::PipelineColorBlendAttachmentState BlendAttachmentState = {
-		.blendEnable         = false,
+		.blendEnable         = VK_FALSE,
 		.srcColorBlendFactor = vk::BlendFactor::eZero,
 		.dstColorBlendFactor = vk::BlendFactor::eZero,
 		.colorBlendOp        = vk::BlendOp::eAdd,
@@ -130,7 +130,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	};
 
 	const vk::PipelineColorBlendStateCreateInfo ColorBlendState = {
-		.logicOpEnable   = false,
+		.logicOpEnable   = VK_FALSE,
 		.logicOp         = vk::LogicOp::eClear,
 		.attachmentCount = 1,
 		.pAttachments    = &BlendAttachmentState,
