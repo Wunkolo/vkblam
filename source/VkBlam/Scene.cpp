@@ -110,8 +110,8 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 		.depthCompareOp        = vk::CompareOp::eLessOrEqual,
 		.depthBoundsTestEnable = false,
 		.stencilTestEnable     = false,
-		.front                 = vk::StencilOp::eKeep,
-		.back                  = vk::StencilOp::eKeep,
+		.front                 = {},
+		.back                  = {},
 		.minDepthBounds        = 0.0f,
 		.maxDepthBounds        = 1.0f,
 	};
