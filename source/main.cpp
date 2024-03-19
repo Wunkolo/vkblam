@@ -16,6 +16,7 @@
 #include <Vulkan/DescriptorHeap.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/Pipeline.hpp>
+#include <Vulkan/QueryPool.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
 #include <VkBlam/Renderer.hpp>
@@ -241,8 +242,9 @@ int main(int argc, char* argv[])
 
 	auto& DeviceFeatures
 		= DeviceFeatureChain.get<vk::PhysicalDeviceFeatures2>().features;
-	DeviceFeatures.samplerAnisotropy = true;
-	DeviceFeatures.sampleRateShading = true;
+	DeviceFeatures.pipelineStatisticsQuery = true;
+	DeviceFeatures.samplerAnisotropy       = true;
+	DeviceFeatures.sampleRateShading       = true;
 	// DeviceFeatures.wideLines         = true; // Not supported on MoltenVK
 	DeviceFeatures.fillModeNonSolid = true;
 
@@ -674,10 +676,14 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	Vulkan::QueryPool BenchPool(VulkanContext, vk::QueryType::eTimestamp);
+
 	{
 		Vulkan::DebugLabelScope FrameScope(
 			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame"
 		);
+		BenchPool.WriteTimestamp(CommandBuffer.get(), 0);
+		// BenchPool.BeginQuery(CommandBuffer.get(), 0);
 
 		{
 			Vulkan::DebugLabelScope RenderPassScope(
@@ -778,6 +784,10 @@ int main(int argc, char* argv[])
 				}}
 			);
 		}
+
+		// BenchPool.EndQuery(CommandBuffer.get(), 0);
+
+		BenchPool.WriteTimestamp(CommandBuffer.get(), 1);
 	}
 
 	if( auto EndResult = CommandBuffer->end();
