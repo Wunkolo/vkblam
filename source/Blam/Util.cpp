@@ -15,12 +15,12 @@ std::string FormatTagClass(Blam::TagClass Class)
 	return std::string(reinterpret_cast<const char*>(&TagStr), 4);
 }
 
-static std::array<std::size_t, 20> VertexFormatStride{{
+static std::array<std::uint8_t, 20> VertexFormatStride{{
 	56, 32, 20, 8, 68, 32, 24, 36, 24, 16,
 	16, 20, 32, 8, 32, 32, 36, 28, 32, 40,
 }};
 
-std::size_t GetVertexStride(VertexFormat Format)
+std::uint8_t GetVertexStride(VertexFormat Format)
 {
 	return VertexFormatStride.at(static_cast<std::size_t>(Format));
 }

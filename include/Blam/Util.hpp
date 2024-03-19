@@ -14,7 +14,7 @@ namespace Blam
 
 std::string FormatTagClass(TagClass Class);
 
-std::size_t GetVertexStride(VertexFormat Format);
+std::uint8_t GetVertexStride(VertexFormat Format);
 
 // HEK allows a max of 0x2'0000 total surfaces and uses an array of 32-bit
 // integers to map each surface's visibility to a single bit
