@@ -445,13 +445,13 @@ int main(int argc, char* argv[])
 	// Render-image-depth(MSAA), D32_sfloat
 	const vk::ImageCreateInfo RenderImageDepthInfo = {
 		.imageType     = vk::ImageType::e2D,
-		.format        = vk::Format::eR8G8B8A8Srgb,
+		.format        = vk::Format::eD32Sfloat,
 		.extent        = vk::Extent3D{RenderSize.x, RenderSize.y, 1},
 		.mipLevels     = 1,
 		.arrayLayers   = 1,
 		.samples       = VkBlam::RenderSamples,
 		.tiling        = vk::ImageTiling::eOptimal,
-		.usage         = vk::ImageUsageFlagBits::eColorAttachment,
+		.usage         = vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		.sharingMode   = vk::SharingMode::eExclusive,
 		.initialLayout = vk::ImageLayout::eUndefined,
 	};
@@ -545,8 +545,8 @@ int main(int argc, char* argv[])
 		}),
 	};
 
-	ImageViewInfoTemplate.image         = RenderImageAA.get();
-	ImageViewInfoTemplate.format        = RenderImageAAInfo.format;
+	ImageViewInfoTemplate.image         = RenderImage.get();
+	ImageViewInfoTemplate.format        = RenderImageInfo.format;
 	vk::UniqueImageView RenderImageView = {};
 	if( auto CreateResult
 		= Device->createImageViewUnique(ImageViewInfoTemplate);
