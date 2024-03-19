@@ -122,10 +122,11 @@ QueryPool::QueryPool(
 	  QueryActive(QueryCount)
 {
 
-	vk::QueryPoolCreateInfo PoolInfo = {};
-	PoolInfo.queryType               = QueryType;
-	PoolInfo.queryCount              = QueryCount;
-	PoolInfo.pipelineStatistics      = PIPELINE_STATISTICS_ALL_GRAPHICS;
+	const vk::QueryPoolCreateInfo PoolInfo = {
+		.queryType          = QueryType,
+		.queryCount         = QueryCount,
+		.pipelineStatistics = PIPELINE_STATISTICS_ALL_GRAPHICS,
+	};
 
 	if( auto CreateResult
 		= VulkanContext.LogicalDevice.createQueryPoolUnique(PoolInfo);
