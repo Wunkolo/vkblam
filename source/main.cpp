@@ -732,14 +732,17 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	Vulkan::QueryPool BenchPool(VulkanContext, vk::QueryType::eTimestamp);
+	Vulkan::QueryPool TimestampPool(VulkanContext, vk::QueryType::eTimestamp);
+	Vulkan::QueryPool PipelinePool(
+		VulkanContext, vk::QueryType::ePipelineStatistics
+	);
 
 	{
 		Vulkan::DebugLabelScope FrameScope(
 			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame"
 		);
-		BenchPool.WriteTimestamp(CommandBuffer.get(), 0);
-		// BenchPool.BeginQuery(CommandBuffer.get(), 0);
+		TimestampPool.WriteTimestamp(CommandBuffer.get(), 0);
+		PipelinePool.BeginQuery(CommandBuffer.get(), 0);
 
 		{
 			Vulkan::DebugLabelScope RenderPassScope(
@@ -840,9 +843,8 @@ int main(int argc, char* argv[])
 			);
 		}
 
-		// BenchPool.EndQuery(CommandBuffer.get(), 0);
-
-		BenchPool.WriteTimestamp(CommandBuffer.get(), 1);
+		PipelinePool.EndQuery(CommandBuffer.get(), 0);
+		TimestampPool.WriteTimestamp(CommandBuffer.get(), 1);
 	}
 
 	if( auto EndResult = CommandBuffer->end();
@@ -912,6 +914,9 @@ int main(int argc, char* argv[])
 		);
 		return EXIT_FAILURE;
 	}
+
+	const auto Test1 = PipelinePool.GetQuery(0).value();
+	const auto Test2 = TimestampPool.GetQuery(0).value();
 
 #ifdef CAPTURE
 	if( rdoc_api )

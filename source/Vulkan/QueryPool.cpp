@@ -54,24 +54,38 @@ constexpr std::size_t GetQueryElementSize(
 		 * GetQueryElementCount(QueryType, PipelineStatisticFlags);
 }
 
-void PrintPipelineStats(std::span<const std::uint64_t> QueryData)
+template<typename BitTypeT, typename ValueTypeT>
+void IterateFlagData(
+	vk::Flags<BitTypeT> BitFlags, std::span<const ValueTypeT> QueryData,
+	auto&& Proc
+)
 {
-	std::uint32_t CurStatMask
-		= static_cast<std::uint32_t>(PIPELINE_STATISTICS_ALL_GRAPHICS);
+	using MaskType   = vk::Flags<BitTypeT>::MaskType;
+	MaskType CurMask = static_cast<std::uint32_t>(BitFlags);
 
-	for( std::size_t i = 0; i < PIPELINE_STATISTICS_ALL_GRAPHICS_COUNT; ++i )
+	const std::size_t BitCount = static_cast<std::size_t>(
+		std::popcount(static_cast<MaskType>(BitFlags))
+	);
+
+	for( std::size_t i = 0; i < BitCount; ++i )
 	{
 		// Get lowest set bit
-		const std::uint32_t CurBit = (-CurStatMask) & CurStatMask;
-		fmt::println(
-			"\t{:32}:{}",
-			vk::to_string(vk::QueryPipelineStatisticFlagBits(CurBit)),
-			QueryData[i]
-		);
-
+		const MaskType CurBit = (-CurMask) & CurMask;
+		Proc(BitTypeT(CurBit), QueryData[i]);
 		// Clear lowest bit
-		CurStatMask &= ~CurBit;
+		CurMask &= ~CurBit;
 	}
+}
+
+void PrintPipelineStats(std::span<const std::uint64_t> QueryData)
+{
+	IterateFlagData(
+		PIPELINE_STATISTICS_ALL_GRAPHICS, QueryData,
+		[](vk::QueryPipelineStatisticFlagBits PipelineBit,
+		   const std::uint64_t&               QueryValue) {
+			fmt::println("\t{:32}:{}", vk::to_string(PipelineBit), QueryValue);
+		}
+	);
 }
 
 void PrintTimelineStats(
@@ -90,7 +104,8 @@ void IterateRuns(const std::vector<bool>& BitMask, auto&& Proc)
 {
 	for( std::size_t i = 0; i < BitMask.size(); i++ )
 	{
-		if( BitMask[i] == true )
+		// Todo: Detect batches faster with 'clz'
+		if( BitMask[i] )
 		{
 			const std::size_t RunStart = i;
 			std::size_t       RunCount = 1;
@@ -124,7 +139,7 @@ QueryPool::QueryPool(
 
 	const vk::QueryPoolCreateInfo PoolInfo = {
 		.queryType          = QueryType,
-		.queryCount         = QueryCount,
+		.queryCount         = static_cast<std::uint32_t>(QueryCount),
 		.pipelineStatistics = PIPELINE_STATISTICS_ALL_GRAPHICS,
 	};
 
@@ -139,6 +154,64 @@ QueryPool::QueryPool(
 QueryPool::~QueryPool()
 {
 	// Testing
+	FlushActiveQuerys();
+	IterateRuns(
+		QueryActive,
+		[this](std::size_t CurQueryIndex, std::size_t CurQueryCount) {
+			switch( QueryType )
+			{
+			case vk::QueryType::eOcclusion:
+				break;
+			case vk::QueryType::ePipelineStatistics:
+				fmt::println("{}", CurQueryIndex);
+				PrintPipelineStats(std::span(QueryData).subspan(
+					CurQueryIndex * PIPELINE_STATISTICS_ALL_GRAPHICS_COUNT,
+					PIPELINE_STATISTICS_ALL_GRAPHICS_COUNT
+				));
+				break;
+			case vk::QueryType::eTimestamp:
+				PrintTimelineStats(
+					std::span(QueryData).subspan(CurQueryIndex, CurQueryCount),
+					VulkanContext.PhysicalDevice.getProperties()
+						.limits.timestampPeriod
+				);
+				break;
+			default:
+				break;
+			}
+		}
+	);
+}
+
+std::optional<std::size_t> QueryPool::FindFreeQuery() const
+{
+	// Todo: A faster 'clz'-based method for finding free slots
+	for( std::size_t i = 0; i < QueryActive.size(); ++i )
+	{
+		if( !QueryActive[i] )
+		{
+			return i;
+		}
+	}
+
+	return std::nullopt;
+}
+
+std::optional<std::size_t> QueryPool::AllocateFreeQuery()
+{
+	if( const auto FreeSlot = FindFreeQuery(); FreeSlot.has_value() )
+	{
+		QueryActive[FreeSlot.value()] = true;
+		QueryData[FreeSlot.value()]   = {};
+		return FreeSlot.value();
+	}
+
+	return std::nullopt;
+}
+
+void QueryPool::FlushActiveQuerys()
+{
+	// Flush query in batches
 	IterateRuns(
 		QueryActive,
 		[this](std::size_t CurQueryIndex, std::size_t CurQueryCount) {
@@ -156,31 +229,38 @@ QueryPool::~QueryPool()
 				);
 				GetResult == vk::Result::eSuccess )
 			{
-				switch( QueryType )
-				{
-				case vk::QueryType::eOcclusion:
-					break;
-				case vk::QueryType::ePipelineStatistics:
-					fmt::println("{}", CurQueryIndex);
-					PrintPipelineStats(std::span(QueryData).subspan(
-						CurQueryIndex * PIPELINE_STATISTICS_ALL_GRAPHICS_COUNT,
-						PIPELINE_STATISTICS_ALL_GRAPHICS_COUNT
-					));
-					break;
-				case vk::QueryType::eTimestamp:
-					PrintTimelineStats(
-						std::span(QueryData).subspan(
-							CurQueryIndex, CurQueryCount
-						),
-						VulkanContext.PhysicalDevice.getProperties()
-							.limits.timestampPeriod
-					);
-					break;
-				default:
-					break;
-				}
+				// Error flushing query
 			}
 		}
+	);
+}
+
+std::optional<std::span<std::uint64_t>>
+	QueryPool::GetQuery(std::size_t QueryIndex)
+{
+	if( QueryIndex >= QueryCount )
+	{
+		// Invalid index
+		return std::nullopt;
+	}
+
+	const std::size_t QueryDataCount
+		= GetQueryElementCount(QueryType, PIPELINE_STATISTICS_ALL_GRAPHICS);
+	const std::size_t QueryDataStride = QueryDataCount * sizeof(std::uint64_t);
+
+	if( const auto GetResult = VulkanContext.LogicalDevice.getQueryPoolResults(
+			Pool.get(), QueryIndex, 1, QueryDataStride,
+			QueryData.data() + QueryIndex, QueryDataStride,
+			vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait
+		);
+		GetResult != vk::Result::eSuccess )
+	{
+		// Error getting query data
+		return std::nullopt;
+	}
+
+	return std::span(QueryData).subspan(
+		QueryDataCount * QueryIndex, QueryDataCount
 	);
 }
 

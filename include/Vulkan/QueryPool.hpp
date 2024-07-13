@@ -2,11 +2,14 @@
 
 #include <Vulkan/VulkanAPI.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace Vulkan
 {
 
+// Simple management class for a query pool of a specific query-type.
+// To be utilized by other types for profiling
 class QueryPool
 {
 private:
@@ -26,35 +29,21 @@ public:
 	);
 	~QueryPool();
 
+	[[nodiscard]] std::optional<std::size_t> FindFreeQuery() const;
+	[[nodiscard]] std::optional<std::size_t> AllocateFreeQuery();
+
+	void FlushActiveQuerys();
+
+	// Depending on the type of query, will return a span of either 1 value or
+	// multiple values
+	[[nodiscard]] std::optional<std::span<std::uint64_t>>
+		GetQuery(std::size_t QueryIndex);
+
 	void BeginQuery(vk::CommandBuffer CommandBuffer, std::uint32_t QueryIndex);
 	void EndQuery(vk::CommandBuffer CommandBuffer, std::uint32_t QueryIndex);
 
 	void WriteTimestamp(
 		vk::CommandBuffer CommandBuffer, std::uint32_t QueryIndex,
-		vk::PipelineStageFlagBits PipelineStage
-		= vk::PipelineStageFlagBits::eAllCommands
-	);
-
-	// Uses RAII to handle the aquiring of a query and reporting its
-	// results when it is available
-	struct QueryScope
-	{
-		std::size_t       QueryIndex;
-		vk::CommandBuffer TargetCommandBuffer;
-	};
-
-	QueryScope CreateQueryScope(vk::CommandBuffer CommandBuffer);
-
-	struct TimestampScope
-	{
-		std::size_t               QueryIndexStart;
-		std::size_t               QueryIndexEnd;
-		vk::PipelineStageFlagBits PipelineStage;
-		vk::CommandBuffer         TargetCommandBuffer;
-	};
-
-	TimestampScope CreateTimestampScope(
-		vk::CommandBuffer         CommandBuffer,
 		vk::PipelineStageFlagBits PipelineStage
 		= vk::PipelineStageFlagBits::eAllCommands
 	);
