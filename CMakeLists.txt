@@ -77,9 +77,9 @@ if( APPLE )
 endif()
 
 find_package(
-	Vulkan 1.3.206 REQUIRED
+	Vulkan 1.3.283 REQUIRED
 	COMPONENTS 
-		glslangValidator
+		glslang
 )
 
 find_package( Threads REQUIRED )
@@ -133,7 +133,7 @@ foreach( GLSL ${GLSL_SOURCE_FILES} )
 	add_custom_command(
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders/"
-		COMMAND Vulkan::glslangValidator -t --target-env vulkan1.1 -g
+		COMMAND glslang -t --target-env vulkan1.1 -g
 			-V ${GLSL} -o ${SPIRV} --depfile ${DEPFILE}
 		#COMMAND ${SPIRV_OPT} -O ${SPIRV} -o ${SPIRV}
 		COMMENT "Compiling SPIRV: ${FILE_NAME}.spv"
