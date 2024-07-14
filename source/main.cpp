@@ -687,7 +687,7 @@ int main(int argc, char* argv[])
 			static const vk::ClearValue ClearColors[] = {
 				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 				),
-				vk::ClearDepthStencilValue(1.0f, 0),
+				vk::ClearDepthStencilValue{1.0f, 0},
 				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 				),
 			};
@@ -757,9 +757,8 @@ int main(int argc, char* argv[])
 					 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 					 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 					 .image               = RenderImage.get(),
-					 .subresourceRange    = vk::ImageSubresourceRange(
-                         vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
-                     )
+					 .subresourceRange    = vk::
+						 ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
 				 }
 				}
 			);
@@ -770,11 +769,10 @@ int main(int argc, char* argv[])
 					.bufferOffset      = 0,
 					.bufferRowLength   = RenderSize.x,
 					.bufferImageHeight = RenderSize.y,
-					.imageSubresource  = vk::ImageSubresourceLayers(
-                        vk::ImageAspectFlagBits::eColor, 0, 0, 1
-                    ),
+					.imageSubresource  = vk::
+						ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
 					.imageOffset = {},
-					.imageExtent = vk::Extent3D(RenderSize.x, RenderSize.y, 1)
+					.imageExtent = vk::Extent3D{RenderSize.x, RenderSize.y, 1}
 				}}
 			);
 		}

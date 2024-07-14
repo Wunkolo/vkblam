@@ -885,9 +885,9 @@ std::optional<Scene>
 					std::span<const std::byte>                     PixelData
 				) -> bool {
 				// Upload image data
-				const std::size_t MipCount
+				const std::uint16_t MipCount
 					= std::max<std::uint16_t>(BitmapEntry.MipmapCount, 1);
-				const std::size_t LayerCount
+				const std::uint16_t LayerCount
 					= BitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6
 																		 : 1;
 
@@ -898,12 +898,14 @@ std::optional<Scene>
 
 				std::size_t PixelDataOff = 0;
 
-				auto CurExtent = vk::Extent3D(
-					BitmapEntry.Width, BitmapEntry.Height, BitmapEntry.Depth
-				);
-				for( std::size_t CurMip = 0; CurMip < MipCount; ++CurMip )
+				auto CurExtent = vk::Extent3D{
+					.width  = BitmapEntry.Width,
+					.height = BitmapEntry.Height,
+					.depth  = BitmapEntry.Depth
+				};
+				for( std::uint16_t CurMip = 0; CurMip < MipCount; ++CurMip )
 				{
-					for( std::size_t CurLayer = 0; CurLayer < LayerCount;
+					for( std::uint16_t CurLayer = 0; CurLayer < LayerCount;
 						 ++CurLayer )
 					{
 						const std::array<std::uint32_t, 3> CurBlockCount
@@ -917,14 +919,13 @@ std::optional<Scene>
 
 						TargetRenderer.GetStreamBuffer().QueueImageUpload(
 							PixelData.subspan(PixelDataOff, CurPixelDataSize),
-							TargetBitmap.Image.get(), vk::Offset3D(0, 0, 0),
+							TargetBitmap.Image.get(), vk::Offset3D{0, 0, 0},
 							CurExtent,
 							vk::ImageSubresourceLayers{
 								.aspectMask = vk::ImageAspectFlagBits::eColor,
-								.mipLevel = static_cast<std::uint32_t>(CurMip),
-								.baseArrayLayer
-								= static_cast<std::uint32_t>(CurLayer),
-								.layerCount = 1,
+								.mipLevel   = CurMip,
+								.baseArrayLayer = CurLayer,
+								.layerCount     = 1,
 							}
 						);
 
@@ -962,10 +963,8 @@ std::optional<Scene>
 					.image            = TargetBitmap.Image.get(),
 					.viewType         = ViewType,
 					.format           = VkBlam::BlamToVk(BitmapEntry.Format),
-					.subresourceRange = vk::ImageSubresourceRange(
-						vk::ImageAspectFlagBits::eColor, 0, MipCount, 0,
-						LayerCount
-					),
+					.subresourceRange = vk::
+						ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, MipCount, 0, LayerCount},
 				};
 
 				if( auto CreateResult

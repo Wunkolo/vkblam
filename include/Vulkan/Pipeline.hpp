@@ -13,8 +13,10 @@ inline vk::VertexInputBindingDescription CreateVertexInputBinding(
 	vk::VertexInputRate InputRate = vk::VertexInputRate::eVertex
 )
 {
-	return vk::VertexInputBindingDescription(
-		BindingIndex, sizeof(T), InputRate
-	);
+	return vk::VertexInputBindingDescription{
+		.binding   = BindingIndex,
+		.stride    = sizeof(T),
+		.inputRate = InputRate,
+	};
 }
 } // namespace Vulkan

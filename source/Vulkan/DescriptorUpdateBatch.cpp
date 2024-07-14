@@ -33,7 +33,7 @@ void DescriptorUpdateBatch::AddImage(
 
 	const auto& ImageInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorImageInfo>(
-			vk::Sampler(), ImageView, ImageLayout
+			vk::DescriptorImageInfo{vk::Sampler{}, ImageView, ImageLayout}
 		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
@@ -61,7 +61,7 @@ void DescriptorUpdateBatch::AddSampler(
 
 	const auto& ImageInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorImageInfo>(
-			Sampler, vk::ImageView(), vk::ImageLayout()
+			vk::DescriptorImageInfo{Sampler, vk::ImageView{}, vk::ImageLayout{}}
 		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
@@ -89,7 +89,7 @@ void DescriptorUpdateBatch::AddImageSampler(
 
 	const auto& ImageInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorImageInfo>(
-			Sampler, ImageView, ImageLayout
+			vk::DescriptorImageInfo{Sampler, ImageView, ImageLayout}
 		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{
@@ -117,7 +117,7 @@ void DescriptorUpdateBatch::AddBuffer(
 
 	const auto& BufferInfo
 		= DescriptorInfos[DescriptorWriteEnd].emplace<vk::DescriptorBufferInfo>(
-			Buffer, Offset, Size
+			vk::DescriptorBufferInfo{Buffer, Offset, Size}
 		);
 
 	DescriptorWrites[DescriptorWriteEnd] = vk::WriteDescriptorSet{

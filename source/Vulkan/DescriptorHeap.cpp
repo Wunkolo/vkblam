@@ -112,10 +112,12 @@ std::optional<DescriptorHeap> DescriptorHeap::Create(
 		}
 		for( const auto& CurDescriptorTypeCount : DescriptorTypeCounts )
 		{
-			PoolSizes.push_back(vk::DescriptorPoolSize(
-				CurDescriptorTypeCount.first,
-				CurDescriptorTypeCount.second * DescriptorHeapCount
-			));
+			PoolSizes.push_back(vk::DescriptorPoolSize{
+				.type            = CurDescriptorTypeCount.first,
+				.descriptorCount = static_cast<std::uint32_t>(
+					CurDescriptorTypeCount.second * DescriptorHeapCount
+				)
+			});
 		}
 	}
 

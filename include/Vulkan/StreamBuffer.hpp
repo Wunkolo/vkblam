@@ -69,7 +69,7 @@ public:
 		const std::span<const std::byte> Data, vk::Image Image,
 		vk::Offset3D Offset, vk::Extent3D Extent,
 		vk::ImageSubresourceLayers SubresourceLayers
-		= vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+		= vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
 		vk::ImageLayout DstLayout = vk::ImageLayout::eTransferDstOptimal
 	);
 
