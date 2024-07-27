@@ -241,14 +241,14 @@ int main(int argc, char* argv[])
 
 	auto& DeviceFeatures
 		= DeviceFeatureChain.get<vk::PhysicalDeviceFeatures2>().features;
-	DeviceFeatures.samplerAnisotropy = true;
-	DeviceFeatures.sampleRateShading = true;
-	// DeviceFeatures.wideLines         = true; // Not supported on MoltenVK
-	DeviceFeatures.fillModeNonSolid = true;
+	DeviceFeatures.samplerAnisotropy = VK_TRUE;
+	DeviceFeatures.sampleRateShading = VK_TRUE;
+	// DeviceFeatures.wideLines         = VK_TRUE; // Not supported on MoltenVK
+	DeviceFeatures.fillModeNonSolid = VK_TRUE;
 
 	auto& DeviceTimelineFeatures
 		= DeviceFeatureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
-	DeviceTimelineFeatures.timelineSemaphore = true;
+	DeviceTimelineFeatures.timelineSemaphore = VK_TRUE;
 
 	DeviceInfo.pNext = &DeviceFeatureChain.get();
 
