@@ -75,7 +75,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 
 	static const vk::Viewport DefaultViewport = {0, 0, 16, 16, 0.0f, 1.0f};
 	static const vk::Rect2D   DefaultScissor  = {{0, 0}, {16, 16}};
-	const vk::PipelineViewportStateCreateInfo ViewportState = {
+	static const vk::PipelineViewportStateCreateInfo ViewportState = {
 		.viewportCount = 1,
 		.pViewports    = &DefaultViewport,
 		.scissorCount  = 1,
@@ -104,7 +104,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 		.alphaToOneEnable      = VK_FALSE,
 	};
 
-	const vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {
+	static const vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {
 		.depthTestEnable       = VK_TRUE,
 		.depthWriteEnable      = VK_TRUE,
 		.depthCompareOp        = vk::CompareOp::eLessOrEqual,
@@ -116,7 +116,7 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 		.maxDepthBounds        = 1.0f,
 	};
 
-	const vk::PipelineColorBlendAttachmentState BlendAttachmentState = {
+	static const vk::PipelineColorBlendAttachmentState BlendAttachmentState = {
 		.blendEnable         = VK_FALSE,
 		.srcColorBlendFactor = vk::BlendFactor::eZero,
 		.dstColorBlendFactor = vk::BlendFactor::eZero,
@@ -129,20 +129,21 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 		| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
 	};
 
-	const vk::PipelineColorBlendStateCreateInfo ColorBlendState = {
+	static const vk::PipelineColorBlendStateCreateInfo ColorBlendState = {
 		.logicOpEnable   = VK_FALSE,
 		.logicOp         = vk::LogicOp::eClear,
 		.attachmentCount = 1,
 		.pAttachments    = &BlendAttachmentState,
 	};
 
-	vk::DynamicState DynamicStates[]
-		= {// The viewport and scissor of the framebuffer will be dynamic at
-		   // run-time
-		   // so we definately add these
-		   vk::DynamicState::eViewport, vk::DynamicState::eScissor
-		};
-	const vk::PipelineDynamicStateCreateInfo DynamicState = {
+	static const vk::DynamicState DynamicStates[] = {
+		// The viewport and scissor of the framebuffer will be dynamic at
+		// run-time
+		// so we definately add these
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor,
+	};
+	static const vk::PipelineDynamicStateCreateInfo DynamicState = {
 		.dynamicStateCount = std::size(DynamicStates),
 		.pDynamicStates    = DynamicStates,
 	};
