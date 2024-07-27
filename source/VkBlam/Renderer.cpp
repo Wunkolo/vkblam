@@ -7,9 +7,10 @@
 vk::UniqueRenderPass
 	CreateMainRenderPass(vk::Device Device, vk::SampleCountFlagBits SampleCount)
 {
-	const vk::AttachmentDescription Attachments[] = {
+	static const vk::AttachmentDescription Attachments[] = {
 		// Color Attachment
-		// We just care about it storing its color data
+		// We just care about it storing its color data, MSAA may resolve into
+		// this
 		vk::AttachmentDescription{
 			.flags          = vk::AttachmentDescriptionFlags(),
 			.format         = vk::Format::eR8G8B8A8Srgb,
@@ -35,7 +36,7 @@ vk::UniqueRenderPass
 			.finalLayout    = vk::ImageLayout::eDepthStencilAttachmentOptimal
 		},
 		// Color Attachment(MSAA)
-		// We just care about it storing its color data
+		// Dont care about reading or storing it, since it gets resolved
 		vk::AttachmentDescription{
 			.flags          = vk::AttachmentDescriptionFlags(),
 			.format         = vk::Format::eR8G8B8A8Srgb,
@@ -49,7 +50,7 @@ vk::UniqueRenderPass
 		},
 	};
 
-	const vk::AttachmentReference AttachmentRefs[] = {
+	static const vk::AttachmentReference AttachmentRefs[] = {
 		vk::AttachmentReference{
 			.attachment = 0,
 			.layout     = vk::ImageLayout::eColorAttachmentOptimal,
@@ -64,24 +65,30 @@ vk::UniqueRenderPass
 		},
 	};
 
-	const vk::SubpassDescription Subpasses[1] = {{
-		.colorAttachmentCount    = 1,
-		.pColorAttachments       = &AttachmentRefs[2],
-		.pResolveAttachments     = &AttachmentRefs[0],
-		.pDepthStencilAttachment = &AttachmentRefs[1],
-	}};
+	static const vk::SubpassDescription Subpasses[] = {
+		vk::SubpassDescription{
+			.colorAttachmentCount    = 1,
+			.pColorAttachments       = &AttachmentRefs[2],
+			.pResolveAttachments     = &AttachmentRefs[0],
+			.pDepthStencilAttachment = &AttachmentRefs[1],
+		},
+	};
 
-	const vk::SubpassDependency SubpassDependencies[] = {vk::SubpassDependency{
-		.srcSubpass      = VK_SUBPASS_EXTERNAL,
-		.dstSubpass      = 0,
-		.srcStageMask    = vk::PipelineStageFlagBits::eTransfer,
-		.dstStageMask    = vk::PipelineStageFlagBits::eVertexInput,
-		.srcAccessMask   = vk::AccessFlagBits::eTransferWrite,
-		.dstAccessMask   = vk::AccessFlagBits::eVertexAttributeRead,
-		.dependencyFlags = vk::DependencyFlagBits::eByRegion
-	}};
+	static const vk::SubpassDependency SubpassDependencies[] = {
+		// Wait for all Transfer-Writes to complete before any Vertex-Inputs
+		// happen in subpass 0
+		vk::SubpassDependency{
+			.srcSubpass      = VK_SUBPASS_EXTERNAL,
+			.dstSubpass      = 0,
+			.srcStageMask    = vk::PipelineStageFlagBits::eTransfer,
+			.dstStageMask    = vk::PipelineStageFlagBits::eVertexInput,
+			.srcAccessMask   = vk::AccessFlagBits::eTransferWrite,
+			.dstAccessMask   = vk::AccessFlagBits::eVertexAttributeRead,
+			.dependencyFlags = vk::DependencyFlagBits::eByRegion
+		},
+	};
 
-	const vk::RenderPassCreateInfo RenderPassInfo = {
+	static const vk::RenderPassCreateInfo RenderPassInfo = {
 		.attachmentCount = std::size(Attachments),
 		.pAttachments    = Attachments,
 		.subpassCount    = std::size(Subpasses),
