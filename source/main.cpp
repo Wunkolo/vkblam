@@ -254,10 +254,11 @@ int main(int argc, char* argv[])
 
 	static const float QueuePriority = 1.0f;
 
-	vk::DeviceQueueCreateInfo QueueInfo = {};
-	QueueInfo.queueFamilyIndex          = 0;
-	QueueInfo.queueCount                = 1;
-	QueueInfo.pQueuePriorities          = &QueuePriority;
+	static const vk::DeviceQueueCreateInfo QueueInfo = {
+		.queueFamilyIndex = 0,
+		.queueCount       = 1,
+		.pQueuePriorities = &QueuePriority,
+	};
 
 	DeviceInfo.queueCreateInfoCount = 1;
 	DeviceInfo.pQueueCreateInfos    = &QueueInfo;
