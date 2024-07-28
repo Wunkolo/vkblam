@@ -172,7 +172,10 @@ std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
 	);
 }
 
-static vk::DescriptorSetLayoutBinding SceneBindings[] = {
+namespace
+{
+
+vk::DescriptorSetLayoutBinding SceneBindings[] = {
 	{// Default2DSamplerFiltered
 	 0, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment
 	},
@@ -184,7 +187,7 @@ static vk::DescriptorSetLayoutBinding SceneBindings[] = {
 	},
 };
 
-static vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
+vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
 	{// Basemap
 	 0, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
 	},
@@ -207,6 +210,7 @@ static vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
 	 6, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
 	},
 };
+} // namespace
 
 namespace VkBlam
 {
