@@ -271,9 +271,9 @@ enum class VertexFormat : std::uint32_t
 template<std::size_t N>
 struct FourCC
 {
-	std::uint32_t Value;
+	std::uint32_t Value = 0;
 
-	constexpr FourCC(const char (&Identifier)[N]) : Value(0)
+	constexpr FourCC(const char (&Identifier)[N])
 	{
 		static_assert(N == 5, "Tag must be 4 characters");
 		Value
