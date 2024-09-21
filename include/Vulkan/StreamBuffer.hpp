@@ -27,8 +27,8 @@ private:
 	vk::UniqueSemaphore FlushSemaphore;
 	std::uint64_t       FlushTick;
 
-	vk::UniqueBuffer       RingBuffer;
 	vk::UniqueDeviceMemory RingBufferMemory;
+	vk::UniqueBuffer       RingBuffer;
 
 	// The host-mapped vulkan memory for the ring buffer
 	std::span<std::byte> RingMemoryMapped;
