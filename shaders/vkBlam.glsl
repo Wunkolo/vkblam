@@ -3,8 +3,8 @@
 struct CameraGlobals
 {
 	f32mat4x4 View;
-	f32mat4x4 Projection;
 	f32mat4x4 ViewProjection;
+	// f32mat4x4 Projection;
 };
 
 struct SimulationGlobals

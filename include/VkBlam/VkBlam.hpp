@@ -72,8 +72,8 @@ vk::SamplerCreateInfo SamplerCube();
 struct CameraGlobals
 {
 	alignas(16) glm::f32mat4x4 View;
-	alignas(16) glm::f32mat4x4 Projection;
 	alignas(16) glm::f32mat4x4 ViewProjection;
+	// alignas(16) glm::f32mat4x4 Projection;
 };
 
 struct SimulationGlobals

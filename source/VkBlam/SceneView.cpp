@@ -7,9 +7,8 @@ SceneView::SceneView(
 )
 	: Viewport(Viewport)
 {
-	CameraGlobalsData.View       = View;
-	CameraGlobalsData.Projection = Projection;
-
+	CameraGlobalsData.View           = View;
 	CameraGlobalsData.ViewProjection = Projection * View;
+	// CameraGlobalsData.Projection = Projection;
 }
 } // namespace VkBlam
