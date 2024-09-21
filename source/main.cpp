@@ -748,13 +748,14 @@ int main(int argc, char* argv[])
 				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
 				"Upload framebuffer to download buffer"
 			);
+			// Render Image is TransferSrc at this moment
 			CommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eColorAttachmentOutput,
+				vk::PipelineStageFlagBits::eTransfer,
 				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
 				{},
 				{// Source Image
 				 vk::ImageMemoryBarrier{
-					 .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+					 .srcAccessMask = vk::AccessFlagBits::eTransferRead,
 					 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
 					 .oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
 					 .newLayout     = vk::ImageLayout::eTransferSrcOptimal,
