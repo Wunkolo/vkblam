@@ -622,7 +622,6 @@ int main(int argc, char* argv[])
 
 	//// Create Command Pool
 	const vk::CommandPoolCreateInfo CommandPoolInfo = {
-		.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		.queueFamilyIndex = 0,
 	};
 
@@ -665,7 +664,11 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	if( auto BeginResult = CommandBuffer->begin(vk::CommandBufferBeginInfo{});
+	const vk::CommandBufferBeginInfo BeginInfo = {
+		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+	};
+
+	if( auto BeginResult = CommandBuffer->begin(BeginInfo);
 		BeginResult != vk::Result::eSuccess )
 	{
 		std::fprintf(
