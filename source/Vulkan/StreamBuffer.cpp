@@ -348,7 +348,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 
 	ImagePreBarrier.emplace_back(vk::ImageMemoryBarrier{
 		.srcAccessMask       = vk::AccessFlagBits::eMemoryWrite,
-		.dstAccessMask       = vk::AccessFlagBits::eMemoryRead,
+		.dstAccessMask       = vk::AccessFlagBits::eTransferWrite,
 		.oldLayout           = vk::ImageLayout::eUndefined,
 		.newLayout           = vk::ImageLayout::eTransferDstOptimal,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -358,7 +358,7 @@ std::uint64_t StreamBuffer::QueueImageUpload(
 	});
 	ImagePostBarrier.emplace_back(vk::ImageMemoryBarrier{
 		.srcAccessMask       = vk::AccessFlagBits::eTransferWrite,
-		.dstAccessMask       = vk::AccessFlagBits::eMemoryRead,
+		.dstAccessMask       = vk::AccessFlagBits::eShaderRead,
 		.oldLayout           = vk::ImageLayout::eTransferDstOptimal,
 		.newLayout           = vk::ImageLayout::eShaderReadOnlyOptimal,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
