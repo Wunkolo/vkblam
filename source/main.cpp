@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 #if defined(__APPLE__)
 		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #endif
-			VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	});
 
 	const vk::InstanceCreateInfo InstanceInfo = {
@@ -300,6 +300,29 @@ int main(int argc, char* argv[])
 
 	VkBlam::Scene CurScene = VkBlam::Scene::Create(Renderer, CurWorld).value();
 
+	// Test for transient memory support
+	bool SupportsTransientImage = false;
+	{
+		const vk::PhysicalDeviceMemoryProperties MemoryProperties
+			= PhysicalDevice.getMemoryProperties();
+
+		// Any heap with eLazilyAllocated support indicates support for
+		// memoryless transient images
+		const auto MemoryTypes = std::span{MemoryProperties.memoryTypes}.first(
+			MemoryProperties.memoryTypeCount
+		);
+
+		for( const auto& MemoryType : MemoryTypes )
+		{
+			if( MemoryType.propertyFlags
+				& vk::MemoryPropertyFlagBits::eLazilyAllocated )
+			{
+				SupportsTransientImage = true;
+				break;
+			}
+		}
+	}
+
 	//// Main Render Pass
 	vk::UniqueRenderPass MainRenderPass
 		= CreateMainRenderPass(Device.get(), VkBlam::RenderSamples);
@@ -410,6 +433,9 @@ int main(int argc, char* argv[])
 	}
 
 	// Render Target images
+	vk::UniqueDeviceMemory ImageHeapMemory   = {};
+	vk::UniqueDeviceMemory ImageAAHeapMemory = {};
+
 	vk::UniqueImage RenderImage      = {};
 	vk::UniqueImage RenderImageAA    = {};
 	vk::UniqueImage RenderImageDepth = {};
@@ -430,7 +456,7 @@ int main(int argc, char* argv[])
 	};
 
 	// Render-image(MSAA), R8G8B8A8_SRGB
-	const vk::ImageCreateInfo RenderImageAAInfo = {
+	vk::ImageCreateInfo RenderImageAAInfo = {
 		.imageType     = vk::ImageType::e2D,
 		.format        = vk::Format::eR8G8B8A8Srgb,
 		.extent        = vk::Extent3D{RenderSize.x, RenderSize.y, 1},
@@ -444,7 +470,7 @@ int main(int argc, char* argv[])
 	};
 
 	// Render-image-depth(MSAA), D32_sfloat
-	const vk::ImageCreateInfo RenderImageDepthInfo = {
+	vk::ImageCreateInfo RenderImageDepthInfo = {
 		.imageType     = vk::ImageType::e2D,
 		.format        = vk::Format::eD32Sfloat,
 		.extent        = vk::Extent3D{RenderSize.x, RenderSize.y, 1},
@@ -456,6 +482,13 @@ int main(int argc, char* argv[])
 		.sharingMode   = vk::SharingMode::eExclusive,
 		.initialLayout = vk::ImageLayout::eUndefined,
 	};
+
+	if( SupportsTransientImage )
+	{
+		RenderImageAAInfo.usage |= vk::ImageUsageFlagBits::eTransientAttachment;
+		RenderImageDepthInfo.usage
+			|= vk::ImageUsageFlagBits::eTransientAttachment;
+	}
 
 	if( auto CreateResult = Device->createImageUnique(RenderImageInfo);
 		CreateResult.result == vk::Result::eSuccess )
@@ -508,21 +541,36 @@ int main(int argc, char* argv[])
 		Device.get(), RenderImageDepth.get(), "Render Image Depth(AA)"
 	);
 
-	std::vector<vk::Image> ImageHeapTargets = {};
-	ImageHeapTargets.push_back(RenderImage.get());
-	ImageHeapTargets.push_back(RenderImageAA.get());
-	ImageHeapTargets.push_back(RenderImageDepth.get());
-
 	// Allocate all the memory we need for these images up-front into a single
 	// heap.
-	vk::UniqueDeviceMemory ImageHeapMemory = {};
 
 	if( auto [Result, Value] = Vulkan::CommitImageHeap(
-			Device.get(), PhysicalDevice, ImageHeapTargets
+			Device.get(), PhysicalDevice, std::to_array({RenderImage.get()}),
+			vk::MemoryPropertyFlagBits::eDeviceLocal
 		);
 		Result == vk::Result::eSuccess )
 	{
 		ImageHeapMemory = std::move(Value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error committing image memory: %s\n",
+			vk::to_string(Result).c_str()
+		);
+		return EXIT_FAILURE;
+	}
+
+	if( auto [Result, Value] = Vulkan::CommitImageHeap(
+			Device.get(), PhysicalDevice,
+			std::to_array({RenderImageAA.get(), RenderImageDepth.get()}),
+			SupportsTransientImage
+				? vk::MemoryPropertyFlagBits::eLazilyAllocated
+				: vk::MemoryPropertyFlagBits::eDeviceLocal
+		);
+		Result == vk::Result::eSuccess )
+	{
+		ImageAAHeapMemory = std::move(Value);
 	}
 	else
 	{
