@@ -39,9 +39,11 @@ std::unique_ptr<Bitmap> Bitmap::LoadTag(
 		vk::ImageCreateInfo ImageInfo = {};
 		ImageInfo.imageType           = VkBlam::BlamToVk(CurBitmapEntry.Type);
 		ImageInfo.format              = VkBlam::BlamToVk(CurBitmapEntry.Format);
-		ImageInfo.extent              = vk::Extent3D(
-            CurBitmapEntry.Width, CurBitmapEntry.Height, CurBitmapEntry.Depth
-        );
+		ImageInfo.extent              = vk::Extent3D{
+						 .width  = CurBitmapEntry.Width,
+						 .height = CurBitmapEntry.Height,
+						 .depth  = CurBitmapEntry.Depth,
+        };
 		ImageInfo.mipLevels
 			= std::max<std::uint16_t>(CurBitmapEntry.MipmapCount, 1);
 		ImageInfo.arrayLayers
