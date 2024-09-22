@@ -27,8 +27,8 @@ vk::SamplerCreateInfo Sampler2D(bool Filtered, bool Clamp)
 		.addressModeW            = Clamp ? vk::SamplerAddressMode::eClampToEdge
 										 : vk::SamplerAddressMode::eRepeat,
 		.mipLodBias              = 0.0f,
-		.anisotropyEnable        = VK_TRUE,
-		.maxAnisotropy           = 16.0f,
+		.anisotropyEnable        = VK_FALSE,
+		.maxAnisotropy           = 0.0f,
 		.compareEnable           = VK_FALSE,
 		.compareOp               = vk::CompareOp::eAlways,
 		.minLod                  = 0.0f,
