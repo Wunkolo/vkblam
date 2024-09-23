@@ -12,6 +12,7 @@ namespace VkBlam::Tags
 class Bitmap final : public TagImplementation<Blam::TagClass::Bitmap>
 {
 private:
+	vk::UniqueDeviceMemory Memory;
 	struct SubBitmap
 	{
 		vk::UniqueImage     Image;
