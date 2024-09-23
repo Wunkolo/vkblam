@@ -66,8 +66,7 @@ public:
 		}
 	}
 
-	template<TagClass TagClassT>
-	const Tag<TagClassT>* GetTag(std::uint32_t TagID) const
+	const TagBase* GetTag(std::uint32_t TagID) const
 	{
 		const TagIndexEntry* TagIndexEntryPtr
 			= GetTagIndexEntry(std::uint16_t(TagID));
@@ -82,9 +81,13 @@ public:
 			return nullptr;
 		}
 
-		return &TagHeap.Read<Tag<TagClassT>>(
-			TagIndexEntryPtr->TagDataVirtualOffset
-		);
+		return &TagHeap.Read<TagBase>(TagIndexEntryPtr->TagDataVirtualOffset);
+	}
+
+	template<TagClass TagClassT>
+	const Tag<TagClassT>* GetTag(std::uint32_t TagID) const
+	{
+		return reinterpret_cast<const Tag<TagClassT>*>(GetTag(TagID));
 	}
 
 	std::string_view GetTagName(std::uint32_t TagID) const

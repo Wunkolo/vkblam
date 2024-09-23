@@ -4,21 +4,25 @@
 namespace VkBlam::Tags
 {
 
-Bitmap::Bitmap()
-{
-}
-
 Bitmap::~Bitmap()
 {
 }
 
-std::unique_ptr<Bitmap> Bitmap::LoadTag(
+BitmapSubsystem::BitmapSubsystem(const Vulkan::Context& VulkanContext)
+	: VulkanContext(VulkanContext)
+{
+}
+
+BitmapSubsystem::~BitmapSubsystem()
+{
+}
+
+Bitmap* BitmapSubsystem::LoadTag(
 	const Blam::TagIndexEntry&               TagIndexEntry,
 	const Blam::Tag<Blam::TagClass::Bitmap>& Tag, Scene& TargetScene
 )
 {
 	std::unique_ptr<Bitmap> NewBitmap(new Bitmap());
-	const Vulkan::Context&  VulkanContext = TargetScene.GetVulkanContext();
 
 	const auto SubBitmaps
 		= TargetScene.GetMapFile().TagHeap.GetBlock(Tag.Bitmaps);
@@ -61,7 +65,7 @@ std::unique_ptr<Bitmap> Bitmap::LoadTag(
 			ImageInfo.flags = vk::ImageCreateFlagBits::eCubeCompatible;
 		}
 
-		SubBitmap CurSubBitmap = {};
+		Bitmap::SubBitmap CurSubBitmap = {};
 
 		if( auto CreateResult = TargetScene.GetVulkanContext()
 									.LogicalDevice.createImageUnique(ImageInfo);
@@ -144,6 +148,6 @@ std::unique_ptr<Bitmap> Bitmap::LoadTag(
 		NewBitmap->Bitmaps[CurSubTextureIdx] = std::move(CurSubBitmap);
 	}
 
-	return NewBitmap;
+	return Bitmaps.emplace_back(std::move(NewBitmap)).get();
 }
 } // namespace VkBlam::Tags
