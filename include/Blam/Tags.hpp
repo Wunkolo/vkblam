@@ -9,8 +9,13 @@
 namespace Blam
 {
 #pragma pack(push, 1)
+
+struct TagBase
+{
+};
+
 template<TagClass Class>
-struct Tag
+struct Tag : TagBase
 {
 };
 
@@ -1214,7 +1219,8 @@ struct Tag<TagClass::Scenario>
 		VirtualHeap GetSBSPHeap(std::span<const std::byte> MapFile) const
 		{
 			return VirtualHeap{
-				BSPVirtualBase, MapFile.subspan(BSPStart).first(BSPSize)};
+				BSPVirtualBase, MapFile.subspan(BSPStart).first(BSPSize)
+			};
 		}
 
 		struct SBSPHeader

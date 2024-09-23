@@ -220,6 +220,12 @@ Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 	: TargetWorld(TargetWorld), TargetRenderer(TargetRenderer)
 {
 	Pool = std::make_unique<TagPool>(*this);
+
+	Pool->RegisterTagSubsystem(
+		Blam::TagClass::Bitmap, std::make_unique<Tags::BitmapSubsystem>(
+									TargetRenderer.GetVulkanContext()
+								)
+	);
 }
 
 Scene::~Scene()

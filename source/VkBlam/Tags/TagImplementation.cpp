@@ -3,7 +3,12 @@
 
 namespace VkBlam
 {
-TagImplementation::~TagImplementation()
+TagImplementationBase::~TagImplementationBase()
 {
 }
+
+TagSubsystemBase::~TagSubsystemBase()
+{
+}
+
 } // namespace VkBlam
