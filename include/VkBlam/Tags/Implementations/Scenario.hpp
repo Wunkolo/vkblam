@@ -33,7 +33,7 @@ public:
 	ScenarioSubsystem();
 	~ScenarioSubsystem();
 
-	[[nodiscard]] std::vector<std::uint32_t> GetDependentTags(
+	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry&                 TagIndexEntry,
 		const Blam::Tag<Blam::TagClass::Scenario>& Tag,
 		const Blam::MapFile&                       MapFile

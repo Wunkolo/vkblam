@@ -15,7 +15,7 @@ struct TagBase
 };
 
 template<TagClass Class>
-struct Tag : TagBase
+struct Tag : public TagBase
 {
 };
 

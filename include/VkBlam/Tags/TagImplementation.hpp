@@ -28,6 +28,15 @@ public:
 	// TagImplementationBase
 };
 
+struct DependentTag
+{
+	// ID of the dependent tag
+	std::uint32_t TagID;
+	// Optionally provided tag data
+	// Specifically used to handle ScenarioStructureBsp tags which
+	// utilize a different heap than the typical TagHeap
+	const Blam::TagBase* TagData = nullptr;
+};
 class TagSubsystemBase
 {
 private:
@@ -39,7 +48,7 @@ public:
 	// Return a list of dependent tags that this tag depends on.
 	// The tag is not considered "loaded" until this list of tags are also
 	// completely loaded
-	[[nodiscard]] virtual std::vector<std::uint32_t> GetDependentTags(
+	[[nodiscard]] virtual std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry& TagIndexEntry, const Blam::TagBase& Tag,
 		const Blam::MapFile& MapFile
 	) const
@@ -61,7 +70,7 @@ public:
 	// Return a list of dependent tags that this tag depends on.
 	// The tag is not considered "loaded" until this list of tags are also
 	// completely loaded
-	[[nodiscard]] virtual std::vector<std::uint32_t> GetDependentTags(
+	[[nodiscard]] virtual std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry& TagIndexEntry, const Blam::Tag<ClassT>& Tag,
 		const Blam::MapFile& MapFile
 	) const
@@ -83,7 +92,7 @@ public:
 	// Return a list of dependent tags that this tag depends on.
 	// The tag is not considered "loaded" until this list of tags are also
 	// completely loaded
-	[[nodiscard]] virtual std::vector<std::uint32_t> GetDependentTags(
+	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry& TagIndexEntry, const Blam::TagBase& Tag,
 		const Blam::MapFile& MapFile
 	) const override

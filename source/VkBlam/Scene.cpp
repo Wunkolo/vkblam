@@ -229,6 +229,10 @@ Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 	Pool->RegisterTagSubsystem(
 		Blam::TagClass::Scenario, std::make_unique<Tags::ScenarioSubsystem>()
 	);
+	Pool->RegisterTagSubsystem(
+		Blam::TagClass::ScenarioStructureBsp,
+		std::make_unique<Tags::ScenarioStructureBspSubsystem>()
+	);
 }
 
 Scene::~Scene()
