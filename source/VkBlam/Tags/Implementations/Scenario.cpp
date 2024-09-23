@@ -16,17 +16,27 @@ ScenarioSubsystem::~ScenarioSubsystem()
 {
 }
 
-std::vector<std::uint32_t> ScenarioSubsystem::GetDependentTags(
+std::vector<DependentTag> ScenarioSubsystem::GetDependentTags(
 	const Blam::TagIndexEntry&                 TagIndexEntry,
 	const Blam::Tag<Blam::TagClass::Scenario>& Tag, const Blam::MapFile& MapFile
 ) const
 {
-	std::vector<std::uint32_t> DependentTags;
+	std::vector<DependentTag> DependentTags;
 
-	// Dependent StructureBSP
+	// Dependent StructureBSPs, these use a different heap, so the tag data
+	// must be explicitly provided
 	for( const auto& CurSBSP : MapFile.TagHeap.GetBlock(Tag.StructureBSPs) )
 	{
-		DependentTags.push_back(CurSBSP.BSP.TagID);
+		const Blam::VirtualHeap SBSPHeap
+			= CurSBSP.GetSBSPHeap(MapFile.GetMapData());
+
+		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
+			= CurSBSP.GetSBSP(SBSPHeap);
+		DependentTag Dependency{
+			.TagID   = CurSBSP.BSP.TagID,
+			.TagData = reinterpret_cast<const Blam::TagBase*>(&ScenarioBSP),
+		};
+		DependentTags.push_back(Dependency);
 	}
 
 	return DependentTags;

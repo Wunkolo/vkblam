@@ -18,7 +18,7 @@ private:
 	Scene& TargetScene;
 
 	// TagID -> TagImplementation
-	// TagSubsystems own the actual types, these are strictly non-owning
+	// TagSubsystems own the actual types, this is a strictly non-owning cache
 	std::map<std::uint32_t, TagImplementationBase*> Tags;
 
 	// TagClass -> TagSubsystem
@@ -45,6 +45,12 @@ public:
 
 	// Load a tag's dependencies, then load the tag itself
 	TagImplementationBase* LoadTag(std::uint32_t TagID);
+
+	// Load a tag's dependencies, then load the tag itself
+	// The tag-data is specifically provided rather than loading from the
+	// tag-heap. Special-case done for ScenarioStructureBsp
+	TagImplementationBase*
+		LoadTag(std::uint32_t TagID, const Blam::TagBase* TagData);
 
 	// Load a tag's dependencies, then load the tag itself
 	template<std::derived_from<TagImplementationBase> ImplementationT>
