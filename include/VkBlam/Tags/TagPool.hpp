@@ -44,48 +44,13 @@ public:
 	}
 
 	// Load a tag's dependencies, then load the tag itself
+	TagImplementationBase* LoadTag(std::uint32_t TagID);
+
+	// Load a tag's dependencies, then load the tag itself
 	template<std::derived_from<TagImplementationBase> ImplementationT>
-	ImplementationT* OpenTag(std::uint32_t TagID)
+	ImplementationT* LoadTag(std::uint32_t TagID)
 	{
-
-		const Blam::TagIndexEntry* TagIndexEntryPtr
-			= TargetScene.GetWorld().GetMapFile().GetTagIndexEntry(
-				std::uint16_t(TagID)
-			);
-
-		if( Tags.contains(TagID) )
-		{
-			ImplementationT* TagImplementation
-				= reinterpret_cast<ImplementationT*>(Tags.at(TagID));
-
-			if( TagIndexEntryPtr->ClassPrimary
-				!= TagImplementation->GetTagClass() )
-			{
-				// Type missmatch
-				return nullptr;
-			}
-
-			return TagImplementation;
-		}
-
-		// Get a subsystem that handles this tag
-		if( !TagSubsystems.contains(TagIndexEntryPtr->ClassPrimary) )
-		{
-			// No subsystem handles this tag
-			return nullptr;
-		}
-
-		TagSubsystemBase* TagSubsystem
-			= TagSubsystems.at(TagIndexEntryPtr->ClassPrimary).get();
-
-		const Blam::TagBase* Tag
-			= TargetScene.GetWorld().GetMapFile().GetTag(TagID);
-
-		const auto& NewTag
-			= (Tags[TagID]
-			   = TagSubsystem->LoadTag(*TagIndexEntryPtr, *Tag, TargetScene));
-
-		return reinterpret_cast<ImplementationT*>(NewTag);
+		return reinterpret_cast<ImplementationT*>(LoadTag(TagID));
 	}
 };
 } // namespace VkBlam

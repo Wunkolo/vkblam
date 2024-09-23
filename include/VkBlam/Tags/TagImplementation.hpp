@@ -36,6 +36,15 @@ public:
 
 	[[nodiscard]] virtual Blam::TagClass GetHandledTagClass() const = 0;
 
+	// Return a list of dependent tags that this tag depends on.
+	// The tag is not considered "loaded" until this list of tags are also
+	// completely loaded
+	[[nodiscard]] virtual std::vector<std::uint32_t> GetDependentTags(
+		const Blam::TagIndexEntry& TagIndexEntry, const Blam::TagBase& Tag,
+		const Blam::MapFile& MapFile
+	) const
+		= 0;
+
 	[[nodiscard]] virtual TagImplementationBase* LoadTag(
 		const Blam::TagIndexEntry& TagIndexEntry, const Blam::TagBase& Tag,
 		Scene& TargetScene
@@ -49,6 +58,17 @@ class TagSubsystem : public TagSubsystemBase
 {
 private:
 public:
+	// Return a list of dependent tags that this tag depends on.
+	// The tag is not considered "loaded" until this list of tags are also
+	// completely loaded
+	[[nodiscard]] virtual std::vector<std::uint32_t> GetDependentTags(
+		const Blam::TagIndexEntry& TagIndexEntry, const Blam::Tag<ClassT>& Tag,
+		const Blam::MapFile& MapFile
+	) const
+	{
+		return {};
+	};
+
 	[[nodiscard]] virtual ImplementationT* LoadTag(
 		const Blam::TagIndexEntry& TagIndexEntry, const Blam::Tag<ClassT>& Tag,
 		Scene& TargetScene
@@ -60,6 +80,20 @@ public:
 		return ClassT;
 	}
 
+	// Return a list of dependent tags that this tag depends on.
+	// The tag is not considered "loaded" until this list of tags are also
+	// completely loaded
+	[[nodiscard]] virtual std::vector<std::uint32_t> GetDependentTags(
+		const Blam::TagIndexEntry& TagIndexEntry, const Blam::TagBase& Tag,
+		const Blam::MapFile& MapFile
+	) const override
+	{
+		return GetDependentTags(
+			TagIndexEntry, *reinterpret_cast<const Blam::Tag<ClassT>*>(&Tag),
+			MapFile
+		);
+	};
+
 	[[nodiscard]] TagImplementationBase* LoadTag(
 		const Blam::TagIndexEntry& TagIndexEntry, const Blam::TagBase& Tag,
 		Scene& TargetScene
@@ -70,6 +104,7 @@ public:
 			TargetScene
 		);
 	};
+
 	// TagSubsystemBase
 };
 
