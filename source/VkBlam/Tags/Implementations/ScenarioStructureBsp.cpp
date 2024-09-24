@@ -117,6 +117,10 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
 		= SBSP->GetSBSP(SBSPHeap);
 
+	const char* BSPName = &TargetScene.GetMapFile().TagHeap.Read<char>(
+		SBSP->BSP.PathVirtualOffset
+	);
+
 	std::unique_ptr<ScenarioStructureBsp> NewScenarioStructureBsp(
 		new ScenarioStructureBsp(Tag, *SBSP)
 	);
@@ -127,7 +131,6 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 
 	// Index in elements, not bytes
 	std::uint32_t VertexHeapIndexEnd = 0;
-	std::uint32_t IndexHeapIndexEnd  = 0;
 
 	for( const auto& CurLightmap : Lightmaps )
 	{
@@ -204,8 +207,9 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice,
 		NewScenarioStructureBsp->BSPVertexBuffer.get(),
-		"ScenarioStructureBsp: BSP Vertex Buffer( {} )",
-		Common::FormatByteCount(BSPVertexBufferInfo.size)
+		"ScenarioStructureBsp[{:08X}]: BSP Vertex Buffer({}) | {}",
+		TagIndexEntry.TagID, Common::FormatByteCount(BSPVertexBufferInfo.size),
+		BSPName
 	);
 
 	//// Create Vertex buffer heap
@@ -235,8 +239,9 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice,
 		NewScenarioStructureBsp->BSPLightmapVertexBuffer.get(),
-		"ScenarioStructureBsp: BSP Lightmap Vertex Buffer( {} )",
-		Common::FormatByteCount(BSPLightmapVertexBufferInfo.size)
+		"ScenarioStructureBsp[{:08X}]: BSP Lightmap Vertex Buffer({}) | {}",
+		TagIndexEntry.TagID,
+		Common::FormatByteCount(BSPLightmapVertexBufferInfo.size), BSPName
 	);
 
 	//// Create Index buffer heap
@@ -263,8 +268,9 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice,
 		NewScenarioStructureBsp->BSPIndexBuffer.get(),
-		"VkBlam::Scene: BSP Index Buffer( {} )",
-		Common::FormatByteCount(BSPIndexBufferInfo.size)
+		"ScenarioStructureBsp[{:08X}]: BSP Index Buffer({}) | {}",
+		TagIndexEntry.TagID, Common::FormatByteCount(BSPIndexBufferInfo.size),
+		BSPName
 	);
 
 	// Create singular allocation of device memory for all vertex and index
@@ -292,8 +298,9 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice,
 		NewScenarioStructureBsp->BSPGeometryMemory.get(),
-		"ScenarioStructureBsp: BSP Geometry Device Memory( {} )",
-		Common::FormatByteCount(BSPIndexBufferInfo.size)
+		"ScenarioStructureBsp[{:08X}]: BSP Geometry Device Memory({}) | {}",
+		TagIndexEntry.TagID, Common::FormatByteCount(BSPIndexBufferInfo.size),
+		BSPName
 	);
 
 	// Buffers are all now binded to device memory, begin streaming
