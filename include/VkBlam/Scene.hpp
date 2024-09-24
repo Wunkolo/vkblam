@@ -42,16 +42,6 @@ private:
 	vk::ShaderModule DefaultFragmentShaderModule;
 	vk::ShaderModule UnlitFragmentShaderModule;
 
-	// Contains _both_ the vertex buffers and the index buffer
-	vk::UniqueDeviceMemory BSPGeometryMemory = {};
-
-	vk::UniqueBuffer BSPVertexBuffer         = {};
-	vk::UniqueBuffer BSPLightmapVertexBuffer = {};
-	vk::UniqueBuffer BSPIndexBuffer          = {};
-
-	vk::UniqueDeviceMemory BitmapHeapMemory = {};
-	BitmapHeapT            BitmapHeap       = {};
-
 	std::unique_ptr<Vulkan::DescriptorHeap> SceneDescriptorPool;
 
 	vk::DescriptorSet CurSceneDescriptor = {};
