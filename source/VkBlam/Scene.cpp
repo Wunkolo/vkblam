@@ -188,30 +188,6 @@ vk::DescriptorSetLayoutBinding SceneBindings[] = {
 	 2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment
 	},
 };
-
-vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
-	{// Basemap
-	 0, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-	{// PrimaryDetailMap
-	 1, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-	{// SecondaryDetailMap
-	 2, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-	{// MicroDetailMap
-	 3, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-	{// BumpMap
-	 4, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-	{// GlowMap
-	 5, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-	{// ReflectionCubeMap
-	 6, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
-	},
-};
 } // namespace
 
 namespace VkBlam
@@ -234,6 +210,12 @@ Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 		Blam::TagClass::ScenarioStructureBsp,
 		std::make_unique<Tags::ScenarioStructureBspSubsystem>(
 			*Pool, TargetRenderer.GetVulkanContext()
+		)
+	);
+	Pool->RegisterTagSubsystem(
+		Blam::TagClass::ShaderEnvironment,
+		std::make_unique<Tags::ShaderEnvironmentSubsystem>(
+			*Pool, TargetRenderer
 		)
 	);
 }
@@ -266,20 +248,20 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 
 	CommandBuffer.setScissor(0, {Scissor});
 
-	CommandBuffer.bindPipeline(
-		vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get()
-	);
+	// CommandBuffer.bindPipeline(
+	// 	vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get()
+	// );
 
 	// Bing Scene globals
-	CommandBuffer.bindDescriptorSets(
-		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(), 0,
-		{CurSceneDescriptor}, {}
-	);
+	// CommandBuffer.bindDescriptorSets(
+	// 	vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(), 0,
+	// 	{CurSceneDescriptor}, {}
+	// );
 
-	CommandBuffer.pushConstants<VkBlam::CameraGlobals>(
-		DebugDrawPipelineLayout.get(), vk::ShaderStageFlagBits::eAllGraphics, 0,
-		{View.CameraGlobalsData}
-	);
+	// CommandBuffer.pushConstants<VkBlam::CameraGlobals>(
+	// 	DebugDrawPipelineLayout.get(), vk::ShaderStageFlagBits::eAllGraphics, 0,
+	// 	{View.CameraGlobalsData}
+	// );
 
 	// CommandBuffer.bindVertexBuffers(
 	// 	0, {BSPVertexBuffer.get(), BSPLightmapVertexBuffer.get()}, {0, 0}
@@ -346,37 +328,31 @@ std::optional<Scene>
 
 	// Descriptor pools
 	{
-		NewScene.ShaderEnvironmentDescriptorPool
-			= std::make_unique<Vulkan::DescriptorHeap>(
-				Vulkan::DescriptorHeap::Create(
-					VulkanContext, ShaderEnvironmentBindings
-				)
-					.value()
-			);
-		NewScene.DebugDrawDescriptorPool
-			= std::make_unique<Vulkan::DescriptorHeap>(
-				Vulkan::DescriptorHeap::Create(
-					VulkanContext,
-					{{vk::DescriptorSetLayoutBinding{
-						.binding         = 0,
-						.descriptorType  = vk::DescriptorType::eSampledImage,
-						.descriptorCount = 1,
-						.stageFlags      = vk::ShaderStageFlagBits::eFragment,
-					}}}
-				).value()
-			);
+		// NewScene.DebugDrawDescriptorPool
+		// 	= std::make_unique<Vulkan::DescriptorHeap>(
+		// 		Vulkan::DescriptorHeap::Create(
+		// 			VulkanContext,
+		// 			{{vk::DescriptorSetLayoutBinding{
+		// 				.binding         = 0,
+		// 				.descriptorType  = vk::DescriptorType::eSampledImage,
+		// 				.descriptorCount = 1,
+		// 				.stageFlags      = vk::ShaderStageFlagBits::eFragment,
+		// 			}}}
+		// 		).value()
+		// 	);
 
-		NewScene.UnlitDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
-			Vulkan::DescriptorHeap::Create(
-				VulkanContext,
-				{{vk::DescriptorSetLayoutBinding{
-					.binding         = 0,
-					.descriptorType  = vk::DescriptorType::eSampledImage,
-					.descriptorCount = 1,
-					.stageFlags      = vk::ShaderStageFlagBits::eFragment,
-				}}}
-			).value()
-		);
+		// NewScene.UnlitDescriptorPool =
+		// std::make_unique<Vulkan::DescriptorHeap>(
+		// 	Vulkan::DescriptorHeap::Create(
+		// 		VulkanContext,
+		// 		{{vk::DescriptorSetLayoutBinding{
+		// 			.binding         = 0,
+		// 			.descriptorType  = vk::DescriptorType::eSampledImage,
+		// 			.descriptorCount = 1,
+		// 			.stageFlags      = vk::ShaderStageFlagBits::eFragment,
+		// 		}}}
+		// 	).value()
+		// );
 		NewScene.SceneDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
 			Vulkan::DescriptorHeap::Create(VulkanContext, SceneBindings).value()
 		);
@@ -407,36 +383,22 @@ std::optional<Scene>
 
 	{
 		// Main Shader modules
-		const auto DefaultVertShaderData
-			= VkBlam::OpenResource("shaders/Default.vert.spv").value();
-		const auto DefaultFragShaderData
-			= VkBlam::OpenResource("shaders/Default.frag.spv").value();
-		const auto UnlitFragShaderData
-			= VkBlam::OpenResource("shaders/Unlit.frag.spv").value();
+		// const auto DefaultVertShaderData
+		// 	= VkBlam::OpenResource("shaders/Default.vert.spv").value();
+		// const auto DefaultFragShaderData
+		// 	= VkBlam::OpenResource("shaders/Default.frag.spv").value();
+		// const auto UnlitFragShaderData
+		// 	= VkBlam::OpenResource("shaders/Unlit.frag.spv").value();
 
-		std::hash<std::string> StringHasher = {};
+		// std::hash<std::string> StringHasher = {};
 
-		NewScene.DefaultVertexShaderModule
-			= TargetRenderer.GetShaderModuleCache()
-				  .GetShaderModule(
-					  StringHasher("shaders/Default.vert.spv"),
-					  DefaultVertShaderData
-				  )
-				  .value();
-		NewScene.DefaultFragmentShaderModule
-			= TargetRenderer.GetShaderModuleCache()
-				  .GetShaderModule(
-					  StringHasher("shaders/Default.frag.spv"),
-					  DefaultFragShaderData
-				  )
-				  .value();
-		NewScene.UnlitFragmentShaderModule
-			= TargetRenderer.GetShaderModuleCache()
-				  .GetShaderModule(
-					  StringHasher("shaders/Unlit.frag.spv"),
-					  UnlitFragShaderData
-				  )
-				  .value();
+		// NewScene.UnlitFragmentShaderModule
+		// 	= TargetRenderer.GetShaderModuleCache()
+		// 		  .GetShaderModule(
+		// 			  StringHasher("shaders/Unlit.frag.spv"),
+		// 			  UnlitFragShaderData
+		// 		  )
+		// 		  .value();
 
 		const vk::RenderPass RenderPass
 			= TargetRenderer.GetDefaultRenderPass(RenderSamples);
@@ -447,39 +409,21 @@ std::optional<Scene>
 				Blam::VertexFormat::SBSPLightmapVertexUncompressed,
 			}});
 
-		std::tie(NewScene.DebugDrawPipeline, NewScene.DebugDrawPipelineLayout)
-			= CreateGraphicsPipeline(
-				VulkanContext.LogicalDevice,
-				{{vk::PushConstantRange{
-					.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-					.offset     = 0,
-					.size       = sizeof(VkBlam::CameraGlobals),
-				}}},
-				{{NewScene.SceneDescriptorPool->GetDescriptorSetLayout(),
-				  NewScene.ShaderEnvironmentDescriptorPool
-					  ->GetDescriptorSetLayout(),
-				  NewScene.DebugDrawDescriptorPool->GetDescriptorSetLayout()}},
-				NewScene.DefaultVertexShaderModule,
-				NewScene.DefaultFragmentShaderModule, VertexBindingDescriptions,
-				VertexAttributeDescriptions, RenderPass, RenderSamples,
-				vk::PolygonMode::eFill
-			);
-
-		std::tie(NewScene.UnlitDrawPipeline, NewScene.UnlitDrawPipelineLayout)
-			= CreateGraphicsPipeline(
-				VulkanContext.LogicalDevice,
-				{{vk::PushConstantRange{
-					.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-					.offset     = 0,
-					.size       = sizeof(VkBlam::CameraGlobals),
-				}}},
-				{{NewScene.UnlitDescriptorPool->GetDescriptorSetLayout(),
-				  NewScene.UnlitDescriptorPool->GetDescriptorSetLayout()}},
-				NewScene.DefaultVertexShaderModule,
-				NewScene.UnlitFragmentShaderModule, VertexBindingDescriptions,
-				VertexAttributeDescriptions, RenderPass, RenderSamples,
-				vk::PolygonMode::eLine
-			);
+		// std::tie(NewScene.UnlitDrawPipeline,
+		// NewScene.UnlitDrawPipelineLayout) 	= CreateGraphicsPipeline(
+		// 		VulkanContext.LogicalDevice,
+		// 		{{vk::PushConstantRange{
+		// 			.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+		// 			.offset     = 0,
+		// 			.size       = sizeof(VkBlam::CameraGlobals),
+		// 		}}},
+		// 		{{NewScene.UnlitDescriptorPool->GetDescriptorSetLayout(),
+		// 		  NewScene.UnlitDescriptorPool->GetDescriptorSetLayout()}},
+		// 		NewScene.DefaultVertexShaderModule,
+		// 		NewScene.UnlitFragmentShaderModule, VertexBindingDescriptions,
+		// 		VertexAttributeDescriptions, RenderPass, RenderSamples,
+		// 		vk::PolygonMode::eLine
+		// 	);
 	}
 
 	// Load Scenario!

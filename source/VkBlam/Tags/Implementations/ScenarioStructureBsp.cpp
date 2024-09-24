@@ -87,7 +87,11 @@ std::vector<DependentTag> ScenarioStructureBspSubsystem::GetDependentTags(
 		for( const auto& CurMaterial :
 			 SBSPHeap.GetBlock(CurLightmap.Materials) )
 		{
-			// DependentTags.push_back({CurMaterial.Shader.TagID});
+			// Only supports shader-environment for now - 9/23/2024
+			if( CurMaterial.Shader.Class == Blam::TagClass::ShaderEnvironment )
+			{
+				DependentTags.push_back({CurMaterial.Shader.TagID});
+			}
 		}
 	}
 
