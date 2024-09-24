@@ -8,7 +8,8 @@ Scenario::~Scenario()
 {
 }
 
-ScenarioSubsystem::ScenarioSubsystem()
+ScenarioSubsystem::ScenarioSubsystem(TagPool& Pool)
+	: TagSubsystem<Blam::TagClass::Scenario, Scenario>(Pool)
 {
 }
 

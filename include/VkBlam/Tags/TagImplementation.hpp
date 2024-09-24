@@ -5,7 +5,7 @@
 
 namespace VkBlam
 {
-
+class TagPool;
 class TagImplementationBase
 {
 private:
@@ -40,7 +40,10 @@ struct DependentTag
 class TagSubsystemBase
 {
 private:
+	TagPool& Pool;
+
 public:
+	TagSubsystemBase(TagPool& Pool);
 	virtual ~TagSubsystemBase() = 0;
 
 	[[nodiscard]] virtual Blam::TagClass GetHandledTagClass() const = 0;
@@ -67,6 +70,9 @@ class TagSubsystem : public TagSubsystemBase
 {
 private:
 public:
+	TagSubsystem(TagPool& Pool) : TagSubsystemBase(Pool)
+	{
+	}
 	// Return a list of dependent tags that this tag depends on.
 	// The tag is not considered "loaded" until this list of tags are also
 	// completely loaded

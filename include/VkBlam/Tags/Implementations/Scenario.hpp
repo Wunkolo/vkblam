@@ -30,7 +30,7 @@ private:
 	std::vector<std::unique_ptr<Scenario>> Scenarios;
 
 public:
-	ScenarioSubsystem();
+	ScenarioSubsystem(TagPool& Pool);
 	~ScenarioSubsystem();
 
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(

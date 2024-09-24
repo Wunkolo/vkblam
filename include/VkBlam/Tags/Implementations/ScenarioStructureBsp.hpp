@@ -9,11 +9,41 @@
 namespace VkBlam::Tags
 {
 
+struct LightmapMesh
+{
+	std::uint32_t VertexIndexOffset = 0;
+	std::uint32_t IndexCount        = 0;
+
+	std::span<const Blam::Vertex>         VertexData;
+	std::span<const Blam::LightmapVertex> LightmapVertexData;
+
+	std::uint32_t ShaderTag;
+
+	// Some lightmap meshes don't have a lightmap!
+	std::optional<std::uint32_t> LightmapTag;
+	std::optional<std::uint32_t> LightmapIndex;
+};
 class ScenarioStructureBsp final
 	: public TagImplementation<Blam::TagClass::ScenarioStructureBsp>
 {
 private:
+	const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   SBSPTag;
+	const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& SBSPData;
+
+	// Contains _both_ the vertex buffers and the index buffer
+	vk::UniqueDeviceMemory BSPGeometryMemory = {};
+
+	vk::UniqueBuffer BSPVertexBuffer         = {};
+	vk::UniqueBuffer BSPLightmapVertexBuffer = {};
+	vk::UniqueBuffer BSPIndexBuffer          = {};
+
+	std::vector<LightmapMesh> LightmapMeshs;
+
 public:
+	ScenarioStructureBsp(
+		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   SBSPTag,
+		const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& SBSPData
+	);
 	~ScenarioStructureBsp();
 
 	[[nodiscard]] Blam::TagClass GetTagClass() const override
@@ -29,10 +59,14 @@ class ScenarioStructureBspSubsystem final
 		  Blam::TagClass::ScenarioStructureBsp, ScenarioStructureBsp>
 {
 private:
+	const Vulkan::Context& VulkanContext;
+
 	std::vector<std::unique_ptr<ScenarioStructureBsp>> ScenarioStructureBsps;
 
 public:
-	ScenarioStructureBspSubsystem();
+	ScenarioStructureBspSubsystem(
+		TagPool& Pool, const Vulkan::Context& VulkanContext
+	);
 	~ScenarioStructureBspSubsystem();
 
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
