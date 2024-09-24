@@ -223,15 +223,18 @@ Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 
 	Pool->RegisterTagSubsystem(
 		Blam::TagClass::Bitmap, std::make_unique<Tags::BitmapSubsystem>(
-									TargetRenderer.GetVulkanContext()
+									*Pool, TargetRenderer.GetVulkanContext()
 								)
 	);
 	Pool->RegisterTagSubsystem(
-		Blam::TagClass::Scenario, std::make_unique<Tags::ScenarioSubsystem>()
+		Blam::TagClass::Scenario,
+		std::make_unique<Tags::ScenarioSubsystem>(*Pool)
 	);
 	Pool->RegisterTagSubsystem(
 		Blam::TagClass::ScenarioStructureBsp,
-		std::make_unique<Tags::ScenarioStructureBspSubsystem>()
+		std::make_unique<Tags::ScenarioStructureBspSubsystem>(
+			*Pool, TargetRenderer.GetVulkanContext()
+		)
 	);
 }
 
@@ -286,52 +289,52 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 	// 	BSPIndexBuffer.get(), 0, vk::IndexType::eUint16
 	// );
 
-	for( std::size_t i = 0; i < LightmapMeshs.size(); ++i )
-	{
-		const auto& CurLightmapMesh = LightmapMeshs[i];
-		Vulkan::InsertDebugLabel(
-			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: {}", i
-		);
+	// for( std::size_t i = 0; i < LightmapMeshs.size(); ++i )
+	// {
+	// 	const auto& CurLightmapMesh = LightmapMeshs[i];
+	// 	Vulkan::InsertDebugLabel(
+	// 		CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: {}", i
+	// 	);
 
-		// Bind Shader descriptors
-		if( ShaderEnvironmentDescriptors.contains(CurLightmapMesh.ShaderTag) )
-		{
-			CommandBuffer.bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				1, {ShaderEnvironmentDescriptors.at(CurLightmapMesh.ShaderTag)},
-				{}
-			);
-		}
+	// 	// Bind Shader descriptors
+	// 	if( ShaderEnvironmentDescriptors.contains(CurLightmapMesh.ShaderTag) )
+	// 	{
+	// 		CommandBuffer.bindDescriptorSets(
+	// 			vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+	// 			1, {ShaderEnvironmentDescriptors.at(CurLightmapMesh.ShaderTag)},
+	// 			{}
+	// 		);
+	// 	}
 
-		// Bind Mesh descriptors
-		if( CurLightmapMesh.LightmapTag.has_value()
-			&& CurLightmapMesh.LightmapIndex.has_value() )
-		{
-			CommandBuffer.bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				2,
-				{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
-					 .at(CurLightmapMesh.LightmapIndex.value())},
-				{}
-			);
-		}
-		else
-		{
-			CommandBuffer.bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-				2,
-				{BitmapHeap.Sets.at(BitmapHeap.Default2D)
-					 .at(std::uint32_t(Blam::DefaultTextureIndex::Multiplicative
-					 ))},
-				{}
-			);
-		}
+	// 	// Bind Mesh descriptors
+	// 	if( CurLightmapMesh.LightmapTag.has_value()
+	// 		&& CurLightmapMesh.LightmapIndex.has_value() )
+	// 	{
+	// 		CommandBuffer.bindDescriptorSets(
+	// 			vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+	// 			2,
+	// 			{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
+	// 				 .at(CurLightmapMesh.LightmapIndex.value())},
+	// 			{}
+	// 		);
+	// 	}
+	// 	else
+	// 	{
+	// 		CommandBuffer.bindDescriptorSets(
+	// 			vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+	// 			2,
+	// 			{BitmapHeap.Sets.at(BitmapHeap.Default2D)
+	// 				 .at(std::uint32_t(Blam::DefaultTextureIndex::Multiplicative
+	// 				 ))},
+	// 			{}
+	// 		);
+	// 	}
 
-		CommandBuffer.drawIndexed(
-			CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
-			CurLightmapMesh.VertexIndexOffset, 0
-		);
-	}
+	// 	CommandBuffer.drawIndexed(
+	// 		CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
+	// 		CurLightmapMesh.VertexIndexOffset, 0
+	// 	);
+	// }
 }
 
 std::optional<Scene>

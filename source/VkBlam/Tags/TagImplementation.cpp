@@ -11,4 +11,7 @@ TagSubsystemBase::~TagSubsystemBase()
 {
 }
 
+TagSubsystemBase::TagSubsystemBase(TagPool& Pool) : Pool(Pool)
+{
+}
 } // namespace VkBlam

@@ -10,8 +10,11 @@ Bitmap::~Bitmap()
 {
 }
 
-BitmapSubsystem::BitmapSubsystem(const Vulkan::Context& VulkanContext)
-	: VulkanContext(VulkanContext)
+BitmapSubsystem::BitmapSubsystem(
+	TagPool& Pool, const Vulkan::Context& VulkanContext
+)
+	: TagSubsystem<Blam::TagClass::Bitmap, Bitmap>(Pool),
+	  VulkanContext(VulkanContext)
 {
 }
 

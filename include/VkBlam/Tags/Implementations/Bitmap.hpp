@@ -40,7 +40,7 @@ private:
 	std::vector<std::unique_ptr<Bitmap>> Bitmaps;
 
 public:
-	BitmapSubsystem(const Vulkan::Context& VulkanContext);
+	BitmapSubsystem(TagPool& Pool, const Vulkan::Context& VulkanContext);
 	~BitmapSubsystem();
 
 	[[nodiscard]] Bitmap* LoadTag(

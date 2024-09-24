@@ -49,23 +49,6 @@ private:
 	vk::UniqueBuffer BSPLightmapVertexBuffer = {};
 	vk::UniqueBuffer BSPIndexBuffer          = {};
 
-	struct LightmapMesh
-	{
-		std::uint32_t VertexIndexOffset = 0;
-		std::uint32_t IndexCount        = 0;
-		std::uint32_t IndexOffset       = 0;
-
-		std::span<const Blam::Vertex>         VertexData;
-		std::span<const Blam::LightmapVertex> LightmapVertexData;
-
-		std::uint32_t ShaderTag;
-
-		// Some lightmap meshes don't have a lightmap!
-		std::optional<std::uint32_t> LightmapTag;
-		std::optional<std::uint32_t> LightmapIndex;
-	};
-	std::vector<LightmapMesh> LightmapMeshs;
-
 	vk::UniqueDeviceMemory BitmapHeapMemory = {};
 	BitmapHeapT            BitmapHeap       = {};
 
