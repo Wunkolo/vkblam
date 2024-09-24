@@ -23,24 +23,14 @@ private:
 
 	Scene(Renderer& TargetRenderer, const World& TargetWorld);
 
-	// Temporary
-	std::unordered_map<std::uint32_t, vk::DescriptorSet>
-											ShaderEnvironmentDescriptors;
-	std::unique_ptr<Vulkan::DescriptorHeap> ShaderEnvironmentDescriptorPool;
+	// std::unique_ptr<Vulkan::DescriptorHeap> DebugDrawDescriptorPool;
 
-	std::unique_ptr<Vulkan::DescriptorHeap> DebugDrawDescriptorPool;
+	// std::unique_ptr<Vulkan::DescriptorHeap> UnlitDescriptorPool;
 
-	vk::UniquePipeline       DebugDrawPipeline       = {};
-	vk::UniquePipelineLayout DebugDrawPipelineLayout = {};
+	// vk::UniquePipeline       UnlitDrawPipeline       = {};
+	// vk::UniquePipelineLayout UnlitDrawPipelineLayout = {};
 
-	std::unique_ptr<Vulkan::DescriptorHeap> UnlitDescriptorPool;
-
-	vk::UniquePipeline       UnlitDrawPipeline       = {};
-	vk::UniquePipelineLayout UnlitDrawPipelineLayout = {};
-
-	vk::ShaderModule DefaultVertexShaderModule;
-	vk::ShaderModule DefaultFragmentShaderModule;
-	vk::ShaderModule UnlitFragmentShaderModule;
+	// vk::ShaderModule UnlitFragmentShaderModule;
 
 	std::unique_ptr<Vulkan::DescriptorHeap> SceneDescriptorPool;
 

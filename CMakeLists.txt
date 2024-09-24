@@ -244,6 +244,7 @@ add_executable(
 	source/VkBlam/Tags/Implementations/Bitmap.cpp
 	source/VkBlam/Tags/Implementations/Scenario.cpp
 	source/VkBlam/Tags/Implementations/ScenarioStructureBsp.cpp
+	source/VkBlam/Tags/Implementations/ShaderEnvironment.cpp
 	source/VkBlam/Tags/TagImplementation.cpp
 	source/VkBlam/Tags/TagPool.cpp
 	source/VkBlam/VkBlam.cpp
