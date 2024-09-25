@@ -41,6 +41,19 @@ const TagIndexEntry* MapFile::GetTagIndexEntry(std::uint16_t TagIndex) const
 	return &GetTagIndexArray()[TagIndex];
 }
 
+const TagIndexEntry* MapFile::FindTagIndexEntry(std::string_view TagPath) const
+{
+	for( const TagIndexEntry& TagEntry : GetTagIndexArray() )
+	{
+		const std::string_view CurTagPath = GetTagPath(TagEntry.TagID);
+		if( CurTagPath.compare(TagPath) == 0 )
+		{
+			return &TagEntry;
+		}
+	}
+	return nullptr;
+}
+
 const std::span<const std::byte>& MapFile::GetMapData() const
 {
 	return MapFileData;
@@ -55,7 +68,7 @@ const TagBase* MapFile::GetTag(std::uint32_t TagID) const
 {
 	const TagIndexEntry* TagIndexEntryPtr
 		= GetTagIndexEntry(std::uint16_t(TagID));
-	if( !TagIndexEntryPtr )
+	if( TagIndexEntryPtr == nullptr )
 	{
 		return nullptr;
 	}
@@ -72,7 +85,7 @@ const TagBase* MapFile::GetTag(std::uint32_t TagID) const
 std::string_view MapFile::GetTagPath(std::uint32_t TagID) const
 {
 	const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(TagID);
-	if( !TagIndexEntryPtr )
+	if( TagIndexEntryPtr == nullptr )
 	{
 		return {};
 	}
