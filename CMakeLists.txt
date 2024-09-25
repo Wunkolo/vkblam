@@ -242,6 +242,7 @@ add_executable(
 	source/VkBlam/Shader.cpp
 	source/VkBlam/Shaders/ShaderEnvironment.cpp
 	source/VkBlam/Tags/Implementations/Bitmap.cpp
+	source/VkBlam/Tags/Implementations/Globals.cpp
 	source/VkBlam/Tags/Implementations/Scenario.cpp
 	source/VkBlam/Tags/Implementations/ScenarioStructureBsp.cpp
 	source/VkBlam/Tags/Implementations/ShaderEnvironment.cpp
