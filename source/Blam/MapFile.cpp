@@ -41,4 +41,57 @@ const TagIndexEntry* MapFile::GetTagIndexEntry(std::uint16_t TagIndex) const
 	return &GetTagIndexArray()[TagIndex];
 }
 
+const std::span<const std::byte>& MapFile::GetMapData() const
+{
+	return MapFileData;
+}
+
+const std::span<const std::byte>& MapFile::GetBitmapData() const
+{
+	return BitmapFileData;
+}
+
+const TagBase* MapFile::GetTag(std::uint32_t TagID) const
+{
+	const TagIndexEntry* TagIndexEntryPtr
+		= GetTagIndexEntry(std::uint16_t(TagID));
+	if( !TagIndexEntryPtr )
+	{
+		return nullptr;
+	}
+
+	if( TagIndexEntryPtr->TagID != TagID )
+	{
+		// Salts don't match
+		return nullptr;
+	}
+
+	return &TagHeap.Read<TagBase>(TagIndexEntryPtr->TagDataVirtualOffset);
+}
+
+std::string_view MapFile::GetTagPath(std::uint32_t TagID) const
+{
+	const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(TagID);
+	if( !TagIndexEntryPtr )
+	{
+		return {};
+	}
+
+	return &TagHeap.Read<char>(TagIndexEntryPtr->TagPathVirtualOffset);
+}
+
+const Tag<TagClass::Scenario>* MapFile::GetScenarioTag() const
+{
+	return GetTag<TagClass::Scenario>(TagIndexHeader.BaseTag);
+}
+
+std::span<const Tag<TagClass::Scenario>::StructureBSP>
+	MapFile::GetScenarioBSPs() const
+{
+	if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
+	{
+		return TagHeap.GetBlock(ScenarioTag->StructureBSPs);
+	}
+	return {};
+}
 } // namespace Blam

@@ -90,7 +90,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 			VulkanContext.LogicalDevice, CurSubBitmap.Image.get(),
 			"Bitmap[{:08X}][{:2}]: Image | {}", TagIndexEntry.TagID,
 			CurSubTextureIdx,
-			TargetScene.GetMapFile().GetTagName(TagIndexEntry.TagID)
+			TargetScene.GetMapFile().GetTagPath(TagIndexEntry.TagID)
 		);
 		NewBitmap->Bitmaps[CurSubTextureIdx] = std::move(CurSubBitmap);
 	}
@@ -124,7 +124,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 	Vulkan::SetObjectName(
 		VulkanContext.LogicalDevice, NewBitmap->Memory.get(),
 		"Bitmap[{:08X}]: DeviceMemory | {}", TagIndexEntry.TagID,
-		TargetScene.GetMapFile().GetTagName(TagIndexEntry.TagID)
+		TargetScene.GetMapFile().GetTagPath(TagIndexEntry.TagID)
 	);
 
 	// Image is binded to memory now
@@ -245,7 +245,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 			VulkanContext.LogicalDevice, CurSubBitmap.View.get(),
 			"Bitmap View {:08X}[{:2}] | {}", TagIndexEntry.TagID,
 			CurSubTextureIdx,
-			TargetScene.GetMapFile().GetTagName(TagIndexEntry.TagID)
+			TargetScene.GetMapFile().GetTagPath(TagIndexEntry.TagID)
 		);
 	}
 

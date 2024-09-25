@@ -29,15 +29,9 @@ public:
 
 	const VirtualHeap TagHeap;
 
-	const std::span<const std::byte>& GetMapData() const
-	{
-		return MapFileData;
-	}
+	const std::span<const std::byte>& GetMapData() const;
 
-	const std::span<const std::byte>& GetBitmapData() const
-	{
-		return BitmapFileData;
-	}
+	const std::span<const std::byte>& GetBitmapData() const;
 
 	std::span<const TagIndexEntry> GetTagIndexArray() const;
 
@@ -61,23 +55,7 @@ public:
 		}
 	}
 
-	const TagBase* GetTag(std::uint32_t TagID) const
-	{
-		const TagIndexEntry* TagIndexEntryPtr
-			= GetTagIndexEntry(std::uint16_t(TagID));
-		if( !TagIndexEntryPtr )
-		{
-			return nullptr;
-		}
-
-		if( TagIndexEntryPtr->TagID != TagID )
-		{
-			// Salts don't match
-			return nullptr;
-		}
-
-		return &TagHeap.Read<TagBase>(TagIndexEntryPtr->TagDataVirtualOffset);
-	}
+	const TagBase* GetTag(std::uint32_t TagID) const;
 
 	template<TagClass TagClassT>
 	const Tag<TagClassT>* GetTag(std::uint32_t TagID) const
@@ -85,32 +63,13 @@ public:
 		return reinterpret_cast<const Tag<TagClassT>*>(GetTag(TagID));
 	}
 
-	std::string_view GetTagName(std::uint32_t TagID) const
-	{
-		const TagIndexEntry* TagIndexEntryPtr = GetTagIndexEntry(TagID);
-		if( !TagIndexEntryPtr )
-		{
-			return {};
-		}
-
-		return &TagHeap.Read<char>(TagIndexEntryPtr->TagPathVirtualOffset);
-	}
+	std::string_view GetTagPath(std::uint32_t TagID) const;
 
 	// Helpers
-	const Tag<TagClass::Scenario>* GetScenarioTag() const
-	{
-		return GetTag<TagClass::Scenario>(TagIndexHeader.BaseTag);
-	}
+	const Tag<TagClass::Scenario>* GetScenarioTag() const;
 
 	std::span<const Tag<TagClass::Scenario>::StructureBSP>
-		GetScenarioBSPs() const
-	{
-		if( const auto* ScenarioTag = GetScenarioTag(); ScenarioTag )
-		{
-			return TagHeap.GetBlock(ScenarioTag->StructureBSPs);
-		}
-		return {};
-	}
+		GetScenarioBSPs() const;
 };
 
 } // namespace Blam

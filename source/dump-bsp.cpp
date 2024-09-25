@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	{
 		const auto&            CurTag = *BaseTagPtr;
 		const std::string_view TagName
-			= CurMap.GetTagName(CurMap.TagIndexHeader.BaseTag);
+			= CurMap.GetTagPath(CurMap.TagIndexHeader.BaseTag);
 
 		if( const auto ScenarioPtr = CurMap.GetTag<Blam::TagClass::Scenario>(
 				CurMap.TagIndexHeader.BaseTag
