@@ -112,10 +112,13 @@ std::vector<DependentTag> ShaderEnvironmentSubsystem::GetDependentTags(
 {
 	std::vector<DependentTag> DependentTags;
 
-	// Todo: Depend on the globals/globals tag for the
 	// Default2D/3D/Cube textures
-
-	MapFile.GetTag("globals/globals");
+	if( const Blam::TagIndexEntry* GlobalsTagEntry
+		= MapFile.FindTagIndexEntry("globals\\globals");
+		GlobalsTagEntry )
+	{
+		DependentTags.push_back({GlobalsTagEntry->TagID});
+	}
 
 	if( Tag.BaseMap.Valid() )
 	{
