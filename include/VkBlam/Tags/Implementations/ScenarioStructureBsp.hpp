@@ -46,11 +46,6 @@ public:
 	);
 	~ScenarioStructureBsp();
 
-	[[nodiscard]] Blam::TagClass GetTagClass() const override
-	{
-		return Blam::TagClass::ScenarioStructureBsp;
-	}
-
 	friend class ScenarioStructureBspSubsystem;
 };
 
