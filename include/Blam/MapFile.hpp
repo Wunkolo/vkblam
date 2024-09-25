@@ -36,6 +36,7 @@ public:
 	std::span<const TagIndexEntry> GetTagIndexArray() const;
 
 	const TagIndexEntry* GetTagIndexEntry(std::uint16_t TagIndex) const;
+	const TagIndexEntry* FindTagIndexEntry(std::string_view TagPath) const;
 
 	template<TagClass TagClassT>
 	void VisitTagClass(
