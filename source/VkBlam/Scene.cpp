@@ -481,7 +481,7 @@ std::optional<Scene>
 	// 					"[%04d,%04d)\n",
 	// 					Blam::FormatTagClass(CurMaterial.Shader.Class).c_str(),
 	// 					TargetWorld.GetMapFile()
-	// 						.GetTagName(CurMaterial.Shader.TagID)
+	// 						.GetTagPath(CurMaterial.Shader.TagID)
 	// 						.data(),
 	// 					CurMaterial.ShaderPermutation,
 	// 					CurMaterial.SurfacesIndexStart,
@@ -776,7 +776,7 @@ std::optional<Scene>
 	// 			  const Blam::MapFile&                     Map
 	// 		  ) -> void {
 	// 		// std::printf("%s\n",
-	// 		// CurWorld.GetMapFile().GetTagName(TagEntry.TagID).data());
+	// 		// CurWorld.GetMapFile().GetTagPath(TagEntry.TagID).data());
 	// 		for( std::size_t CurSubTextureIdx = 0;
 	// 			 CurSubTextureIdx < Bitmap.Bitmaps.Count; ++CurSubTextureIdx )
 	// 		{
@@ -797,7 +797,7 @@ std::optional<Scene>
 	// 			Vulkan::SetObjectName(
 	// 				VulkanContext.LogicalDevice, BitmapDest.Image.get(),
 	// 				"VkBlam::Scene: Bitmap {:08X}[{:2}] | {}", TagEntry.TagID,
-	// 				CurSubTextureIdx, Map.GetTagName(TagEntry.TagID)
+	// 				CurSubTextureIdx, Map.GetTagPath(TagEntry.TagID)
 	// 			);
 	// 		}
 	// 	};
@@ -1019,7 +1019,7 @@ std::optional<Scene>
 	// 					BitmapDest.View.get(),
 	// 					"VkBlam::Scene: Bitmap View {:08X}[{:2}] | {}",
 	// 					TagEntry.TagID, CurSubTextureIdx,
-	// 					TargetWorld.GetMapFile().GetTagName(TagEntry.TagID)
+	// 					TargetWorld.GetMapFile().GetTagPath(TagEntry.TagID)
 	// 				);
 
 	// 				// Create descriptor set
@@ -1047,7 +1047,7 @@ std::optional<Scene>
 	// 					"VkBlam::Scene: Bitmap Descriptor Set {:08X}[{:2}] | "
 	// 					"{}",
 	// 					TagEntry.TagID, CurSubTextureIdx,
-	// 					TargetWorld.GetMapFile().GetTagName(TagEntry.TagID)
+	// 					TargetWorld.GetMapFile().GetTagPath(TagEntry.TagID)
 	// 				);
 
 	// 				TargetRenderer.GetDescriptorUpdateBatch().AddImage(
@@ -1092,7 +1092,7 @@ std::optional<Scene>
 	// 		Vulkan::SetObjectName(
 	// 			VulkanContext.LogicalDevice, NewSet,
 	// 			"senv: {:08X} \'{}\' Descriptor Set", TagEntry.TagID,
-	// 			TargetWorld.GetMapFile().GetTagName(TagEntry.TagID)
+	// 			TargetWorld.GetMapFile().GetTagPath(TagEntry.TagID)
 	// 		);
 
 	// 		const vk::ImageView BaseMapView
