@@ -203,6 +203,9 @@ Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 								)
 	);
 	Pool->RegisterTagSubsystem(
+		Blam::TagClass::Globals, std::make_unique<Tags::GlobalsSubsystem>(*Pool)
+	);
+	Pool->RegisterTagSubsystem(
 		Blam::TagClass::Scenario,
 		std::make_unique<Tags::ScenarioSubsystem>(*Pool)
 	);
