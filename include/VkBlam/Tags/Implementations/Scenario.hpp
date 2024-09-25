@@ -15,11 +15,6 @@ private:
 public:
 	~Scenario();
 
-	[[nodiscard]] Blam::TagClass GetTagClass() const override
-	{
-		return Blam::TagClass::Scenario;
-	}
-
 	friend class ScenarioSubsystem;
 };
 

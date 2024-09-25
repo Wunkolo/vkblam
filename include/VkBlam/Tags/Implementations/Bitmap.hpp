@@ -23,11 +23,6 @@ private:
 public:
 	~Bitmap();
 
-	[[nodiscard]] Blam::TagClass GetTagClass() const override
-	{
-		return Blam::TagClass::Bitmap;
-	}
-
 	friend class BitmapSubsystem;
 };
 

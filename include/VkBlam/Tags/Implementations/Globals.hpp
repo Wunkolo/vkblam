@@ -15,11 +15,6 @@ private:
 public:
 	~Globals();
 
-	[[nodiscard]] Blam::TagClass GetTagClass() const override
-	{
-		return Blam::TagClass::Globals;
-	}
-
 	friend class GlobalsSubsystem;
 };
 

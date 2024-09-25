@@ -18,11 +18,6 @@ private:
 public:
 	~ShaderEnvironment();
 
-	[[nodiscard]] Blam::TagClass GetTagClass() const override
-	{
-		return Blam::TagClass::ShaderEnvironment;
-	}
-
 	friend class ShaderEnvironmentSubsystem;
 };
 
