@@ -181,6 +181,7 @@ target_include_directories(
 add_library(
 	blam
 	source/Blam/Blam.cpp
+	source/Blam/MapFile.cpp
 	source/Blam/TagVisitor.cpp
 	source/Blam/Util.cpp
 )
