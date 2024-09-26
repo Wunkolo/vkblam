@@ -27,7 +27,7 @@ class ShaderEnvironmentSubsystem final
 	: public TagSubsystem<Blam::TagClass::ShaderEnvironment, ShaderEnvironment>
 {
 private:
-	VkBlam::Renderer& Renderer;
+	VkBlam::Rasterizer& Rasterizer;
 
 	vk::UniquePipeline       ShaderEnvironmentPipeline       = {};
 	vk::UniquePipelineLayout ShaderEnvironmentPipelineLayout = {};
@@ -40,7 +40,7 @@ private:
 	std::vector<std::unique_ptr<ShaderEnvironment>> ShaderEnvironments;
 
 public:
-	ShaderEnvironmentSubsystem(TagPool& Pool, VkBlam::Renderer& Renderer);
+	ShaderEnvironmentSubsystem(TagPool& Pool, VkBlam::Rasterizer& Rasterizer);
 	~ShaderEnvironmentSubsystem();
 
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(

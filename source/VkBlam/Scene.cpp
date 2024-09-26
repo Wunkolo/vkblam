@@ -192,14 +192,14 @@ vk::DescriptorSetLayoutBinding SceneBindings[] = {
 
 namespace VkBlam
 {
-Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
-	: TargetWorld(TargetWorld), TargetRenderer(TargetRenderer)
+Scene::Scene(Rasterizer& TargetRasterizer, const World& TargetWorld)
+	: TargetWorld(TargetWorld), TargetRasterizer(TargetRasterizer)
 {
 	Pool = std::make_unique<TagPool>(*this);
 
 	Pool->RegisterTagSubsystem(
 		Blam::TagClass::Bitmap, std::make_unique<Tags::BitmapSubsystem>(
-									*Pool, TargetRenderer.GetVulkanContext()
+									*Pool, TargetRasterizer.GetVulkanContext()
 								)
 	);
 	Pool->RegisterTagSubsystem(
@@ -212,13 +212,13 @@ Scene::Scene(Renderer& TargetRenderer, const World& TargetWorld)
 	Pool->RegisterTagSubsystem(
 		Blam::TagClass::ScenarioStructureBsp,
 		std::make_unique<Tags::ScenarioStructureBspSubsystem>(
-			*Pool, TargetRenderer.GetVulkanContext()
+			*Pool, TargetRasterizer.GetVulkanContext()
 		)
 	);
 	Pool->RegisterTagSubsystem(
 		Blam::TagClass::ShaderEnvironment,
 		std::make_unique<Tags::ShaderEnvironmentSubsystem>(
-			*Pool, TargetRenderer
+			*Pool, TargetRasterizer
 		)
 	);
 }
@@ -323,11 +323,11 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 }
 
 std::optional<Scene>
-	Scene::Create(Renderer& TargetRenderer, const World& TargetWorld)
+	Scene::Create(Rasterizer& TargetRasterizer, const World& TargetWorld)
 {
-	Scene NewScene(TargetRenderer, TargetWorld);
+	Scene NewScene(TargetRasterizer, TargetWorld);
 
-	const Vulkan::Context& VulkanContext = TargetRenderer.GetVulkanContext();
+	const Vulkan::Context& VulkanContext = TargetRasterizer.GetVulkanContext();
 
 	// Descriptor pools
 	{
@@ -366,21 +366,21 @@ std::optional<Scene>
 		NewScene.CurSceneDescriptor
 			= NewScene.SceneDescriptorPool->AllocateDescriptorSet().value();
 		// Default2DSamplerFiltered
-		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
+		TargetRasterizer.GetDescriptorUpdateBatch().AddSampler(
 			NewScene.CurSceneDescriptor, 0,
-			TargetRenderer.GetSamplerCache().GetSampler(Sampler2D())
+			TargetRasterizer.GetSamplerCache().GetSampler(Sampler2D())
 		);
 
 		// Default2DSamplerUnfiltered
-		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
+		TargetRasterizer.GetDescriptorUpdateBatch().AddSampler(
 			NewScene.CurSceneDescriptor, 1,
-			TargetRenderer.GetSamplerCache().GetSampler(Sampler2D(false))
+			TargetRasterizer.GetSamplerCache().GetSampler(Sampler2D(false))
 		);
 
 		// Default2DSamplerUnfiltered
-		TargetRenderer.GetDescriptorUpdateBatch().AddSampler(
+		TargetRasterizer.GetDescriptorUpdateBatch().AddSampler(
 			NewScene.CurSceneDescriptor, 2,
-			TargetRenderer.GetSamplerCache().GetSampler(SamplerCube())
+			TargetRasterizer.GetSamplerCache().GetSampler(SamplerCube())
 		);
 	}
 
@@ -396,7 +396,7 @@ std::optional<Scene>
 		// std::hash<std::string> StringHasher = {};
 
 		// NewScene.UnlitFragmentShaderModule
-		// 	= TargetRenderer.GetShaderModuleCache()
+		// 	= TargetRasterizer.GetShaderModuleCache()
 		// 		  .GetShaderModule(
 		// 			  StringHasher("shaders/Unlit.frag.spv"),
 		// 			  UnlitFragShaderData
@@ -404,7 +404,7 @@ std::optional<Scene>
 		// 		  .value();
 
 		const vk::RenderPass RenderPass
-			= TargetRenderer.GetDefaultRenderPass(RenderSamples);
+			= TargetRasterizer.GetDefaultRenderPass(RenderSamples);
 
 		const auto [VertexBindingDescriptions, VertexAttributeDescriptions]
 			= VkBlam::GetVertexInputDescriptions({{
@@ -654,13 +654,13 @@ std::optional<Scene>
 	// 	// Buffers are all now binded to device memory, begin streaming
 	// 	for( const auto& CurLightmapMesh : NewScene.LightmapMeshs )
 	// 	{
-	// 		TargetRenderer.GetStreamBuffer().QueueBufferUpload(
+	// 		TargetRasterizer.GetStreamBuffer().QueueBufferUpload(
 	// 			std::as_bytes(CurLightmapMesh.VertexData),
 	// 			NewScene.BSPVertexBuffer.get(),
 	// 			CurLightmapMesh.VertexIndexOffset * sizeof(Blam::Vertex)
 	// 		);
 
-	// 		TargetRenderer.GetStreamBuffer().QueueBufferUpload(
+	// 		TargetRasterizer.GetStreamBuffer().QueueBufferUpload(
 	// 			std::as_bytes(CurLightmapMesh.LightmapVertexData),
 	// 			NewScene.BSPLightmapVertexBuffer.get(),
 	// 			CurLightmapMesh.VertexIndexOffset * sizeof(Blam::LightmapVertex)
@@ -683,7 +683,7 @@ std::optional<Scene>
 
 	// 			const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
-	// 			TargetRenderer.GetStreamBuffer().QueueBufferUpload(
+	// 			TargetRasterizer.GetStreamBuffer().QueueBufferUpload(
 	// 				std::as_bytes(Surfaces), NewScene.BSPIndexBuffer.get(),
 	// 				IndexOffset
 	// 			);
@@ -879,7 +879,7 @@ std::optional<Scene>
 	// 		// Todo: This would be the draft of a bitmap manager's stream
 	// 		// function
 	// 		const auto StreamBitmapImage =
-	// 			[&TargetRenderer](
+	// 			[&TargetRasterizer](
 	// 				VkBlam::BitmapHeapT::Bitmap&                   TargetBitmap,
 	// 				Blam::Tag<Blam::TagClass::Bitmap>::BitmapEntry BitmapEntry,
 	// 				std::span<const std::byte>                     PixelData
@@ -917,7 +917,7 @@ std::optional<Scene>
 	// 						= CurBlockCount[0] * CurBlockCount[1]
 	// 						* CurBlockCount[2] * BlockSize;
 
-	// 					TargetRenderer.GetStreamBuffer().QueueImageUpload(
+	// 					TargetRasterizer.GetStreamBuffer().QueueImageUpload(
 	// 						PixelData.subspan(PixelDataOff, CurPixelDataSize),
 	// 						TargetBitmap.Image.get(), vk::Offset3D{0, 0, 0},
 	// 						CurExtent,
@@ -969,7 +969,7 @@ std::optional<Scene>
 	// 			};
 
 	// 			if( auto CreateResult
-	// 				= TargetRenderer.GetVulkanContext()
+	// 				= TargetRasterizer.GetVulkanContext()
 	// 					  .LogicalDevice.createImageViewUnique(
 	// 						  BitmapImageViewInfo
 	// 					  );
@@ -989,8 +989,8 @@ std::optional<Scene>
 	// 		};
 
 	// 		const auto StreamBitmap
-	// 			= [&NewScene, &TargetWorld, &TargetRenderer, StreamBitmapImage](
-	// 				  const Blam::TagIndexEntry&               TagEntry,
+	// 			= [&NewScene, &TargetWorld, &TargetRasterizer,
+	// StreamBitmapImage]( 				  const Blam::TagIndexEntry&               TagEntry,
 	// 				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap
 	// 			  ) -> void {
 	// 			for( std::size_t CurSubTextureIdx = 0;
@@ -1015,7 +1015,7 @@ std::optional<Scene>
 	// 				StreamBitmapImage(BitmapDest, CurSubTexture, PixelData);
 
 	// 				Vulkan::SetObjectName(
-	// 					TargetRenderer.GetVulkanContext().LogicalDevice,
+	// 					TargetRasterizer.GetVulkanContext().LogicalDevice,
 	// 					BitmapDest.View.get(),
 	// 					"VkBlam::Scene: Bitmap View {:08X}[{:2}] | {}",
 	// 					TagEntry.TagID, CurSubTextureIdx,
@@ -1042,7 +1042,7 @@ std::optional<Scene>
 	// 				}
 
 	// 				Vulkan::SetObjectName(
-	// 					TargetRenderer.GetVulkanContext().LogicalDevice,
+	// 					TargetRasterizer.GetVulkanContext().LogicalDevice,
 	// 					TargetSet,
 	// 					"VkBlam::Scene: Bitmap Descriptor Set {:08X}[{:2}] | "
 	// 					"{}",
@@ -1050,7 +1050,7 @@ std::optional<Scene>
 	// 					TargetWorld.GetMapFile().GetTagPath(TagEntry.TagID)
 	// 				);
 
-	// 				TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 				TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 					TargetSet, 0, BitmapDest.View.get(),
 	// 					vk::ImageLayout::eShaderReadOnlyOptimal
 	// 				);
@@ -1072,7 +1072,7 @@ std::optional<Scene>
 	// 		};
 
 	// 		BitmapCommitter.EndVisits = [&](const Blam::MapFile& Map) -> void {
-	// 			TargetRenderer.GetDescriptorUpdateBatch().Flush();
+	// 			TargetRasterizer.GetDescriptorUpdateBatch().Flush();
 	// 		};
 	// 	}
 	// }
@@ -1164,28 +1164,28 @@ std::optional<Scene>
 	// 						 .at(0))
 	// 				  .View.get();
 
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 0, BaseMapView, vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 1, PrimaryDetailMapView,
 	// 			vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 2, SecondaryDetailMapView,
 	// 			vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 3, MicroDetailMapView,
 	// 			vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 4, BumpMapView, vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 5, GlowMapView, vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);
-	// 		TargetRenderer.GetDescriptorUpdateBatch().AddImage(
+	// 		TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 	// 			NewSet, 6, ReflectionCubeMapView,
 	// 			vk::ImageLayout::eShaderReadOnlyOptimal
 	// 		);

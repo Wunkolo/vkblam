@@ -19,7 +19,7 @@ namespace VkBlam
 
 using namespace Common::Literals;
 
-struct RendererConfig
+struct RasterizerConfig
 {
 	vk::DeviceSize StreamBufferSize = 128_MiB;
 
@@ -27,8 +27,8 @@ struct RendererConfig
 	std::size_t DescriptorCopyMax  = 256;
 };
 
-// Encapsulates the top-level global state of the renderer.
-class Renderer
+// Encapsulates the top-level global state of the Rasterizer.
+class Rasterizer
 {
 private:
 	const Vulkan::Context& VulkanContext;
@@ -44,12 +44,12 @@ private:
 	std::unique_ptr<Vulkan::ShaderModuleCache>     ShaderModuleCache;
 	std::unique_ptr<Vulkan::DescriptorUpdateBatch> DescriptorUpdateBatch;
 
-	Renderer(const Vulkan::Context& VulkanContext);
+	Rasterizer(const Vulkan::Context& VulkanContext);
 
 public:
-	~Renderer();
+	~Rasterizer();
 
-	Renderer(Renderer&&) = default;
+	Rasterizer(Rasterizer&&) = default;
 
 	const Vulkan::Context& GetVulkanContext() const
 	{
@@ -79,8 +79,9 @@ public:
 	const vk::RenderPass&
 		GetDefaultRenderPass(vk::SampleCountFlagBits SampleCount);
 
-	static std::optional<Renderer> Create(
-		const Vulkan::Context& VulkanContext, const RendererConfig& Config = {}
+	static std::optional<Rasterizer> Create(
+		const Vulkan::Context&  VulkanContext,
+		const RasterizerConfig& Config = {}
 	);
 };
 } // namespace VkBlam

@@ -71,16 +71,16 @@ vk::DescriptorSet ShaderEnvironment::GetDescriptorSet() const
 }
 
 ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
-	TagPool& Pool, VkBlam::Renderer& Renderer
+	TagPool& Pool, VkBlam::Rasterizer& Rasterizer
 )
 	: TagSubsystem<Blam::TagClass::ShaderEnvironment, ShaderEnvironment>(Pool),
-	  Renderer(Renderer)
+	  Rasterizer(Rasterizer)
 {
-	const auto& VulkanContext = Renderer.GetVulkanContext();
+	const auto& VulkanContext = Rasterizer.GetVulkanContext();
 
 	ShaderEnvironmentDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
 		Vulkan::DescriptorHeap::Create(
-			Renderer.GetVulkanContext(), ShaderEnvironmentBindings
+			Rasterizer.GetVulkanContext(), ShaderEnvironmentBindings
 		)
 			.value()
 	);
@@ -92,14 +92,14 @@ ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
 	std::hash<std::string> StringHasher = {};
 
 	ShaderEnvironmentVertexShaderModule
-		= Renderer.GetShaderModuleCache()
+		= Rasterizer.GetShaderModuleCache()
 			  .GetShaderModule(
 				  StringHasher("shaders/Default.vert.spv"),
 				  ShaderEnvironmentVertShaderData
 			  )
 			  .value();
 	ShaderEnvironmentFragmentShaderModule
-		= Renderer.GetShaderModuleCache()
+		= Rasterizer.GetShaderModuleCache()
 			  .GetShaderModule(
 				  StringHasher("shaders/Default.frag.spv"),
 				  ShaderEnvironmentFragShaderData
@@ -107,7 +107,7 @@ ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
 			  .value();
 
 	const vk::RenderPass RenderPass
-		= Renderer.GetDefaultRenderPass(RenderSamples);
+		= Rasterizer.GetDefaultRenderPass(RenderSamples);
 
 	// std::tie(ShaderEnvironmentPipeline, ShaderEnvironmentPipelineLayout)
 	// 	= CreateGraphicsPipeline(
@@ -203,7 +203,7 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 	}
 
 	Vulkan::SetObjectName(
-		Renderer.GetVulkanContext().LogicalDevice,
+		Rasterizer.GetVulkanContext().LogicalDevice,
 		NewShaderEnvironment->DescriptorSet, "ShaderEnvironment[{:08X}]: {}",
 		TagIndexEntry.TagID,
 		TargetScene.GetMapFile().GetTagPath(TagIndexEntry.TagID)
@@ -252,7 +252,7 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 				DefaultImageTag = RasterizerData.DefaultCube.TagID;
 				break;
 			}
-			Renderer.GetDescriptorUpdateBatch().AddImage(
+			Rasterizer.GetDescriptorUpdateBatch().AddImage(
 				NewShaderEnvironment->DescriptorSet, Binding,
 				GetPool()
 					.LoadTag<Tags::Bitmap>(DefaultImageTag)
@@ -261,7 +261,7 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 			);
 			return;
 		}
-		Renderer.GetDescriptorUpdateBatch().AddImage(
+		Rasterizer.GetDescriptorUpdateBatch().AddImage(
 			NewShaderEnvironment->DescriptorSet, Binding,
 			GetPool().LoadTag<Tags::Bitmap>(TagID)->GetBitmap(0).View.get()
 		);
@@ -284,7 +284,7 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 		6, Tag.ReflectionCubeMap.TagID, Blam::DefaultTextureIndex::Additive
 	);
 
-	Renderer.GetDescriptorUpdateBatch().Flush();
+	Rasterizer.GetDescriptorUpdateBatch().Flush();
 
 	return ShaderEnvironments.emplace_back(std::move(NewShaderEnvironment))
 		.get();
