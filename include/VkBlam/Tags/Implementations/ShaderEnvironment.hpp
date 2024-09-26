@@ -18,6 +18,8 @@ private:
 public:
 	~ShaderEnvironment();
 
+	[[nodiscard]] vk::DescriptorSet GetDescriptorSet() const;
+
 	friend class ShaderEnvironmentSubsystem;
 };
 
