@@ -1,6 +1,10 @@
 #include <VkBlam/Format.hpp>
 #include <VkBlam/Tags/Implementations/ShaderEnvironment.hpp>
 
+#include <VkBlam/Tags/Implementations/Bitmap.hpp>
+#include <VkBlam/Tags/Implementations/Globals.hpp>
+#include <VkBlam/Tags/TagPool.hpp>
+
 #include <Vulkan/Memory.hpp>
 
 namespace
@@ -34,6 +38,24 @@ vk::DescriptorSetLayoutBinding ShaderEnvironmentBindings[] = {
 	 6, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
 	},
 };
+
+static vk::ImageViewType ImageTypes[] = {
+	// BaseMap
+	vk::ImageViewType::e2D,
+	// BumpMap
+	vk::ImageViewType::e2D,
+	// PrimaryDetailMap
+	vk::ImageViewType::e2D,
+	// SecondaryDetailMap
+	vk::ImageViewType::e2D,
+	// MicroDetailMap
+	vk::ImageViewType::e2D,
+	// GlowMap
+	vk::ImageViewType::e2D,
+	// ReflectionCubeMap
+	vk::ImageViewType::eCube,
+};
+
 } // namespace
 
 namespace VkBlam::Tags
@@ -160,6 +182,104 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 	std::unique_ptr<ShaderEnvironment> NewShaderEnvironment(
 		new ShaderEnvironment()
 	);
+
+	// Create descriptor set
+
+	if( auto AllocResult
+		= ShaderEnvironmentDescriptorPool->AllocateDescriptorSet();
+		AllocResult.has_value() )
+	{
+		NewShaderEnvironment->DescriptorSet = AllocResult.value();
+	}
+	else
+	{
+		// Error allocating new descriptor set
+		return nullptr;
+	}
+
+	Vulkan::SetObjectName(
+		Renderer.GetVulkanContext().LogicalDevice,
+		NewShaderEnvironment->DescriptorSet, "ShaderEnvironment[{:08X}]: {}",
+		TagIndexEntry.TagID,
+		TargetScene.GetMapFile().GetTagPath(TagIndexEntry.TagID)
+	);
+
+	// Get default rasterizer images from globals;
+	const Blam::TagIndexEntry* GlobalsTagEntry
+		= TargetScene.GetMapFile().FindTagIndexEntry("globals\\globals");
+
+	if( GlobalsTagEntry == nullptr )
+	{
+		// Error getting globals tag
+		return nullptr;
+	}
+
+	const Blam::Tag<Blam::TagClass::Globals>* Globals
+		= TargetScene.GetMapFile().GetTag<Blam::TagClass::Globals>(
+			GlobalsTagEntry->TagID
+		);
+
+	if( Globals == nullptr )
+	{
+		// Error loading globals tag
+		return nullptr;
+	}
+
+	const auto RasterizerData
+		= TargetScene.GetMapFile().TagHeap.GetBlock(Globals->RasterizerData)[0];
+
+	const auto WriteImageTag
+		= [&](std::uint8_t Binding, std::uint32_t TagID,
+			  Blam::DefaultTextureIndex DefaultIndex) -> void {
+		if( TagID == 0xFFFFFFFF )
+		{
+			std::uint32_t DefaultImageTag;
+			switch( ImageTypes[Binding] )
+			{
+			default:
+			case vk::ImageViewType::e2D:
+				DefaultImageTag = RasterizerData.Default2D.TagID;
+				break;
+			case vk::ImageViewType::e3D:
+				DefaultImageTag = RasterizerData.Default3D.TagID;
+				break;
+			case vk::ImageViewType::eCube:
+				DefaultImageTag = RasterizerData.DefaultCube.TagID;
+				break;
+			}
+			Renderer.GetDescriptorUpdateBatch().AddImage(
+				NewShaderEnvironment->DescriptorSet, Binding,
+				GetPool()
+					.LoadTag<Tags::Bitmap>(DefaultImageTag)
+					->GetBitmap(std::uint16_t(DefaultIndex))
+					.View.get()
+			);
+			return;
+		}
+		Renderer.GetDescriptorUpdateBatch().AddImage(
+			NewShaderEnvironment->DescriptorSet, Binding,
+			GetPool().LoadTag<Tags::Bitmap>(TagID)->GetBitmap(0).View.get()
+		);
+	};
+
+	WriteImageTag(0, Tag.BaseMap.TagID, Blam::DefaultTextureIndex::Additive);
+	WriteImageTag(1, Tag.BumpMap.TagID, Blam::DefaultTextureIndex::Vector);
+	WriteImageTag(
+		2, Tag.PrimaryDetailMap.TagID, Blam::DefaultTextureIndex::SignedAdditive
+	);
+	WriteImageTag(
+		3, Tag.SecondaryDetailMap.TagID,
+		Blam::DefaultTextureIndex::SignedAdditive
+	);
+	WriteImageTag(
+		4, Tag.MicroDetailMap.TagID, Blam::DefaultTextureIndex::SignedAdditive
+	);
+	WriteImageTag(5, Tag.GlowMap.TagID, Blam::DefaultTextureIndex::Additive);
+	WriteImageTag(
+		6, Tag.ReflectionCubeMap.TagID, Blam::DefaultTextureIndex::Additive
+	);
+
+	Renderer.GetDescriptorUpdateBatch().Flush();
 
 	return ShaderEnvironments.emplace_back(std::move(NewShaderEnvironment))
 		.get();

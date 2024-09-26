@@ -46,6 +46,8 @@ public:
 	TagSubsystemBase(TagPool& Pool);
 	virtual ~TagSubsystemBase() = 0;
 
+	[[nodiscard]] TagPool& GetPool() const;
+
 	[[nodiscard]] virtual Blam::TagClass GetHandledTagClass() const = 0;
 
 	// Return a list of dependent tags that this tag depends on.

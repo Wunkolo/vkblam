@@ -25,8 +25,9 @@ std::vector<DependentTag> GlobalsSubsystem::GetDependentTags(
 	std::vector<DependentTag> DependentTags;
 
 	// Load all rasterizer texture data
-	// There should only be one globals tag
-	for( const auto& RasterData : MapFile.TagHeap.GetBlock(Tag.RasterizerData) )
+	// There _should_ only be one of these
+	for( const Blam::Tag<Blam::TagClass::Globals>::RasterizerDataEntry&
+			 RasterData : MapFile.TagHeap.GetBlock(Tag.RasterizerData) )
 	{
 		DependentTags.push_back({RasterData.DistanceAttenuation.TagID});
 		DependentTags.push_back({RasterData.VectorNormalization.TagID});
