@@ -23,6 +23,10 @@ private:
 public:
 	~Bitmap();
 
+	[[nodiscard]] std::span<const SubBitmap> GetBitmaps() const;
+
+	[[nodiscard]] const SubBitmap& GetBitmap(std::size_t BitmapIndex) const;
+
 	friend class BitmapSubsystem;
 };
 

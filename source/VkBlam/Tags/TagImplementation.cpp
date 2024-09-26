@@ -11,6 +11,11 @@ TagSubsystemBase::~TagSubsystemBase()
 {
 }
 
+TagPool& TagSubsystemBase::GetPool() const
+{
+	return Pool;
+}
+
 TagSubsystemBase::TagSubsystemBase(TagPool& Pool) : Pool(Pool)
 {
 }

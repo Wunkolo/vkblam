@@ -10,6 +10,15 @@ Bitmap::~Bitmap()
 {
 }
 
+std::span<const Bitmap::SubBitmap> Bitmap::GetBitmaps() const
+{
+	return Bitmaps;
+}
+const Bitmap::SubBitmap& Bitmap::GetBitmap(std::size_t BitmapIndex) const
+{
+	return Bitmaps.at(BitmapIndex);
+}
+
 BitmapSubsystem::BitmapSubsystem(
 	TagPool& Pool, const Vulkan::Context& VulkanContext
 )

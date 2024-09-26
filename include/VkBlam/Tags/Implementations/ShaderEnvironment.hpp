@@ -13,7 +13,7 @@ class ShaderEnvironment final
 	: public TagImplementation<Blam::TagClass::ShaderEnvironment>
 {
 private:
-	vk::UniqueDescriptorSet DescriptorSet;
+	vk::DescriptorSet DescriptorSet;
 
 public:
 	~ShaderEnvironment();
