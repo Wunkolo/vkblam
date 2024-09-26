@@ -65,6 +65,11 @@ ShaderEnvironment::~ShaderEnvironment()
 {
 }
 
+vk::DescriptorSet ShaderEnvironment::GetDescriptorSet() const
+{
+	return DescriptorSet;
+}
+
 ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
 	TagPool& Pool, VkBlam::Renderer& Renderer
 )
