@@ -1,6 +1,6 @@
 #include "Vulkan/DescriptorUpdateBatch.hpp"
 #include "Vulkan/StreamBuffer.hpp"
-#include <VkBlam/Renderer.hpp>
+#include <VkBlam/Rasterizer.hpp>
 #include <memory>
 #include <optional>
 
@@ -114,17 +114,17 @@ vk::UniqueRenderPass
 
 namespace VkBlam
 {
-Renderer::Renderer(const Vulkan::Context& VulkanContext)
+Rasterizer::Rasterizer(const Vulkan::Context& VulkanContext)
 	: VulkanContext(VulkanContext)
 {
 }
 
-Renderer::~Renderer()
+Rasterizer::~Rasterizer()
 {
 }
 
 const vk::RenderPass&
-	Renderer::GetDefaultRenderPass(vk::SampleCountFlagBits SampleCount)
+	Rasterizer::GetDefaultRenderPass(vk::SampleCountFlagBits SampleCount)
 {
 	if( DefaultRenderPasses.contains(SampleCount) )
 	{
@@ -137,29 +137,30 @@ const vk::RenderPass&
 	return DefaultRenderPasses[SampleCount].get();
 }
 
-std::optional<Renderer> Renderer::Create(
-	const Vulkan::Context& VulkanContext, const RendererConfig& Config
+std::optional<Rasterizer> Rasterizer::Create(
+	const Vulkan::Context& VulkanContext, const RasterizerConfig& Config
 )
 {
-	Renderer NewRenderer(VulkanContext);
+	Rasterizer NewRasterizer(VulkanContext);
 
-	NewRenderer.StreamBuffer = std::make_unique<Vulkan::StreamBuffer>(
+	NewRasterizer.StreamBuffer = std::make_unique<Vulkan::StreamBuffer>(
 		VulkanContext, Config.StreamBufferSize
 	);
 
-	NewRenderer.SamplerCache = std::make_unique<Vulkan::SamplerCache>(
+	NewRasterizer.SamplerCache = std::make_unique<Vulkan::SamplerCache>(
 		Vulkan::SamplerCache::Create(VulkanContext).value()
 	);
 
-	NewRenderer.ShaderModuleCache = std::make_unique<Vulkan::ShaderModuleCache>(
-		Vulkan::ShaderModuleCache::Create(VulkanContext).value()
-	);
+	NewRasterizer.ShaderModuleCache
+		= std::make_unique<Vulkan::ShaderModuleCache>(
+			Vulkan::ShaderModuleCache::Create(VulkanContext).value()
+		);
 
-	NewRenderer.DescriptorUpdateBatch = Vulkan::DescriptorUpdateBatch::Create(
+	NewRasterizer.DescriptorUpdateBatch = Vulkan::DescriptorUpdateBatch::Create(
 		VulkanContext, Config.DescriptorWriteMax, Config.DescriptorCopyMax
 	);
 
-	return {std::move(NewRenderer)};
+	return {std::move(NewRasterizer)};
 }
 
 } // namespace VkBlam

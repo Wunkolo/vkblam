@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include <VkBlam/Renderer.hpp>
+#include <VkBlam/Rasterizer.hpp>
 #include <VkBlam/SceneView.hpp>
 #include <VkBlam/World.hpp>
 
@@ -18,10 +18,10 @@ class Scene
 {
 private:
 	const World&             TargetWorld;
-	Renderer&                TargetRenderer;
+	Rasterizer&              TargetRasterizer;
 	std::unique_ptr<TagPool> Pool;
 
-	Scene(Renderer& TargetRenderer, const World& TargetWorld);
+	Scene(Rasterizer& TargetRasterizer, const World& TargetWorld);
 
 	// std::unique_ptr<Vulkan::DescriptorHeap> DebugDrawDescriptorPool;
 
@@ -51,19 +51,19 @@ public:
 		return TargetWorld.GetMapFile();
 	};
 
-	Renderer& GetRenderer() const
+	Rasterizer& GetRasterizer() const
 	{
-		return TargetRenderer;
+		return TargetRasterizer;
 	};
 
 	const Vulkan::Context& GetVulkanContext() const
 	{
-		return TargetRenderer.GetVulkanContext();
+		return TargetRasterizer.GetVulkanContext();
 	};
 
 	void Render(const SceneView& View, vk::CommandBuffer CommandBuffer);
 
 	static std::optional<Scene>
-		Create(Renderer& TargetRenderer, const World& TargetWorld);
+		Create(Rasterizer& TargetRasterizer, const World& TargetWorld);
 };
 } // namespace VkBlam

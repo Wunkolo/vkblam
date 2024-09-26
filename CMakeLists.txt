@@ -237,7 +237,7 @@ add_executable(
 	source/main.cpp
 	source/stb_image_write.cpp
 	source/VkBlam/Format.cpp
-	source/VkBlam/Renderer.cpp
+	source/VkBlam/Rasterizer.cpp
 	source/VkBlam/Scene.cpp
 	source/VkBlam/SceneView.cpp
 	source/VkBlam/Shader.cpp

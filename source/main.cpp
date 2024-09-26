@@ -18,7 +18,7 @@
 #include <Vulkan/Pipeline.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
-#include <VkBlam/Renderer.hpp>
+#include <VkBlam/Rasterizer.hpp>
 #include <VkBlam/Scene.hpp>
 #include <VkBlam/Tags/TagPool.hpp>
 #include <VkBlam/VkBlam.hpp>
@@ -296,9 +296,11 @@ int main(int argc, char* argv[])
 										RenderQueue,   0,
 										TransferQueue, 0};
 
-	VkBlam::Renderer Renderer = VkBlam::Renderer::Create(VulkanContext).value();
+	VkBlam::Rasterizer Rasterizer
+		= VkBlam::Rasterizer::Create(VulkanContext).value();
 
-	VkBlam::Scene CurScene = VkBlam::Scene::Create(Renderer, CurWorld).value();
+	VkBlam::Scene CurScene
+		= VkBlam::Scene::Create(Rasterizer, CurWorld).value();
 
 	// Test for transient memory support
 	bool SupportsTransientImage = false;
@@ -657,7 +659,7 @@ int main(int argc, char* argv[])
 	);
 
 	// VkBlam::ShaderEnvironment ShaderEnvironments(
-	// 	VulkanContext, BitmapHeap, Renderer.GetDescriptorUpdateBatch());
+	// 	VulkanContext, BitmapHeap, Rasterizer.GetDescriptorUpdateBatch());
 
 	// CurWorld.GetMapFile().VisitTagClass<Blam::TagClass::ShaderEnvironment>(
 	// 	[&](const Blam::TagIndexEntry& TagEntry,
@@ -666,7 +668,7 @@ int main(int argc, char* argv[])
 	// 		ShaderEnvironments.RegisterShader(TagEntry, ShaderEnvironment);
 	// 	});
 
-	Renderer.GetDescriptorUpdateBatch().Flush();
+	Rasterizer.GetDescriptorUpdateBatch().Flush();
 
 	//// Create Command Pool
 	const vk::CommandPoolCreateInfo CommandPoolInfo = {
@@ -841,7 +843,7 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	const std::uint64_t UploadTick = Renderer.GetStreamBuffer().Flush();
+	const std::uint64_t UploadTick = Rasterizer.GetStreamBuffer().Flush();
 
 	// Submit work
 	vk::UniqueFence Fence = {};
@@ -866,8 +868,8 @@ int main(int argc, char* argv[])
 		SubmitInfoChain = {
 			vk::SubmitInfo{
 				.waitSemaphoreCount = 1,
-				.pWaitSemaphores   = &Renderer.GetStreamBuffer().GetSemaphore(),
-				.pWaitDstStageMask = &WaitStage,
+				.pWaitSemaphores = &Rasterizer.GetStreamBuffer().GetSemaphore(),
+				.pWaitDstStageMask  = &WaitStage,
 				.commandBufferCount = 1,
 				.pCommandBuffers    = &CommandBuffer.get(),
 			},

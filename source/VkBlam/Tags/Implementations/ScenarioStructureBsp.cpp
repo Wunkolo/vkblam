@@ -310,13 +310,13 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	// Buffers are all now binded to device memory, begin streaming
 	for( const auto& CurLightmapMesh : NewScenarioStructureBsp->LightmapMeshs )
 	{
-		TargetScene.GetRenderer().GetStreamBuffer().QueueBufferUpload(
+		TargetScene.GetRasterizer().GetStreamBuffer().QueueBufferUpload(
 			std::as_bytes(CurLightmapMesh.VertexData),
 			NewScenarioStructureBsp->BSPVertexBuffer.get(),
 			CurLightmapMesh.VertexIndexOffset * sizeof(Blam::Vertex)
 		);
 
-		TargetScene.GetRenderer().GetStreamBuffer().QueueBufferUpload(
+		TargetScene.GetRasterizer().GetStreamBuffer().QueueBufferUpload(
 			std::as_bytes(CurLightmapMesh.LightmapVertexData),
 			NewScenarioStructureBsp->BSPLightmapVertexBuffer.get(),
 			CurLightmapMesh.VertexIndexOffset * sizeof(Blam::LightmapVertex)
@@ -325,7 +325,7 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 
 	// Index Buffer
 	{
-		TargetScene.GetRenderer().GetStreamBuffer().QueueBufferUpload(
+		TargetScene.GetRasterizer().GetStreamBuffer().QueueBufferUpload(
 			std::as_bytes(Surfaces),
 			NewScenarioStructureBsp->BSPIndexBuffer.get(), 0
 		);

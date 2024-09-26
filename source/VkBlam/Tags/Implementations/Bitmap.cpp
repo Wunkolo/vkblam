@@ -181,7 +181,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 					= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
 					* BlockSize;
 
-				TargetScene.GetRenderer().GetStreamBuffer().QueueImageUpload(
+				TargetScene.GetRasterizer().GetStreamBuffer().QueueImageUpload(
 					PixelData.subspan(PixelDataOff, CurPixelDataSize),
 					CurSubBitmap.Image.get(), vk::Offset3D{0, 0, 0}, CurExtent,
 					vk::ImageSubresourceLayers{
