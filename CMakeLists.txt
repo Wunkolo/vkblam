@@ -1,5 +1,10 @@
 cmake_minimum_required( VERSION 3.21.0 )
-project( vkblam CXX )
+project(
+	vkblam
+	DESCRIPTION "A vulkan re-implementation of the Halo's blam engine graphics features"
+	HOMEPAGE_URL "https://github.com/Wunkolo/vkblam/"
+	LANGUAGES CXX C
+)
 
 ### Standard
 set( CMAKE_CXX_STANDARD 20 )
