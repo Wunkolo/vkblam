@@ -19,7 +19,28 @@ template<Blam::TagClass ClassT>
 class TagImplementation : public TagImplementationBase
 {
 private:
+	// The original tag that this implementation is derived from
+	const Blam::TagIndexEntry& TagIndexEntry;
+	const Blam::Tag<ClassT>&   Tag;
+
 public:
+	TagImplementation(
+		const Blam::TagIndexEntry& TagIndexEntry, const Blam::Tag<ClassT>& Tag
+	)
+		: TagIndexEntry(TagIndexEntry), Tag(Tag)
+	{
+	}
+
+	const Blam::TagIndexEntry& GetTagIndexEntry() const
+	{
+		return TagIndexEntry;
+	}
+
+	const Blam::Tag<ClassT>& GetTag() const
+	{
+		return Tag;
+	}
+
 	// TagImplementationBase
 	[[nodiscard]] Blam::TagClass GetTagClass() const override
 	{

@@ -61,6 +61,14 @@ static vk::ImageViewType ImageTypes[] = {
 namespace VkBlam::Tags
 {
 
+ShaderEnvironment::ShaderEnvironment(
+	const Blam::TagIndexEntry&                          TagIndexEntry,
+	const Blam::Tag<Blam::TagClass::ShaderEnvironment>& Tag
+)
+	: TagImplementation<Blam::TagClass::ShaderEnvironment>(TagIndexEntry, Tag)
+{
+}
+
 ShaderEnvironment::~ShaderEnvironment()
 {
 }
@@ -185,7 +193,7 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 )
 {
 	std::unique_ptr<ShaderEnvironment> NewShaderEnvironment(
-		new ShaderEnvironment()
+		new ShaderEnvironment(TagIndexEntry, Tag)
 	);
 
 	// Create descriptor set

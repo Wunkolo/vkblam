@@ -27,7 +27,6 @@ class ScenarioStructureBsp final
 	: public TagImplementation<Blam::TagClass::ScenarioStructureBsp>
 {
 private:
-	const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   SBSPTag;
 	const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& SBSPData;
 
 	// Contains _both_ the vertex buffers and the index buffer
@@ -41,7 +40,8 @@ private:
 
 public:
 	ScenarioStructureBsp(
-		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   SBSPTag,
+		const Blam::TagIndexEntry&                               TagIndexEntry,
+		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   Tag,
 		const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& SBSPData
 	);
 	~ScenarioStructureBsp();

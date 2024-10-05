@@ -7,10 +7,14 @@ namespace VkBlam::Tags
 {
 
 ScenarioStructureBsp::ScenarioStructureBsp(
-	const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   SBSPTag,
+	const Blam::TagIndexEntry&                               TagIndexEntry,
+	const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>&   Tag,
 	const Blam::Tag<Blam::TagClass::Scenario>::StructureBSP& SBSPData
 )
-	: SBSPTag(SBSPTag), SBSPData(SBSPData)
+	: TagImplementation<Blam::TagClass::ScenarioStructureBsp>(
+		  TagIndexEntry, Tag
+	  ),
+	  SBSPData(SBSPData)
 {
 }
 
@@ -126,7 +130,7 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	);
 
 	std::unique_ptr<ScenarioStructureBsp> NewScenarioStructureBsp(
-		new ScenarioStructureBsp(Tag, *SBSP)
+		new ScenarioStructureBsp(TagIndexEntry, Tag, *SBSP)
 	);
 
 	// Load BSP
