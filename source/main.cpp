@@ -299,8 +299,8 @@ int main(int argc, char* argv[])
 	VkBlam::Rasterizer Rasterizer
 		= VkBlam::Rasterizer::Create(VulkanContext).value();
 
-	VkBlam::Scene CurScene
-		= VkBlam::Scene::Create(Rasterizer, CurWorld).value();
+	std::unique_ptr<VkBlam::Scene> CurScene
+		= VkBlam::Scene::Create(Rasterizer, CurWorld);
 
 	// Test for transient memory support
 	bool SupportsTransientImage = false;
@@ -787,7 +787,7 @@ int main(int argc, char* argv[])
 
 			VkBlam::SceneView SceneView(View, Projection, RenderSize);
 
-			CurScene.Render(SceneView, CommandBuffer.get());
+			CurScene->Render(SceneView, CommandBuffer.get());
 
 			CommandBuffer->endRenderPass();
 		}
