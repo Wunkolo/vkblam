@@ -33,6 +33,11 @@ public:
 		return TargetScene;
 	}
 
+	const Blam::MapFile& GetMapFile() const
+	{
+		return GetScene().GetMapFile();
+	}
+
 	bool RegisterTagSubsystem(
 		Blam::TagClass TagClass, std::unique_ptr<TagSubsystemBase> TagSubsystem
 	)
