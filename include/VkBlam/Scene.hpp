@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional>
+#include <memory>
 
 #include <VkBlam/Rasterizer.hpp>
 #include <VkBlam/SceneView.hpp>
@@ -63,7 +63,7 @@ public:
 
 	void Render(const SceneView& View, vk::CommandBuffer CommandBuffer);
 
-	static std::optional<Scene>
+	static std::unique_ptr<Scene>
 		Create(Rasterizer& TargetRasterizer, const World& TargetWorld);
 };
 } // namespace VkBlam

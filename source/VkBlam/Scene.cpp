@@ -255,9 +255,13 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 	auto* Scenario
 		= Pool->GetTag<Tags::Scenario>(GetMapFile().TagIndexHeader.BaseTag);
 
-	if( Scenario != nullptr )
+	auto* ScenarioSubsystem = Pool->GetTagSubsystem<Tags::ScenarioSubsystem>(
+		Blam::TagClass::Scenario
+	);
+
+	if( (Scenario != nullptr) && (ScenarioSubsystem != nullptr) )
 	{
-		Scenario->GetTag();
+		ScenarioSubsystem->Draw(*Scenario, View, CommandBuffer);
 	}
 
 	// CommandBuffer.bindPipeline(
@@ -331,16 +335,16 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 	// }
 }
 
-std::optional<Scene>
+std::unique_ptr<Scene>
 	Scene::Create(Rasterizer& TargetRasterizer, const World& TargetWorld)
 {
-	Scene NewScene(TargetRasterizer, TargetWorld);
+	std::unique_ptr<Scene> NewScene(new Scene(TargetRasterizer, TargetWorld));
 
 	const Vulkan::Context& VulkanContext = TargetRasterizer.GetVulkanContext();
 
 	// Descriptor pools
 	{
-		// NewScene.DebugDrawDescriptorPool
+		// NewScene->DebugDrawDescriptorPool
 		// 	= std::make_unique<Vulkan::DescriptorHeap>(
 		// 		Vulkan::DescriptorHeap::Create(
 		// 			VulkanContext,
@@ -353,7 +357,7 @@ std::optional<Scene>
 		// 		).value()
 		// 	);
 
-		// NewScene.UnlitDescriptorPool =
+		// NewScene->UnlitDescriptorPool =
 		// std::make_unique<Vulkan::DescriptorHeap>(
 		// 	Vulkan::DescriptorHeap::Create(
 		// 		VulkanContext,
@@ -365,30 +369,32 @@ std::optional<Scene>
 		// 		}}}
 		// 	).value()
 		// );
-		NewScene.SceneDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
-			Vulkan::DescriptorHeap::Create(VulkanContext, SceneBindings).value()
-		);
+		NewScene->SceneDescriptorPool
+			= std::make_unique<Vulkan::DescriptorHeap>(
+				Vulkan::DescriptorHeap::Create(VulkanContext, SceneBindings)
+					.value()
+			);
 	}
 
 	// Scene Descriptor
 	{
-		NewScene.CurSceneDescriptor
-			= NewScene.SceneDescriptorPool->AllocateDescriptorSet().value();
+		NewScene->CurSceneDescriptor
+			= NewScene->SceneDescriptorPool->AllocateDescriptorSet().value();
 		// Default2DSamplerFiltered
 		TargetRasterizer.GetDescriptorUpdateBatch().AddSampler(
-			NewScene.CurSceneDescriptor, 0,
+			NewScene->CurSceneDescriptor, 0,
 			TargetRasterizer.GetSamplerCache().GetSampler(Sampler2D())
 		);
 
 		// Default2DSamplerUnfiltered
 		TargetRasterizer.GetDescriptorUpdateBatch().AddSampler(
-			NewScene.CurSceneDescriptor, 1,
+			NewScene->CurSceneDescriptor, 1,
 			TargetRasterizer.GetSamplerCache().GetSampler(Sampler2D(false))
 		);
 
 		// Default2DSamplerUnfiltered
 		TargetRasterizer.GetDescriptorUpdateBatch().AddSampler(
-			NewScene.CurSceneDescriptor, 2,
+			NewScene->CurSceneDescriptor, 2,
 			TargetRasterizer.GetSamplerCache().GetSampler(SamplerCube())
 		);
 	}
@@ -404,7 +410,7 @@ std::optional<Scene>
 
 		// std::hash<std::string> StringHasher = {};
 
-		// NewScene.UnlitFragmentShaderModule
+		// NewScene->UnlitFragmentShaderModule
 		// 	= TargetRasterizer.GetShaderModuleCache()
 		// 		  .GetShaderModule(
 		// 			  StringHasher("shaders/Unlit.frag.spv"),
@@ -421,32 +427,32 @@ std::optional<Scene>
 				Blam::VertexFormat::SBSPLightmapVertexUncompressed,
 			}});
 
-		// std::tie(NewScene.UnlitDrawPipeline,
-		// NewScene.UnlitDrawPipelineLayout) 	= CreateGraphicsPipeline(
+		// std::tie(NewScene->UnlitDrawPipeline,
+		// NewScene->UnlitDrawPipelineLayout) 	= CreateGraphicsPipeline(
 		// 		VulkanContext.LogicalDevice,
 		// 		{{vk::PushConstantRange{
 		// 			.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
 		// 			.offset     = 0,
 		// 			.size       = sizeof(VkBlam::CameraGlobals),
 		// 		}}},
-		// 		{{NewScene.UnlitDescriptorPool->GetDescriptorSetLayout(),
-		// 		  NewScene.UnlitDescriptorPool->GetDescriptorSetLayout()}},
-		// 		NewScene.DefaultVertexShaderModule,
-		// 		NewScene.UnlitFragmentShaderModule, VertexBindingDescriptions,
+		// 		{{NewScene->UnlitDescriptorPool->GetDescriptorSetLayout(),
+		// 		  NewScene->UnlitDescriptorPool->GetDescriptorSetLayout()}},
+		// 		NewScene->DefaultVertexShaderModule,
+		// 		NewScene->UnlitFragmentShaderModule, VertexBindingDescriptions,
 		// 		VertexAttributeDescriptions, RenderPass, RenderSamples,
 		// 		vk::PolygonMode::eLine
 		// 	);
 	}
 
 	// Load Scenario!
-	const auto Scenario = NewScene.Pool->LoadTag<Tags::Scenario>(
+	const auto Scenario = NewScene->Pool->LoadTag<Tags::Scenario>(
 		TargetWorld.GetMapFile().TagIndexHeader.BaseTag
 	);
 
 	if( Scenario == nullptr )
 	{
 		// Error loading scenario
-		return std::nullopt;
+		return nullptr;
 	}
 
 	// std::vector<Blam::TagVisitorProc> TagVisitors = {};
@@ -499,7 +505,7 @@ std::optional<Scene>
 	// 				);
 
 	// 				auto& CurLightmapMesh
-	// 					= NewScene.LightmapMeshs.emplace_back();
+	// 					= NewScene->LightmapMeshs.emplace_back();
 	// 				//// Vertex Buffer data
 	// 				{
 	// 					// Copy vertex data into the staging buffer
@@ -558,7 +564,7 @@ std::optional<Scene>
 	// 		);
 	// 		CreateResult.result == vk::Result::eSuccess )
 	// 	{
-	// 		NewScene.BSPVertexBuffer = std::move(CreateResult.value);
+	// 		NewScene->BSPVertexBuffer = std::move(CreateResult.value);
 	// 	}
 	// 	else
 	// 	{
@@ -570,7 +576,7 @@ std::optional<Scene>
 	// 	}
 
 	// 	Vulkan::SetObjectName(
-	// 		VulkanContext.LogicalDevice, NewScene.BSPVertexBuffer.get(),
+	// 		VulkanContext.LogicalDevice, NewScene->BSPVertexBuffer.get(),
 	// 		"VkBlam::Scene: BSP Vertex Buffer( {} )",
 	// 		Common::FormatByteCount(BSPVertexBufferInfo.size)
 	// 	);
@@ -587,7 +593,7 @@ std::optional<Scene>
 	// 		);
 	// 		CreateResult.result == vk::Result::eSuccess )
 	// 	{
-	// 		NewScene.BSPLightmapVertexBuffer = std::move(CreateResult.value);
+	// 		NewScene->BSPLightmapVertexBuffer = std::move(CreateResult.value);
 	// 	}
 	// 	else
 	// 	{
@@ -599,8 +605,9 @@ std::optional<Scene>
 	// 	}
 
 	// 	Vulkan::SetObjectName(
-	// 		VulkanContext.LogicalDevice, NewScene.BSPLightmapVertexBuffer.get(),
-	// 		"VkBlam::Scene: BSP Lightmap Vertex Buffer( {} )",
+	// 		VulkanContext.LogicalDevice,
+	// NewScene->BSPLightmapVertexBuffer.get(), 		"VkBlam::Scene: BSP
+	// Lightmap Vertex Buffer( {} )",
 	// 		Common::FormatByteCount(BSPLightmapVertexBufferInfo.size)
 	// 	);
 
@@ -616,7 +623,7 @@ std::optional<Scene>
 	// 		);
 	// 		CreateResult.result == vk::Result::eSuccess )
 	// 	{
-	// 		NewScene.BSPIndexBuffer = std::move(CreateResult.value);
+	// 		NewScene->BSPIndexBuffer = std::move(CreateResult.value);
 	// 	}
 	// 	else
 	// 	{
@@ -627,7 +634,7 @@ std::optional<Scene>
 	// 		return {};
 	// 	}
 	// 	Vulkan::SetObjectName(
-	// 		VulkanContext.LogicalDevice, NewScene.BSPIndexBuffer.get(),
+	// 		VulkanContext.LogicalDevice, NewScene->BSPIndexBuffer.get(),
 	// 		"VkBlam::Scene: BSP Index Buffer( {} )",
 	// 		Common::FormatByteCount(BSPIndexBufferInfo.size)
 	// 	);
@@ -637,14 +644,14 @@ std::optional<Scene>
 	// 	if( auto [Result, Value] = Vulkan::CommitBufferHeap(
 	// 			VulkanContext.LogicalDevice, VulkanContext.PhysicalDevice,
 	// 			std::array{
-	// 				NewScene.BSPVertexBuffer.get(),
-	// 				NewScene.BSPIndexBuffer.get(),
-	// 				NewScene.BSPLightmapVertexBuffer.get()
+	// 				NewScene->BSPVertexBuffer.get(),
+	// 				NewScene->BSPIndexBuffer.get(),
+	// 				NewScene->BSPLightmapVertexBuffer.get()
 	// 			}
 	// 		);
 	// 		Result == vk::Result::eSuccess )
 	// 	{
-	// 		NewScene.BSPGeometryMemory = std::move(Value);
+	// 		NewScene->BSPGeometryMemory = std::move(Value);
 	// 	}
 	// 	else
 	// 	{
@@ -655,23 +662,23 @@ std::optional<Scene>
 	// 		return {};
 	// 	}
 	// 	Vulkan::SetObjectName(
-	// 		VulkanContext.LogicalDevice, NewScene.BSPGeometryMemory.get(),
+	// 		VulkanContext.LogicalDevice, NewScene->BSPGeometryMemory.get(),
 	// 		"VkBlam::Scene: BSP Geometry Device Memory( {} )",
 	// 		Common::FormatByteCount(BSPIndexBufferInfo.size)
 	// 	);
 
 	// 	// Buffers are all now binded to device memory, begin streaming
-	// 	for( const auto& CurLightmapMesh : NewScene.LightmapMeshs )
+	// 	for( const auto& CurLightmapMesh : NewScene->LightmapMeshs )
 	// 	{
 	// 		TargetRasterizer.GetStreamBuffer().QueueBufferUpload(
 	// 			std::as_bytes(CurLightmapMesh.VertexData),
-	// 			NewScene.BSPVertexBuffer.get(),
+	// 			NewScene->BSPVertexBuffer.get(),
 	// 			CurLightmapMesh.VertexIndexOffset * sizeof(Blam::Vertex)
 	// 		);
 
 	// 		TargetRasterizer.GetStreamBuffer().QueueBufferUpload(
 	// 			std::as_bytes(CurLightmapMesh.LightmapVertexData),
-	// 			NewScene.BSPLightmapVertexBuffer.get(),
+	// 			NewScene->BSPLightmapVertexBuffer.get(),
 	// 			CurLightmapMesh.VertexIndexOffset * sizeof(Blam::LightmapVertex)
 	// 		);
 	// 	}
@@ -693,7 +700,7 @@ std::optional<Scene>
 	// 			const auto Surfaces = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
 
 	// 			TargetRasterizer.GetStreamBuffer().QueueBufferUpload(
-	// 				std::as_bytes(Surfaces), NewScene.BSPIndexBuffer.get(),
+	// 				std::as_bytes(Surfaces), NewScene->BSPIndexBuffer.get(),
 	// 				IndexOffset
 	// 			);
 	// 			IndexOffset += Surfaces.size_bytes();
@@ -713,7 +720,7 @@ std::optional<Scene>
 	// 		const auto CurBitmap
 	// 			= Map.GetTag<Blam::TagClass::Bitmap>(TagIndexEntry.TagID);
 	// 		const auto NewBitmap
-	// 			= NewScene.Pool->LoadTag<Tags::Bitmap>(TagIndexEntry.TagID);
+	// 			= NewScene->Pool->LoadTag<Tags::Bitmap>(TagIndexEntry.TagID);
 	// 	}
 	// };
 
@@ -794,11 +801,11 @@ std::optional<Scene>
 
 	// 			// Create bitmap and descriptor set
 	// 			auto& BitmapDest
-	// 				= NewScene.BitmapHeap
+	// 				= NewScene->BitmapHeap
 	// 					  .Bitmaps[TagEntry.TagID][CurSubTextureIdx];
 
 	// 			auto& BitmapDescriptorDest
-	// 				= NewScene.BitmapHeap
+	// 				= NewScene->BitmapHeap
 	// 					  .Sets[TagEntry.TagID][CurSubTextureIdx];
 
 	// 			CreateBitmapImage(BitmapDest, CurSubTexture);
@@ -838,11 +845,11 @@ std::optional<Scene>
 	// 						 CurGlobal.RasterizerData
 	// 					 ) )
 	// 				{
-	// 					NewScene.BitmapHeap.Default2D
+	// 					NewScene->BitmapHeap.Default2D
 	// 						= RasterData.Default2D.TagID;
-	// 					NewScene.BitmapHeap.Default3D
+	// 					NewScene->BitmapHeap.Default3D
 	// 						= RasterData.Default3D.TagID;
-	// 					NewScene.BitmapHeap.DefaultCube
+	// 					NewScene->BitmapHeap.DefaultCube
 	// 						= RasterData.DefaultCube.TagID;
 	// 				}
 	// 			}
@@ -857,7 +864,7 @@ std::optional<Scene>
 	// 	// Allocate and bind memory for all bitmaps
 	// 	BitmapCommitter.BeginVisits = [&](const Blam::MapFile& Map) -> void {
 	// 		std::vector<vk::Image> Bitmaps;
-	// 		for( const auto& CurBitmap : NewScene.BitmapHeap.Bitmaps )
+	// 		for( const auto& CurBitmap : NewScene->BitmapHeap.Bitmaps )
 	// 		{
 	// 			for( const auto& CurSubBitmap : CurBitmap.second )
 	// 			{
@@ -871,7 +878,7 @@ std::optional<Scene>
 	// 			);
 	// 			Result == vk::Result::eSuccess )
 	// 		{
-	// 			NewScene.BitmapHeapMemory = std::move(Value);
+	// 			NewScene->BitmapHeapMemory = std::move(Value);
 	// 		}
 	// 		else
 	// 		{
@@ -1018,7 +1025,7 @@ std::optional<Scene>
 	// 				);
 
 	// 				auto& BitmapDest
-	// 					= NewScene.BitmapHeap.Bitmaps.at(TagEntry.TagID)
+	// 					= NewScene->BitmapHeap.Bitmaps.at(TagEntry.TagID)
 	// 						  .at(CurSubTextureIdx);
 
 	// 				StreamBitmapImage(BitmapDest, CurSubTexture, PixelData);
@@ -1033,10 +1040,10 @@ std::optional<Scene>
 
 	// 				// Create descriptor set
 	// 				vk::DescriptorSet& TargetSet
-	// 					= NewScene.BitmapHeap.Sets.at(TagEntry.TagID)
+	// 					= NewScene->BitmapHeap.Sets.at(TagEntry.TagID)
 	// 						  .at(CurSubTextureIdx);
 
-	// 				if( auto NewSet = NewScene.DebugDrawDescriptorPool
+	// 				if( auto NewSet = NewScene->DebugDrawDescriptorPool
 	// 									  ->AllocateDescriptorSet();
 	// 					NewSet )
 	// 				{
@@ -1093,10 +1100,10 @@ std::optional<Scene>
 	// 			  const Blam::Tag<Blam::TagClass::ShaderEnvironment>&
 	// 				  ShaderEnvironment) -> void {
 	// 		const vk::DescriptorSet NewSet
-	// 			= NewScene.ShaderEnvironmentDescriptorPool
+	// 			= NewScene->ShaderEnvironmentDescriptorPool
 	// 				  ->AllocateDescriptorSet()
 	// 				  .value();
-	// 		NewScene.ShaderEnvironmentDescriptors[TagEntry.TagID] = NewSet;
+	// 		NewScene->ShaderEnvironmentDescriptors[TagEntry.TagID] = NewSet;
 
 	// 		Vulkan::SetObjectName(
 	// 			VulkanContext.LogicalDevice, NewSet,
@@ -1106,70 +1113,70 @@ std::optional<Scene>
 
 	// 		const vk::ImageView BaseMapView
 	// 			= (ShaderEnvironment.BaseMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.BaseMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.Default2D)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.Default2D)
 	// 						 .at(std::uint32_t(
 	// 							 Blam::DefaultTextureIndex::Multiplicative
 	// 						 )))
 	// 				  .View.get();
 	// 		const vk::ImageView PrimaryDetailMapView
 	// 			= (ShaderEnvironment.PrimaryDetailMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.PrimaryDetailMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.Default2D)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.Default2D)
 	// 						 .at(0))
 	// 				  .View.get();
 	// 		const vk::ImageView SecondaryDetailMapView
 	// 			= (ShaderEnvironment.SecondaryDetailMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.SecondaryDetailMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.Default2D)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.Default2D)
 	// 						 .at(0))
 	// 				  .View.get();
 	// 		const vk::ImageView MicroDetailMapView
 	// 			= (ShaderEnvironment.MicroDetailMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.MicroDetailMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.Default2D)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.Default2D)
 	// 						 .at(0))
 	// 				  .View.get();
 	// 		const vk::ImageView BumpMapView
 	// 			= (ShaderEnvironment.BumpMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.BumpMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.Default2D)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.Default2D)
 	// 						 .at(std::uint32_t(Blam::DefaultTextureIndex::Vector
 	// 						 )))
 	// 				  .View.get();
 	// 		const vk::ImageView GlowMapView
 	// 			= (ShaderEnvironment.GlowMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.GlowMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.Default2D)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.Default2D)
 	// 						 .at(std::uint32_t(
 	// 							 Blam::DefaultTextureIndex::Additive
 	// 						 )))
 	// 				  .View.get();
 	// 		const vk::ImageView ReflectionCubeMapView
 	// 			= (ShaderEnvironment.ReflectionCubeMap.Valid()
-	// 				   ? NewScene.BitmapHeap.Bitmaps
+	// 				   ? NewScene->BitmapHeap.Bitmaps
 	// 						 .at(ShaderEnvironment.ReflectionCubeMap.TagID)
 	// 						 .at(0)
-	// 				   : NewScene.BitmapHeap.Bitmaps
-	// 						 .at(NewScene.BitmapHeap.DefaultCube)
+	// 				   : NewScene->BitmapHeap.Bitmaps
+	// 						 .at(NewScene->BitmapHeap.DefaultCube)
 	// 						 .at(0))
 	// 				  .View.get();
 
