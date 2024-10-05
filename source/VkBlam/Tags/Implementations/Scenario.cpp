@@ -4,6 +4,14 @@
 namespace VkBlam::Tags
 {
 
+Scenario::Scenario(
+	const Blam::TagIndexEntry&                 TagIndexEntry,
+	const Blam::Tag<Blam::TagClass::Scenario>& Tag
+)
+	: TagImplementation<Blam::TagClass::Scenario>(TagIndexEntry, Tag)
+{
+}
+
 Scenario::~Scenario()
 {
 }
@@ -48,7 +56,7 @@ Scenario* ScenarioSubsystem::LoadTag(
 	const Blam::Tag<Blam::TagClass::Scenario>& Tag, Scene& TargetScene
 )
 {
-	std::unique_ptr<Scenario> NewScenario(new Scenario());
+	std::unique_ptr<Scenario> NewScenario(new Scenario(TagIndexEntry, Tag));
 
 	return Scenarios.emplace_back(std::move(NewScenario)).get();
 }

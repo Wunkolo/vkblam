@@ -13,6 +13,10 @@ class Globals final : public TagImplementation<Blam::TagClass::Globals>
 {
 private:
 public:
+	Globals(
+		const Blam::TagIndexEntry&                TagIndexEntry,
+		const Blam::Tag<Blam::TagClass::Globals>& Tag
+	);
 	~Globals();
 
 	friend class GlobalsSubsystem;

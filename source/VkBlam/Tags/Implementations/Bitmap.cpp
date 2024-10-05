@@ -6,6 +6,14 @@
 namespace VkBlam::Tags
 {
 
+Bitmap::Bitmap(
+	const Blam::TagIndexEntry&               TagIndexEntry,
+	const Blam::Tag<Blam::TagClass::Bitmap>& Tag
+)
+	: TagImplementation<Blam::TagClass::Bitmap>(TagIndexEntry, Tag)
+{
+}
+
 Bitmap::~Bitmap()
 {
 }
@@ -36,7 +44,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 	const Blam::Tag<Blam::TagClass::Bitmap>& Tag, Scene& TargetScene
 )
 {
-	std::unique_ptr<Bitmap> NewBitmap(new Bitmap());
+	std::unique_ptr<Bitmap> NewBitmap(new Bitmap(TagIndexEntry, Tag));
 
 	const auto SubBitmaps
 		= TargetScene.GetMapFile().TagHeap.GetBlock(Tag.Bitmaps);

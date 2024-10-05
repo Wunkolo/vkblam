@@ -4,6 +4,14 @@
 namespace VkBlam::Tags
 {
 
+Globals::Globals(
+	const Blam::TagIndexEntry&                TagIndexEntry,
+	const Blam::Tag<Blam::TagClass::Globals>& Tag
+)
+	: TagImplementation<Blam::TagClass::Globals>(TagIndexEntry, Tag)
+{
+}
+
 Globals::~Globals()
 {
 }
@@ -53,7 +61,7 @@ Globals* GlobalsSubsystem::LoadTag(
 	const Blam::Tag<Blam::TagClass::Globals>& Tag, Scene& TargetScene
 )
 {
-	std::unique_ptr<Globals> NewGlobals(new Globals());
+	std::unique_ptr<Globals> NewGlobals(new Globals(TagIndexEntry, Tag));
 
 	return Globalss.emplace_back(std::move(NewGlobals)).get();
 }

@@ -21,6 +21,10 @@ private:
 	std::vector<SubBitmap> Bitmaps;
 
 public:
+	Bitmap(
+		const Blam::TagIndexEntry&               TagIndexEntry,
+		const Blam::Tag<Blam::TagClass::Bitmap>& Tag
+	);
 	~Bitmap();
 
 	[[nodiscard]] std::span<const SubBitmap> GetBitmaps() const;

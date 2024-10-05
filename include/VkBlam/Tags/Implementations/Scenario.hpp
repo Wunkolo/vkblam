@@ -13,6 +13,10 @@ class Scenario final : public TagImplementation<Blam::TagClass::Scenario>
 {
 private:
 public:
+	Scenario(
+		const Blam::TagIndexEntry&                 TagIndexEntry,
+		const Blam::Tag<Blam::TagClass::Scenario>& Tag
+	);
 	~Scenario();
 
 	friend class ScenarioSubsystem;

@@ -16,6 +16,10 @@ private:
 	vk::DescriptorSet DescriptorSet;
 
 public:
+	ShaderEnvironment(
+		const Blam::TagIndexEntry&                          TagIndexEntry,
+		const Blam::Tag<Blam::TagClass::ShaderEnvironment>& Tag
+	);
 	~ShaderEnvironment();
 
 	[[nodiscard]] vk::DescriptorSet GetDescriptorSet() const;
