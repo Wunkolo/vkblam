@@ -28,6 +28,11 @@ public:
 	TagPool(Scene& TargetScene);
 	~TagPool();
 
+	Scene& GetScene() const
+	{
+		return TargetScene;
+	}
+
 	bool RegisterTagSubsystem(
 		Blam::TagClass TagClass, std::unique_ptr<TagSubsystemBase> TagSubsystem
 	)
@@ -41,6 +46,18 @@ public:
 		TagSubsystems[TagClass] = std::move(TagSubsystem);
 
 		return true;
+	}
+
+	// Get a registered TagSubsystem. Null otherwise
+	template<std::derived_from<TagSubsystemBase> SubsystemT>
+	SubsystemT* GetTagSubsystem(Blam::TagClass TagClass)
+	{
+		if( TagSubsystems.contains(TagClass) )
+		{
+			return reinterpret_cast<SubsystemT*>(TagSubsystems.at(TagClass).get(
+			));
+		}
+		return nullptr;
 	}
 
 	// Get a loaded tag, null otherwise
