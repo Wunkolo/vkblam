@@ -18,6 +18,15 @@ TagPool::~TagPool()
 {
 }
 
+TagImplementationBase* TagPool::GetTag(std::uint32_t TagID) const
+{
+	if( Tags.contains(TagID) )
+	{
+		return Tags.at(TagID);
+	}
+	return nullptr;
+}
+
 TagImplementationBase* TagPool::LoadTag(std::uint32_t TagID)
 {
 	const Blam::TagIndexEntry* TagIndexEntryPtr

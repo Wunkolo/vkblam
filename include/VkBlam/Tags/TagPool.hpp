@@ -43,6 +43,8 @@ public:
 		return true;
 	}
 
+	// Get a loaded tag, null otherwise
+	TagImplementationBase* GetTag(std::uint32_t TagID) const;
 	// Load a tag's dependencies, then load the tag itself
 	TagImplementationBase* LoadTag(std::uint32_t TagID);
 
@@ -52,6 +54,12 @@ public:
 	TagImplementationBase*
 		LoadTag(std::uint32_t TagID, const Blam::TagBase* TagData);
 
+	// Get a loaded tag, null otherwise
+	template<std::derived_from<TagImplementationBase> ImplementationT>
+	ImplementationT* GetTag(std::uint32_t TagID) const
+	{
+		return reinterpret_cast<ImplementationT*>(GetTag(TagID));
+	}
 	// Load a tag's dependencies, then load the tag itself
 	template<std::derived_from<TagImplementationBase> ImplementationT>
 	ImplementationT* LoadTag(std::uint32_t TagID)
