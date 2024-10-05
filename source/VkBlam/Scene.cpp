@@ -251,6 +251,15 @@ void Scene::Render(const SceneView& View, vk::CommandBuffer CommandBuffer)
 
 	CommandBuffer.setScissor(0, {Scissor});
 
+	// Draw the scenario!
+	auto* Scenario
+		= Pool->GetTag<Tags::Scenario>(GetMapFile().TagIndexHeader.BaseTag);
+
+	if( Scenario != nullptr )
+	{
+		Scenario->GetTag();
+	}
+
 	// CommandBuffer.bindPipeline(
 	// 	vk::PipelineBindPoint::eGraphics, DebugDrawPipeline.get()
 	// );
@@ -990,7 +999,7 @@ std::optional<Scene>
 
 	// 		const auto StreamBitmap
 	// 			= [&NewScene, &TargetWorld, &TargetRasterizer,
-	// StreamBitmapImage]( 				  const Blam::TagIndexEntry&               TagEntry,
+	// StreamBitmapImage]( 				  const Blam::TagIndexEntry& TagEntry,
 	// 				  const Blam::Tag<Blam::TagClass::Bitmap>& Bitmap
 	// 			  ) -> void {
 	// 			for( std::size_t CurSubTextureIdx = 0;
