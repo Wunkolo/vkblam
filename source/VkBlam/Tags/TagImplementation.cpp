@@ -18,7 +18,7 @@ TagPool& TagSubsystemBase::GetPool() const
 
 const Blam::MapFile& TagSubsystemBase::GetMapFile() const
 {
-	return GetPool().GetScene().GetMapFile();
+	return GetPool().GetMapFile();
 }
 
 TagSubsystemBase::TagSubsystemBase(TagPool& Pool) : Pool(Pool)
