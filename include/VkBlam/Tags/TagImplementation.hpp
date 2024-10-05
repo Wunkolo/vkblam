@@ -67,7 +67,8 @@ public:
 	TagSubsystemBase(TagPool& Pool);
 	virtual ~TagSubsystemBase() = 0;
 
-	[[nodiscard]] TagPool& GetPool() const;
+	[[nodiscard]] TagPool&             GetPool() const;
+	[[nodiscard]] const Blam::MapFile& GetMapFile() const;
 
 	[[nodiscard]] virtual Blam::TagClass GetHandledTagClass() const = 0;
 
