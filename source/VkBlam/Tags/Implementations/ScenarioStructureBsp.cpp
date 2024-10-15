@@ -1,6 +1,8 @@
 #include <Common/Format.hpp>
 #include <VkBlam/Format.hpp>
 #include <VkBlam/Tags/Implementations/ScenarioStructureBsp.hpp>
+#include <VkBlam/Tags/Implementations/ShaderEnvironment.hpp>
+#include <VkBlam/Tags/TagPool.hpp>
 #include <Vulkan/Memory.hpp>
 
 namespace VkBlam::Tags
@@ -23,12 +25,12 @@ ScenarioStructureBsp::~ScenarioStructureBsp()
 }
 
 ScenarioStructureBspSubsystem::ScenarioStructureBspSubsystem(
-	TagPool& Pool, const Vulkan::Context& VulkanContext
+	TagPool& Pool, Rasterizer& TargetRasterizer
 )
 	: TagSubsystem<Blam::TagClass::ScenarioStructureBsp, ScenarioStructureBsp>(
 		  Pool
 	  ),
-	  VulkanContext(VulkanContext)
+	  TargetRasterizer(TargetRasterizer)
 {
 }
 
@@ -197,7 +199,9 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	};
 
 	if( auto CreateResult
-		= VulkanContext.LogicalDevice.createBufferUnique(BSPVertexBufferInfo);
+		= TargetRasterizer.GetVulkanContext().LogicalDevice.createBufferUnique(
+			BSPVertexBufferInfo
+		);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		NewScenarioStructureBsp->BSPVertexBuffer
@@ -213,7 +217,7 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	}
 
 	Vulkan::SetObjectName(
-		VulkanContext.LogicalDevice,
+		TargetRasterizer.GetVulkanContext().LogicalDevice,
 		NewScenarioStructureBsp->BSPVertexBuffer.get(),
 		"ScenarioStructureBsp[{:08X}]: BSP Vertex Buffer({}) | {}",
 		TagIndexEntry.TagID, Common::FormatByteCount(BSPVertexBufferInfo.size),
@@ -227,7 +231,8 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 			   | vk::BufferUsageFlagBits::eTransferDst,
 	};
 
-	if( auto CreateResult = VulkanContext.LogicalDevice.createBufferUnique(
+	if( auto CreateResult
+		= TargetRasterizer.GetVulkanContext().LogicalDevice.createBufferUnique(
 			BSPLightmapVertexBufferInfo
 		);
 		CreateResult.result == vk::Result::eSuccess )
@@ -245,7 +250,7 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	}
 
 	Vulkan::SetObjectName(
-		VulkanContext.LogicalDevice,
+		TargetRasterizer.GetVulkanContext().LogicalDevice,
 		NewScenarioStructureBsp->BSPLightmapVertexBuffer.get(),
 		"ScenarioStructureBsp[{:08X}]: BSP Lightmap Vertex Buffer({}) | {}",
 		TagIndexEntry.TagID,
@@ -260,7 +265,9 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	};
 
 	if( auto CreateResult
-		= VulkanContext.LogicalDevice.createBufferUnique(BSPIndexBufferInfo);
+		= TargetRasterizer.GetVulkanContext().LogicalDevice.createBufferUnique(
+			BSPIndexBufferInfo
+		);
 		CreateResult.result == vk::Result::eSuccess )
 	{
 		NewScenarioStructureBsp->BSPIndexBuffer = std::move(CreateResult.value);
@@ -274,7 +281,7 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 		return nullptr;
 	}
 	Vulkan::SetObjectName(
-		VulkanContext.LogicalDevice,
+		TargetRasterizer.GetVulkanContext().LogicalDevice,
 		NewScenarioStructureBsp->BSPIndexBuffer.get(),
 		"ScenarioStructureBsp[{:08X}]: BSP Index Buffer({}) | {}",
 		TagIndexEntry.TagID, Common::FormatByteCount(BSPIndexBufferInfo.size),
@@ -284,7 +291,8 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	// Create singular allocation of device memory for all vertex and index
 	// data
 	if( auto [Result, Value] = Vulkan::CommitBufferHeap(
-			VulkanContext.LogicalDevice, VulkanContext.PhysicalDevice,
+			TargetRasterizer.GetVulkanContext().LogicalDevice,
+			TargetRasterizer.GetVulkanContext().PhysicalDevice,
 			std::array{
 				NewScenarioStructureBsp->BSPVertexBuffer.get(),
 				NewScenarioStructureBsp->BSPIndexBuffer.get(),
@@ -304,7 +312,7 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 		return nullptr;
 	}
 	Vulkan::SetObjectName(
-		VulkanContext.LogicalDevice,
+		TargetRasterizer.GetVulkanContext().LogicalDevice,
 		NewScenarioStructureBsp->BSPGeometryMemory.get(),
 		"ScenarioStructureBsp[{:08X}]: BSP Geometry Device Memory({}) | {}",
 		TagIndexEntry.TagID, Common::FormatByteCount(BSPIndexBufferInfo.size),
@@ -339,4 +347,85 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 		.emplace_back(std::move(NewScenarioStructureBsp))
 		.get();
 }
+
+void ScenarioStructureBspSubsystem::Draw(
+	ScenarioStructureBsp& ScenarioStructureBsp, const SceneView& View,
+	vk::CommandBuffer CommandBuffer
+)
+{
+	const std::string_view ScenarioStructureBspName
+		= GetMapFile().GetTagPath(ScenarioStructureBsp.GetTagIndexEntry().TagID
+		);
+	;
+	Vulkan::DebugLabelScope DebugScope(
+		CommandBuffer, {0.0, 0.0, 0.5, 1.0}, "ScenarioStructureBsp: {}",
+		ScenarioStructureBspName
+	);
+
+	// Bind geometry
+	CommandBuffer.bindVertexBuffers(
+		0,
+		{ScenarioStructureBsp.BSPVertexBuffer.get(),
+		 ScenarioStructureBsp.BSPLightmapVertexBuffer.get()},
+		{0, 0}
+	);
+
+	CommandBuffer.bindIndexBuffer(
+		ScenarioStructureBsp.BSPIndexBuffer.get(), 0, vk::IndexType::eUint16
+	);
+
+	for( std::size_t i = 0; i < ScenarioStructureBsp.LightmapMeshs.size(); ++i )
+	{
+		const auto& CurLightmapMesh = ScenarioStructureBsp.LightmapMeshs[i];
+		Vulkan::InsertDebugLabel(
+			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: {}", i
+		);
+
+		auto* CurShaderEnvironment = GetPool().GetTag<Tags::ShaderEnvironment>(
+			CurLightmapMesh.ShaderTag
+		);
+
+		if( CurShaderEnvironment == nullptr )
+		{
+			// Unknown shader type
+			continue;
+		}
+
+		// Bind lightmap texture
+		CommandBuffer.bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(), 1,
+			{CurShaderEnvironment->GetDescriptorSet()}, {}
+		);
+
+		// // Bind Mesh descriptors
+		// if( CurLightmapMesh.LightmapTag.has_value()
+		// 	&& CurLightmapMesh.LightmapIndex.has_value() )
+		// {
+		// 	CommandBuffer.bindDescriptorSets(
+		// 		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+		// 		2,
+		// 		{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
+		// 			 .at(CurLightmapMesh.LightmapIndex.value())},
+		// 		{}
+		// 	);
+		// }
+		// else
+		// {
+		// 	CommandBuffer.bindDescriptorSets(
+		// 		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
+		// 		2,
+		// 		{BitmapHeap.Sets.at(BitmapHeap.Default2D)
+		// 			 .at(std::uint32_t(Blam::DefaultTextureIndex::Multiplicative
+		// 			 ))},
+		// 		{}
+		// 	);
+		// }
+
+		// CommandBuffer.drawIndexed(
+		// 	CurLightmapMesh.IndexCount, 1, 0, CurLightmapMesh.VertexIndexOffset,
+		// 	0
+		// );
+	}
+}
+
 } // namespace VkBlam::Tags

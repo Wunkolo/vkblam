@@ -7,8 +7,175 @@
 
 #include <Vulkan/Memory.hpp>
 
+#include <tuple>
+
 namespace
 {
+
+std::tuple<vk::UniquePipeline, vk::UniquePipelineLayout> CreateGraphicsPipeline(
+	vk::Device Device, std::span<const vk::PushConstantRange> PushConstants,
+	std::span<const vk::DescriptorSetLayout> SetLayouts,
+	vk::ShaderModule VertModule, vk::ShaderModule FragModule,
+	std::span<const vk::VertexInputBindingDescription>
+		VertexBindingDescriptions,
+	std::span<const vk::VertexInputAttributeDescription>
+				   VertexAttributeDescriptions,
+	vk::RenderPass RenderPass, vk::SampleCountFlagBits RenderSamples,
+	vk::PolygonMode PolygonMode
+)
+{
+	// Create Pipeline Layout
+	const vk::PipelineLayoutCreateInfo GraphicsPipelineLayoutInfo = {
+		.setLayoutCount = static_cast<std::uint32_t>(SetLayouts.size()),
+		.pSetLayouts    = SetLayouts.data(),
+		.pushConstantRangeCount
+		= static_cast<std::uint32_t>(PushConstants.size()),
+		.pPushConstantRanges = PushConstants.data(),
+	};
+
+	vk::UniquePipelineLayout GraphicsPipelineLayout = {};
+	if( auto CreateResult
+		= Device.createPipelineLayoutUnique(GraphicsPipelineLayoutInfo);
+		CreateResult.result == vk::Result::eSuccess )
+	{
+		GraphicsPipelineLayout = std::move(CreateResult.value);
+	}
+	else
+	{
+		std::fprintf(
+			stderr, "Error creating pipeline layout: %s\n",
+			vk::to_string(CreateResult.result).c_str()
+		);
+		return {};
+	}
+
+	// Describe the stage and entry point of each shader
+	const vk::PipelineShaderStageCreateInfo ShaderStagesInfo[2] = {
+		vk::PipelineShaderStageCreateInfo{
+			.stage  = vk::ShaderStageFlagBits::eVertex,
+			.module = VertModule,
+			.pName  = "main",
+		},
+		vk::PipelineShaderStageCreateInfo{
+			.stage  = vk::ShaderStageFlagBits::eFragment,
+			.module = FragModule,
+			.pName  = "main",
+		},
+	};
+
+	const vk::PipelineVertexInputStateCreateInfo VertexInputState = {
+		.vertexBindingDescriptionCount
+		= static_cast<std::uint32_t>(VertexBindingDescriptions.size()),
+		.pVertexBindingDescriptions = VertexBindingDescriptions.data(),
+		.vertexAttributeDescriptionCount
+		= static_cast<std::uint32_t>(VertexAttributeDescriptions.size()),
+		.pVertexAttributeDescriptions = VertexAttributeDescriptions.data(),
+	};
+
+	const vk::PipelineInputAssemblyStateCreateInfo InputAssemblyState = {
+		.topology               = vk::PrimitiveTopology::eTriangleList,
+		.primitiveRestartEnable = VK_FALSE,
+	};
+
+	static const vk::Viewport DefaultViewport = {0, 0, 16, 16, 0.0f, 1.0f};
+	static const vk::Rect2D   DefaultScissor  = {{0, 0}, {16, 16}};
+	static const vk::PipelineViewportStateCreateInfo ViewportState = {
+		.viewportCount = 1,
+		.pViewports    = &DefaultViewport,
+		.scissorCount  = 1,
+		.pScissors     = &DefaultScissor,
+	};
+
+	const vk::PipelineRasterizationStateCreateInfo RasterizationState = {
+		.depthClampEnable        = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode             = PolygonMode,
+		.cullMode                = vk::CullModeFlagBits::eBack,
+		.frontFace               = vk::FrontFace::eClockwise,
+		.depthBiasEnable         = VK_FALSE,
+		.depthBiasConstantFactor = 0.0f,
+		.depthBiasClamp          = 0.0f,
+		.depthBiasSlopeFactor    = 0.0,
+		.lineWidth               = 1.0f,
+	};
+
+	const vk::PipelineMultisampleStateCreateInfo MultisampleState = {
+		.rasterizationSamples  = RenderSamples,
+		.sampleShadingEnable   = VK_FALSE,
+		.minSampleShading      = 1.0f,
+		.pSampleMask           = nullptr,
+		.alphaToCoverageEnable = VK_TRUE,
+		.alphaToOneEnable      = VK_FALSE,
+	};
+
+	static const vk::PipelineDepthStencilStateCreateInfo DepthStencilState = {
+		.depthTestEnable       = VK_TRUE,
+		.depthWriteEnable      = VK_TRUE,
+		.depthCompareOp        = vk::CompareOp::eLessOrEqual,
+		.depthBoundsTestEnable = VK_FALSE,
+		.stencilTestEnable     = VK_FALSE,
+		.front                 = {},
+		.back                  = {},
+		.minDepthBounds        = 0.0f,
+		.maxDepthBounds        = 1.0f,
+	};
+
+	static const vk::PipelineColorBlendAttachmentState BlendAttachmentState = {
+		.blendEnable         = VK_FALSE,
+		.srcColorBlendFactor = vk::BlendFactor::eZero,
+		.dstColorBlendFactor = vk::BlendFactor::eZero,
+		.colorBlendOp        = vk::BlendOp::eAdd,
+		.srcAlphaBlendFactor = vk::BlendFactor::eZero,
+		.dstAlphaBlendFactor = vk::BlendFactor::eZero,
+		.alphaBlendOp        = vk::BlendOp::eAdd,
+		.colorWriteMask
+		= vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+		| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+	};
+
+	static const vk::PipelineColorBlendStateCreateInfo ColorBlendState = {
+		.logicOpEnable   = VK_FALSE,
+		.logicOp         = vk::LogicOp::eClear,
+		.attachmentCount = 1,
+		.pAttachments    = &BlendAttachmentState,
+	};
+
+	static const vk::DynamicState DynamicStates[] = {
+		// The viewport and scissor of the framebuffer will be dynamic at
+		// run-time
+		// so we definately add these
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor,
+	};
+	static const vk::PipelineDynamicStateCreateInfo DynamicState = {
+		.dynamicStateCount = std::size(DynamicStates),
+		.pDynamicStates    = DynamicStates,
+	};
+
+	const vk::GraphicsPipelineCreateInfo RenderPipelineInfo = {
+		.stageCount          = 2,
+		.pStages             = ShaderStagesInfo,
+		.pVertexInputState   = &VertexInputState,
+		.pInputAssemblyState = &InputAssemblyState,
+		.pViewportState      = &ViewportState,
+		.pRasterizationState = &RasterizationState,
+		.pMultisampleState   = &MultisampleState,
+		.pDepthStencilState  = &DepthStencilState,
+		.pColorBlendState    = &ColorBlendState,
+		.pDynamicState       = &DynamicState,
+		.layout              = GraphicsPipelineLayout.get(),
+		.renderPass          = RenderPass,
+		.subpass             = 0,
+	};
+
+	// Create Pipeline
+	vk::UniquePipeline Pipeline
+		= Device.createGraphicsPipelineUnique({}, RenderPipelineInfo).value;
+	return std::make_tuple(
+		std::move(Pipeline), std::move(GraphicsPipelineLayout)
+	);
+}
+
 const auto [VertexBindingDescriptions, VertexAttributeDescriptions]
 	= VkBlam::GetVertexInputDescriptions({{
 		Blam::VertexFormat::SBSPVertexUncompressed,
