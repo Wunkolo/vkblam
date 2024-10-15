@@ -1,5 +1,7 @@
 #include <VkBlam/Format.hpp>
 #include <VkBlam/Tags/Implementations/Scenario.hpp>
+#include <VkBlam/Tags/Implementations/ScenarioStructureBsp.hpp>
+#include <VkBlam/Tags/TagPool.hpp>
 
 namespace VkBlam::Tags
 {
@@ -60,4 +62,45 @@ Scenario* ScenarioSubsystem::LoadTag(
 
 	return Scenarios.emplace_back(std::move(NewScenario)).get();
 }
+
+void ScenarioSubsystem::Draw(
+	Scenario& Scenario, const SceneView& View, vk::CommandBuffer CommandBuffer
+)
+{
+	const std::string_view ScenarioName
+		= GetMapFile().GetTagPath(Scenario.GetTagIndexEntry().TagID);
+	;
+	Vulkan::DebugLabelScope DebugScope(
+		CommandBuffer, {0.0, 0.5, 0.0, 1.0}, "Scenario: {}", ScenarioName
+	);
+
+	// Draw each StructureBSP
+	auto* ScenarioStructureBspSubsystem
+		= GetPool().GetTagSubsystem<Tags::ScenarioStructureBspSubsystem>(
+			Blam::TagClass::ScenarioStructureBsp
+		);
+
+	if( ScenarioStructureBspSubsystem == nullptr )
+	{
+		// Errot drawing ScenarioStructureBsps
+		return;
+	}
+
+	for( const auto& StructureBSP :
+		 GetMapFile().TagHeap.GetBlock(Scenario.GetTag().StructureBSPs) )
+	{
+		ScenarioStructureBsp* CurrentSBSP
+			= GetPool().GetTag<Tags::ScenarioStructureBsp>(
+				StructureBSP.BSP.TagID
+			);
+
+		if( CurrentSBSP != nullptr )
+		{
+			ScenarioStructureBspSubsystem->Draw(
+				*CurrentSBSP, View, CommandBuffer
+			);
+		}
+	}
+}
+
 } // namespace VkBlam::Tags

@@ -54,14 +54,15 @@ class ScenarioStructureBspSubsystem final
 		  Blam::TagClass::ScenarioStructureBsp, ScenarioStructureBsp>
 {
 private:
-	const Vulkan::Context& VulkanContext;
+	Rasterizer& TargetRasterizer;
 
 	std::vector<std::unique_ptr<ScenarioStructureBsp>> ScenarioStructureBsps;
 
+	vk::UniquePipeline       DebugDrawPipeline       = {};
+	vk::UniquePipelineLayout DebugDrawPipelineLayout = {};
+
 public:
-	ScenarioStructureBspSubsystem(
-		TagPool& Pool, const Vulkan::Context& VulkanContext
-	);
+	ScenarioStructureBspSubsystem(TagPool& Pool, Rasterizer& TargetRasterizer);
 	~ScenarioStructureBspSubsystem();
 
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
@@ -75,6 +76,12 @@ public:
 		const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& Tag,
 		Scene&                                                 TargetScene
 	) override;
+
+	[[deprecated("To be removed for a render-architecture refactor")]]
+	void Draw(
+		ScenarioStructureBsp& ScenarioStructureBsp, const SceneView& View,
+		vk::CommandBuffer CommandBuffer
+	);
 };
 
 } // namespace VkBlam::Tags

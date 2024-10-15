@@ -42,6 +42,12 @@ public:
 		const Blam::TagIndexEntry&                 TagIndexEntry,
 		const Blam::Tag<Blam::TagClass::Scenario>& Tag, Scene& TargetScene
 	) override;
+
+	[[deprecated("To be removed for a render-architecture refactor")]]
+	void Draw(
+		Scenario& Scenario, const SceneView& View,
+		vk::CommandBuffer CommandBuffer
+	);
 };
 
 } // namespace VkBlam::Tags
