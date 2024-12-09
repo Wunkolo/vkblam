@@ -47,6 +47,16 @@ public:
 	ShaderEnvironmentSubsystem(TagPool& Pool, VkBlam::Rasterizer& Rasterizer);
 	~ShaderEnvironmentSubsystem();
 
+	const vk::Pipeline& GetPipeline() const
+	{
+		return ShaderEnvironmentPipeline.get();
+	}
+
+	const vk::PipelineLayout& GetPipelineLayout() const
+	{
+		return ShaderEnvironmentPipelineLayout.get();
+	}
+
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry&                          TagIndexEntry,
 		const Blam::Tag<Blam::TagClass::ShaderEnvironment>& Tag,

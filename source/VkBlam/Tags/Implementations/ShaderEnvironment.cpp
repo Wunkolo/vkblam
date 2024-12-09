@@ -3,6 +3,7 @@
 
 #include <VkBlam/Tags/Implementations/Bitmap.hpp>
 #include <VkBlam/Tags/Implementations/Globals.hpp>
+#include <VkBlam/Tags/Implementations/ScenarioStructureBsp.hpp>
 #include <VkBlam/Tags/TagPool.hpp>
 
 #include <Vulkan/Memory.hpp>
@@ -284,22 +285,29 @@ ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
 	const vk::RenderPass RenderPass
 		= Rasterizer.GetDefaultRenderPass(RenderSamples);
 
-	// std::tie(ShaderEnvironmentPipeline, ShaderEnvironmentPipelineLayout)
-	// 	= CreateGraphicsPipeline(
-	// 		VulkanContext.LogicalDevice,
-	// 		{{vk::PushConstantRange{
-	// 			.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-	// 			.offset     = 0,
-	// 			.size       = sizeof(VkBlam::CameraGlobals),
-	// 		}}},
-	// 		{{SceneDescriptorPool->GetDescriptorSetLayout(),
-	// 		  ShaderEnvironmentDescriptorPool->GetDescriptorSetLayout(),
-	// 		  DebugDrawDescriptorPool->GetDescriptorSetLayout()}},
-	// 		ShaderEnvironmentVertexShaderModule,
-	// 		ShaderEnvironmentFragmentShaderModule, VertexBindingDescriptions,
-	// 		VertexAttributeDescriptions, RenderPass, RenderSamples,
-	// 		vk::PolygonMode::eFill
-	// 	);
+	auto* SBspSubsystem
+		= Pool.GetTagSubsystem<Tags::ScenarioStructureBspSubsystem>(
+			Blam::TagClass::ScenarioStructureBsp
+		);
+
+	std::tie(ShaderEnvironmentPipeline, ShaderEnvironmentPipelineLayout)
+		= CreateGraphicsPipeline(
+			VulkanContext.LogicalDevice,
+			{{vk::PushConstantRange{
+				.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+				.offset     = 0,
+				.size       = sizeof(VkBlam::CameraGlobals),
+			}}},
+			{{
+				Pool.GetScene().GetSceneDescriptorLayout(),
+				ShaderEnvironmentDescriptorPool->GetDescriptorSetLayout(),
+				SBspSubsystem->GetLightmapDescriptorSetLayout(),
+			}},
+			ShaderEnvironmentVertexShaderModule,
+			ShaderEnvironmentFragmentShaderModule, VertexBindingDescriptions,
+			VertexAttributeDescriptions, RenderPass, RenderSamples,
+			vk::PolygonMode::eFill
+		);
 }
 
 ShaderEnvironmentSubsystem::~ShaderEnvironmentSubsystem()

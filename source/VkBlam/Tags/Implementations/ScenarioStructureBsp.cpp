@@ -1,9 +1,19 @@
 #include <Common/Format.hpp>
 #include <VkBlam/Format.hpp>
+#include <VkBlam/Tags/Implementations/Bitmap.hpp>
 #include <VkBlam/Tags/Implementations/ScenarioStructureBsp.hpp>
 #include <VkBlam/Tags/Implementations/ShaderEnvironment.hpp>
 #include <VkBlam/Tags/TagPool.hpp>
 #include <Vulkan/Memory.hpp>
+
+namespace
+{
+vk::DescriptorSetLayoutBinding LightmapBindings[] = {
+	{// LightmapImage
+	 0, vk::DescriptorType::eSampledImage, 1, vk::ShaderStageFlagBits::eFragment
+	},
+};
+}
 
 namespace VkBlam::Tags
 {
@@ -32,6 +42,12 @@ ScenarioStructureBspSubsystem::ScenarioStructureBspSubsystem(
 	  ),
 	  TargetRasterizer(TargetRasterizer)
 {
+	LightmapDescriptorPool = std::make_unique<Vulkan::DescriptorHeap>(
+		Vulkan::DescriptorHeap::Create(
+			TargetRasterizer.GetVulkanContext(), LightmapBindings
+		)
+			.value()
+	);
 }
 
 ScenarioStructureBspSubsystem::~ScenarioStructureBspSubsystem()
@@ -139,13 +155,77 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	const auto Surfaces  = SBSPHeap.GetBlock(ScenarioBSP.Surfaces);
 	const auto Lightmaps = SBSPHeap.GetBlock(ScenarioBSP.Lightmaps);
 
+	const Tags::Bitmap* LightmapBitmap
+		= GetPool().GetTag<Tags::Bitmap>(Tag.LightmapTexture.TagID);
+
+	LightmapDescriptorSets.resize(Lightmaps.size());
+
+	// Get default lightmap image
+	vk::ImageView DefaultLightmapImageView;
+	{
+		const Blam::TagIndexEntry* GlobalsTagEntry
+			= TargetScene.GetMapFile().FindTagIndexEntry("globals\\globals");
+
+		if( GlobalsTagEntry == nullptr )
+		{
+			// Error getting globals tag
+			return nullptr;
+		}
+		const Blam::Tag<Blam::TagClass::Globals>* Globals
+			= TargetScene.GetMapFile().GetTag<Blam::TagClass::Globals>(
+				GlobalsTagEntry->TagID
+			);
+
+		if( Globals == nullptr )
+		{
+			// Error loading globals tag
+			return nullptr;
+		}
+		const auto RasterizerData
+			= TargetScene.GetMapFile().TagHeap.GetBlock(Globals->RasterizerData
+			)[0];
+		DefaultLightmapImageView
+			= GetPool()
+				  .LoadTag<Tags::Bitmap>(RasterizerData.Default2D.TagID)
+				  ->GetBitmap(
+					  std::uint16_t(Blam::DefaultTextureIndex::Multiplicative)
+				  )
+				  .View.get();
+	}
+
 	// Index in elements, not bytes
 	std::uint32_t VertexHeapIndexEnd = 0;
+	std::uint32_t IndexOffsetEnd     = 0;
 
+	std::size_t LightmapIndex = 0;
 	for( const auto& CurLightmap : Lightmaps )
 	{
+		// Allocate a descriptor set for this span of lightmaps
+		const vk::DescriptorSet& CurLightmapDescriptorSet
+			= LightmapDescriptorSets[LightmapIndex]
+			= LightmapDescriptorPool->AllocateDescriptorSet().value();
+
+		Vulkan::SetObjectName(
+			TargetRasterizer.GetVulkanContext().LogicalDevice,
+			CurLightmapDescriptorSet, "Lightmap: {}", LightmapIndex
+		);
+
 		// If this is -1, then there is no lightmap
 		const std::int16_t LightmapTextureIndex = CurLightmap.LightmapIndex;
+		if( LightmapTextureIndex >= 0 )
+		{
+			TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
+				CurLightmapDescriptorSet, 0,
+				LightmapBitmap->GetBitmap(LightmapTextureIndex).View.get()
+			);
+		}
+		else
+		{
+			// Default lightmap texture
+			TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
+				CurLightmapDescriptorSet, 0, DefaultLightmapImageView
+			);
+		}
 
 		for( const auto& CurMaterial :
 			 SBSPHeap.GetBlock(CurLightmap.Materials) )
@@ -167,13 +247,8 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 
 				CurLightmapMesh.ShaderTag = CurMaterial.Shader.TagID;
 
-				if( ScenarioBSP.LightmapTexture.Valid()
-					&& LightmapTextureIndex != -1 )
-				{
-					CurLightmapMesh.LightmapTag
-						= ScenarioBSP.LightmapTexture.TagID;
-					CurLightmapMesh.LightmapIndex = LightmapTextureIndex;
-				}
+				CurLightmapMesh.LightmapDescriptorSet
+					= CurLightmapDescriptorSet;
 
 				//// Lightmap vertex buffer data
 				{
@@ -187,8 +262,13 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 			}
 
 			//// Index Buffer dataxiv
-			CurLightmapMesh.IndexCount = CurMaterial.SurfacesCount * 3;
+			CurLightmapMesh.IndexOffset = IndexOffsetEnd;
+			CurLightmapMesh.IndexCount  = CurMaterial.SurfacesCount * 3;
+
+			IndexOffsetEnd += CurLightmapMesh.IndexCount;
 		}
+
+		++LightmapIndex;
 	}
 
 	//// Create Vertex buffer heap
@@ -356,7 +436,7 @@ void ScenarioStructureBspSubsystem::Draw(
 	const std::string_view ScenarioStructureBspName
 		= GetMapFile().GetTagPath(ScenarioStructureBsp.GetTagIndexEntry().TagID
 		);
-	;
+
 	Vulkan::DebugLabelScope DebugScope(
 		CommandBuffer, {0.0, 0.0, 0.5, 1.0}, "ScenarioStructureBsp: {}",
 		ScenarioStructureBspName
@@ -374,6 +454,22 @@ void ScenarioStructureBspSubsystem::Draw(
 		ScenarioStructureBsp.BSPIndexBuffer.get(), 0, vk::IndexType::eUint16
 	);
 
+	// Todo: Shader base-class needed here
+	const ShaderEnvironmentSubsystem* ShaderEnvironmentSubsystem
+		= GetPool().GetTagSubsystem<Tags::ShaderEnvironmentSubsystem>(
+			Blam::TagClass::ShaderEnvironment
+		);
+
+	CommandBuffer.bindPipeline(
+		vk::PipelineBindPoint::eGraphics,
+		ShaderEnvironmentSubsystem->GetPipeline()
+	);
+
+	CommandBuffer.pushConstants<VkBlam::CameraGlobals>(
+		ShaderEnvironmentSubsystem->GetPipelineLayout(),
+		vk::ShaderStageFlagBits::eAllGraphics, 0, {View.CameraGlobalsData}
+	);
+
 	for( std::size_t i = 0; i < ScenarioStructureBsp.LightmapMeshs.size(); ++i )
 	{
 		const auto& CurLightmapMesh = ScenarioStructureBsp.LightmapMeshs[i];
@@ -381,9 +477,10 @@ void ScenarioStructureBspSubsystem::Draw(
 			CommandBuffer, {0.5, 0.5, 0.5, 1.0}, "BSP Draw: {}", i
 		);
 
-		auto* CurShaderEnvironment = GetPool().GetTag<Tags::ShaderEnvironment>(
-			CurLightmapMesh.ShaderTag
-		);
+		Tags::ShaderEnvironment* CurShaderEnvironment
+			= GetPool().GetTag<Tags::ShaderEnvironment>(
+				CurLightmapMesh.ShaderTag
+			);
 
 		if( CurShaderEnvironment == nullptr )
 		{
@@ -391,40 +488,24 @@ void ScenarioStructureBspSubsystem::Draw(
 			continue;
 		}
 
-		// Bind lightmap texture
+		// Bind shader descriptor
 		CommandBuffer.bindDescriptorSets(
-			vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(), 1,
+			vk::PipelineBindPoint::eGraphics,
+			ShaderEnvironmentSubsystem->GetPipelineLayout(), 1,
 			{CurShaderEnvironment->GetDescriptorSet()}, {}
 		);
 
-		// // Bind Mesh descriptors
-		// if( CurLightmapMesh.LightmapTag.has_value()
-		// 	&& CurLightmapMesh.LightmapIndex.has_value() )
-		// {
-		// 	CommandBuffer.bindDescriptorSets(
-		// 		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-		// 		2,
-		// 		{BitmapHeap.Sets.at(CurLightmapMesh.LightmapTag.value())
-		// 			 .at(CurLightmapMesh.LightmapIndex.value())},
-		// 		{}
-		// 	);
-		// }
-		// else
-		// {
-		// 	CommandBuffer.bindDescriptorSets(
-		// 		vk::PipelineBindPoint::eGraphics, DebugDrawPipelineLayout.get(),
-		// 		2,
-		// 		{BitmapHeap.Sets.at(BitmapHeap.Default2D)
-		// 			 .at(std::uint32_t(Blam::DefaultTextureIndex::Multiplicative
-		// 			 ))},
-		// 		{}
-		// 	);
-		// }
+		// Bind lightmap texture
+		CommandBuffer.bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			ShaderEnvironmentSubsystem->GetPipelineLayout(), 2,
+			{CurLightmapMesh.LightmapDescriptorSet}, {}
+		);
 
-		// CommandBuffer.drawIndexed(
-		// 	CurLightmapMesh.IndexCount, 1, 0, CurLightmapMesh.VertexIndexOffset,
-		// 	0
-		// );
+		CommandBuffer.drawIndexed(
+			CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
+			CurLightmapMesh.VertexIndexOffset, 0
+		);
 	}
 }
 
