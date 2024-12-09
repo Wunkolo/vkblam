@@ -480,6 +480,10 @@ void ScenarioStructureBspSubsystem::Draw(
 		{GetPool().GetScene().GetSceneDescriptorSet()}, {}
 	);
 
+	// Some basic command-buffer optimizations
+	vk::DescriptorSet LastShaderDescriptorSet   = {};
+	vk::DescriptorSet LastLightmapDescriptorSet = {};
+
 	for( std::size_t i = 0; i < ScenarioStructureBsp.LightmapMeshs.size(); ++i )
 	{
 		const auto& CurLightmapMesh = ScenarioStructureBsp.LightmapMeshs[i];
@@ -499,18 +503,31 @@ void ScenarioStructureBspSubsystem::Draw(
 		}
 
 		// Bind shader descriptor
-		CommandBuffer.bindDescriptorSets(
-			vk::PipelineBindPoint::eGraphics,
-			ShaderEnvironmentSubsystem->GetPipelineLayout(), 1,
-			{CurShaderEnvironment->GetDescriptorSet()}, {}
-		);
+		if( const vk::DescriptorSet ShaderDescriptorSet
+			= CurShaderEnvironment->GetDescriptorSet();
+			LastShaderDescriptorSet != ShaderDescriptorSet )
+		{
+			CommandBuffer.bindDescriptorSets(
+				vk::PipelineBindPoint::eGraphics,
+				ShaderEnvironmentSubsystem->GetPipelineLayout(), 1,
+				{ShaderDescriptorSet}, {}
+			);
+			LastShaderDescriptorSet = ShaderDescriptorSet;
+		}
 
 		// Bind lightmap texture
-		CommandBuffer.bindDescriptorSets(
-			vk::PipelineBindPoint::eGraphics,
-			ShaderEnvironmentSubsystem->GetPipelineLayout(), 2,
-			{CurLightmapMesh.LightmapDescriptorSet}, {}
-		);
+		if( const vk::DescriptorSet LightmapDescriptorSet
+			= CurLightmapMesh.LightmapDescriptorSet;
+			LastLightmapDescriptorSet != LightmapDescriptorSet )
+		{
+
+			CommandBuffer.bindDescriptorSets(
+				vk::PipelineBindPoint::eGraphics,
+				ShaderEnvironmentSubsystem->GetPipelineLayout(), 2,
+				{LightmapDescriptorSet}, {}
+			);
+			LastLightmapDescriptorSet = LightmapDescriptorSet;
+		}
 
 		CommandBuffer.drawIndexed(
 			CurLightmapMesh.IndexCount, 1, CurLightmapMesh.IndexOffset,
