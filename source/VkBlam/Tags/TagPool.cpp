@@ -29,6 +29,11 @@ TagImplementationBase* TagPool::GetTag(std::uint32_t TagID) const
 
 TagImplementationBase* TagPool::LoadTag(std::uint32_t TagID)
 {
+	if( TagID == 0xFFFFFFFF )
+	{
+		return nullptr;
+	}
+
 	const Blam::TagIndexEntry* TagIndexEntryPtr
 		= TargetScene.GetWorld().GetMapFile().GetTagIndexEntry(
 			std::uint16_t(TagID)
@@ -71,6 +76,12 @@ TagImplementationBase* TagPool::LoadTag(std::uint32_t TagID)
 
 	for( const DependentTag& DependentTag : DependentTags )
 	{
+		// Ignore null tag IDs
+		if( DependentTag.TagID == 0xFFFFFFFF )
+		{
+			continue;
+		}
+
 		TagImplementationBase* DependentTagImplementation = nullptr;
 
 		// If the tag data is immediately provided, prefer loading that rather
@@ -104,6 +115,11 @@ TagImplementationBase* TagPool::LoadTag(std::uint32_t TagID)
 TagImplementationBase*
 	TagPool::LoadTag(std::uint32_t TagID, const Blam::TagBase* TagData)
 {
+	if( TagID == 0xFFFFFFFF )
+	{
+		return nullptr;
+	}
+
 	const Blam::TagIndexEntry* TagIndexEntryPtr
 		= TargetScene.GetWorld().GetMapFile().GetTagIndexEntry(
 			std::uint16_t(TagID)
@@ -123,7 +139,7 @@ TagImplementationBase*
 		return TagImplementation;
 	}
 
-	// Tag does not exist, load tag
+	// Tag does not exist yet, load tag
 
 	// Get a subsystem that handles this tag
 	if( !TagSubsystems.contains(TagIndexEntryPtr->ClassPrimary) )
@@ -145,6 +161,12 @@ TagImplementationBase*
 
 	for( const DependentTag& DependentTag : DependentTags )
 	{
+		// Ignore null tag IDs
+		if( DependentTag.TagID == 0xFFFFFFFF )
+		{
+			continue;
+		}
+
 		if( LoadTag(DependentTag.TagID) == nullptr )
 		{
 			// Error loading dependent tag
