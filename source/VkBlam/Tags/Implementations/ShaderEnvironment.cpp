@@ -453,17 +453,17 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 	};
 
 	WriteImageTag(0, Tag.BaseMap.TagID, Blam::DefaultTextureIndex::Additive);
-	WriteImageTag(1, Tag.BumpMap.TagID, Blam::DefaultTextureIndex::Vector);
 	WriteImageTag(
-		2, Tag.PrimaryDetailMap.TagID, Blam::DefaultTextureIndex::SignedAdditive
+		1, Tag.PrimaryDetailMap.TagID, Blam::DefaultTextureIndex::SignedAdditive
 	);
 	WriteImageTag(
-		3, Tag.SecondaryDetailMap.TagID,
+		2, Tag.SecondaryDetailMap.TagID,
 		Blam::DefaultTextureIndex::SignedAdditive
 	);
 	WriteImageTag(
-		4, Tag.MicroDetailMap.TagID, Blam::DefaultTextureIndex::SignedAdditive
+		3, Tag.MicroDetailMap.TagID, Blam::DefaultTextureIndex::SignedAdditive
 	);
+	WriteImageTag(4, Tag.BumpMap.TagID, Blam::DefaultTextureIndex::Vector);
 	WriteImageTag(5, Tag.GlowMap.TagID, Blam::DefaultTextureIndex::Additive);
 	WriteImageTag(
 		6, Tag.ReflectionCubeMap.TagID, Blam::DefaultTextureIndex::Additive
