@@ -61,6 +61,11 @@ public:
 		return TargetRasterizer.GetVulkanContext();
 	};
 
+	const vk::DescriptorSet& GetSceneDescriptorSet() const
+	{
+		return CurSceneDescriptor;
+	}
+
 	const vk::DescriptorSetLayout& GetSceneDescriptorLayout() const
 	{
 		return SceneDescriptorPool->GetDescriptorSetLayout();
