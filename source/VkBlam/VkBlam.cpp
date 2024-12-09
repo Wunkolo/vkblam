@@ -98,11 +98,11 @@ static std::array<
 	VertexFormatAttributes = {{
 		// SBSPVertexUncompressed
 		{
-			{0, 0, vk::Format::eR32G32B32Sfloat, 0x00},
-			{0, 0, vk::Format::eR32G32B32Sfloat, 0x0C},
-			{0, 0, vk::Format::eR32G32B32Sfloat, 0x18},
-			{0, 0, vk::Format::eR32G32B32Sfloat, 0x24},
-			{0, 0, vk::Format::eR32G32Sfloat, 0x30},
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x00}, // D3DDECLUSAGE_POSITION
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x0C}, // D3DDECLUSAGE_NORMAL
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x18}, // D3DDECLUSAGE_BINORMAL
+			{0, 0, vk::Format::eR32G32B32Sfloat, 0x24}, // D3DDECLUSAGE_TANGENT
+			{0, 0, vk::Format::eR32G32Sfloat, 0x30},    // D3DDECLUSAGE_TEXCOORD
 		},
 		// SBSPVertexCompressed
 		{
