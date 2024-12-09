@@ -61,6 +61,11 @@ public:
 		return TargetRasterizer.GetVulkanContext();
 	};
 
+	const vk::DescriptorSetLayout& GetSceneDescriptorLayout() const
+	{
+		return SceneDescriptorPool->GetDescriptorSetLayout();
+	}
+
 	void Render(const SceneView& View, vk::CommandBuffer CommandBuffer);
 
 	static std::unique_ptr<Scene>

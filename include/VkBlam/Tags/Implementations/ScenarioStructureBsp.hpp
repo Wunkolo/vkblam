@@ -12,6 +12,7 @@ namespace VkBlam::Tags
 struct LightmapMesh
 {
 	std::uint32_t VertexIndexOffset = 0;
+	std::uint32_t IndexOffset       = 0;
 	std::uint32_t IndexCount        = 0;
 
 	std::span<const Blam::Vertex>         VertexData;
@@ -19,9 +20,7 @@ struct LightmapMesh
 
 	std::uint32_t ShaderTag;
 
-	// Some lightmap meshes don't have a lightmap!
-	std::optional<std::uint32_t> LightmapTag;
-	std::optional<std::uint32_t> LightmapIndex;
+	vk::DescriptorSet LightmapDescriptorSet;
 };
 class ScenarioStructureBsp final
 	: public TagImplementation<Blam::TagClass::ScenarioStructureBsp>
@@ -36,6 +35,7 @@ private:
 	vk::UniqueBuffer BSPLightmapVertexBuffer = {};
 	vk::UniqueBuffer BSPIndexBuffer          = {};
 
+	// This sucks
 	std::vector<LightmapMesh> LightmapMeshs;
 
 public:
@@ -58,12 +58,19 @@ private:
 
 	std::vector<std::unique_ptr<ScenarioStructureBsp>> ScenarioStructureBsps;
 
-	vk::UniquePipeline       DebugDrawPipeline       = {};
-	vk::UniquePipelineLayout DebugDrawPipelineLayout = {};
+	std::unique_ptr<Vulkan::DescriptorHeap> LightmapDescriptorPool;
+	// Eventually each "cluster" may need its own descriptor-set with more
+	// lighting/atmospheric data
+	std::vector<vk::DescriptorSet> LightmapDescriptorSets;
 
 public:
 	ScenarioStructureBspSubsystem(TagPool& Pool, Rasterizer& TargetRasterizer);
 	~ScenarioStructureBspSubsystem();
+
+	vk::DescriptorSetLayout GetLightmapDescriptorSetLayout() const
+	{
+		return LightmapDescriptorPool->GetDescriptorSetLayout();
+	}
 
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry&                             TagIndexEntry,
