@@ -472,6 +472,12 @@ void ScenarioStructureBspSubsystem::Draw(
 		vk::ShaderStageFlagBits::eAllGraphics, 0, {View.CameraGlobalsData}
 	);
 
+	CommandBuffer.bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics,
+		ShaderEnvironmentSubsystem->GetPipelineLayout(), 0,
+		{GetPool().GetScene().GetSceneDescriptorSet()}, {}
+	);
+
 	for( std::size_t i = 0; i < ScenarioStructureBsp.LightmapMeshs.size(); ++i )
 	{
 		const auto& CurLightmapMesh = ScenarioStructureBsp.LightmapMeshs[i];
