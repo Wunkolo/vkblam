@@ -271,6 +271,8 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 		++LightmapIndex;
 	}
 
+	TargetRasterizer.GetDescriptorUpdateBatch().Flush();
+
 	//// Create Vertex buffer heap
 	const vk::BufferCreateInfo BSPVertexBufferInfo = {
 		.size  = VertexHeapIndexEnd * sizeof(Blam::Vertex),
