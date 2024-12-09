@@ -70,13 +70,11 @@ Bitmap* BitmapSubsystem::LoadTag(
 						 .height = CurBitmapEntry.Height,
 						 .depth  = CurBitmapEntry.Depth,
         };
-		ImageInfo.mipLevels
-			= std::max<std::uint16_t>(CurBitmapEntry.MipmapCount, 1);
-		ImageInfo.arrayLayers
-			= CurBitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6 : 1;
-		ImageInfo.samples = vk::SampleCountFlagBits::e1;
-		ImageInfo.tiling  = vk::ImageTiling::eOptimal;
-		ImageInfo.usage   = vk::ImageUsageFlagBits::eSampled
+		ImageInfo.mipLevels   = MipCount;
+		ImageInfo.arrayLayers = LayerCount;
+		ImageInfo.samples     = vk::SampleCountFlagBits::e1;
+		ImageInfo.tiling      = vk::ImageTiling::eOptimal;
+		ImageInfo.usage       = vk::ImageUsageFlagBits::eSampled
 						| vk::ImageUsageFlagBits::eTransferDst
 						| vk::ImageUsageFlagBits::eTransferSrc;
 		ImageInfo.sharingMode   = vk::SharingMode::eExclusive;
