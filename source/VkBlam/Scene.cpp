@@ -31,32 +31,6 @@ namespace VkBlam
 Scene::Scene(Rasterizer& TargetRasterizer, const World& TargetWorld)
 	: TargetWorld(TargetWorld), TargetRasterizer(TargetRasterizer)
 {
-	Pool = std::make_unique<TagPool>(*this);
-
-	Pool->RegisterTagSubsystem(
-		Blam::TagClass::Bitmap, std::make_unique<Tags::BitmapSubsystem>(
-									*Pool, TargetRasterizer.GetVulkanContext()
-								)
-	);
-	Pool->RegisterTagSubsystem(
-		Blam::TagClass::Globals, std::make_unique<Tags::GlobalsSubsystem>(*Pool)
-	);
-	Pool->RegisterTagSubsystem(
-		Blam::TagClass::Scenario,
-		std::make_unique<Tags::ScenarioSubsystem>(*Pool)
-	);
-	Pool->RegisterTagSubsystem(
-		Blam::TagClass::ScenarioStructureBsp,
-		std::make_unique<Tags::ScenarioStructureBspSubsystem>(
-			*Pool, TargetRasterizer
-		)
-	);
-	Pool->RegisterTagSubsystem(
-		Blam::TagClass::ShaderEnvironment,
-		std::make_unique<Tags::ShaderEnvironmentSubsystem>(
-			*Pool, TargetRasterizer
-		)
-	);
 }
 
 Scene::~Scene()
@@ -279,6 +253,36 @@ std::unique_ptr<Scene>
 		// 		vk::PolygonMode::eLine
 		// 	);
 	}
+
+	// Register each of the tag systems
+	NewScene->Pool = std::make_unique<TagPool>(*NewScene);
+
+	NewScene->Pool->RegisterTagSubsystem(
+		Blam::TagClass::Bitmap,
+		std::make_unique<Tags::BitmapSubsystem>(
+			*NewScene->Pool, TargetRasterizer.GetVulkanContext()
+		)
+	);
+	NewScene->Pool->RegisterTagSubsystem(
+		Blam::TagClass::Globals,
+		std::make_unique<Tags::GlobalsSubsystem>(*NewScene->Pool)
+	);
+	NewScene->Pool->RegisterTagSubsystem(
+		Blam::TagClass::Scenario,
+		std::make_unique<Tags::ScenarioSubsystem>(*NewScene->Pool)
+	);
+	NewScene->Pool->RegisterTagSubsystem(
+		Blam::TagClass::ScenarioStructureBsp,
+		std::make_unique<Tags::ScenarioStructureBspSubsystem>(
+			*NewScene->Pool, TargetRasterizer
+		)
+	);
+	NewScene->Pool->RegisterTagSubsystem(
+		Blam::TagClass::ShaderEnvironment,
+		std::make_unique<Tags::ShaderEnvironmentSubsystem>(
+			*NewScene->Pool, TargetRasterizer
+		)
+	);
 
 	// Load Scenario!
 	const auto Scenario = NewScene->Pool->LoadTag<Tags::Scenario>(
