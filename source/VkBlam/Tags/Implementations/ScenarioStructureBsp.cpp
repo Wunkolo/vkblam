@@ -216,14 +216,16 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 		{
 			TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
 				CurLightmapDescriptorSet, 0,
-				LightmapBitmap->GetBitmap(LightmapTextureIndex).View.get()
+				LightmapBitmap->GetBitmap(LightmapTextureIndex).View.get(),
+				vk::ImageLayout::eShaderReadOnlyOptimal
 			);
 		}
 		else
 		{
 			// Default lightmap texture
 			TargetRasterizer.GetDescriptorUpdateBatch().AddImage(
-				CurLightmapDescriptorSet, 0, DefaultLightmapImageView
+				CurLightmapDescriptorSet, 0, DefaultLightmapImageView,
+				vk::ImageLayout::eShaderReadOnlyOptimal
 			);
 		}
 

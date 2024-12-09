@@ -440,13 +440,15 @@ ShaderEnvironment* ShaderEnvironmentSubsystem::LoadTag(
 				GetPool()
 					.LoadTag<Tags::Bitmap>(DefaultImageTag)
 					->GetBitmap(std::uint16_t(DefaultIndex))
-					.View.get()
+					.View.get(),
+				vk::ImageLayout::eShaderReadOnlyOptimal
 			);
 			return;
 		}
 		Rasterizer.GetDescriptorUpdateBatch().AddImage(
 			NewShaderEnvironment->DescriptorSet, Binding,
-			GetPool().LoadTag<Tags::Bitmap>(TagID)->GetBitmap(0).View.get()
+			GetPool().LoadTag<Tags::Bitmap>(TagID)->GetBitmap(0).View.get(),
+			vk::ImageLayout::eShaderReadOnlyOptimal
 		);
 	};
 
