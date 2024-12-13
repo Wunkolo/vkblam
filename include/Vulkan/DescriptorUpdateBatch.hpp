@@ -47,8 +47,7 @@ public:
 
 	void AddImage(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
-		vk::ImageView   ImageView,
-		vk::ImageLayout ImageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+		vk::ImageView ImageView, vk::ImageLayout ImageLayout
 	);
 	void AddSampler(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
@@ -58,7 +57,7 @@ public:
 	void AddImageSampler(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
 		vk::ImageView ImageView, vk::Sampler Sampler,
-		vk::ImageLayout ImageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+		vk::ImageLayout ImageLayout
 	);
 	void AddBuffer(
 		vk::DescriptorSet TargetDescriptor, std::uint8_t TargetBinding,
