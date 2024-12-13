@@ -43,7 +43,7 @@ private:
 
 	// All of these images are static textures that only ever get sample from,
 	// so a simple heap-allocator is utilized
-	static constexpr std::uint64_t BlockSize = 32_MiB;
+	static constexpr std::uint64_t BlockSize = 64_MiB;
 	static_assert(std::has_single_bit(BlockSize), "BlockSize must be pow2");
 
 	std::vector<std::uint32_t>          BlockFreeSpace;
