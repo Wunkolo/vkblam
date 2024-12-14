@@ -140,6 +140,8 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 	const Blam::VirtualHeap SBSPHeap
 		= SBSP->GetSBSPHeap(TargetScene.GetMapFile().GetMapData());
 
+	const auto SBSPHeader = SBSP->GetSBSPHeader(SBSPHeap);
+
 	const Blam::Tag<Blam::TagClass::ScenarioStructureBsp>& ScenarioBSP
 		= SBSP->GetSBSP(SBSPHeap);
 
@@ -237,8 +239,24 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 			//// Vertex Buffer data
 			{
 				// Copy vertex data into the staging buffer
+
+// #define CEA
+#if defined(CEA)
+				const std::span<const Blam::Vertex> CurVertexData
+					= std::span<const Blam::Vertex>(
+						(const Blam::Vertex*)GetMapFile()
+							.GetMapData()
+							.subspan(
+								SBSPHeader.cea.LightmapVerticesOffset
+								+ CurMaterial.Geometry.VertexBufferOffset
+							)
+							.data(),
+						CurMaterial.Geometry.VertexBufferCount
+					);
+#else
 				const std::span<const Blam::Vertex> CurVertexData
 					= CurMaterial.GetVertices(SBSPHeap);
+#endif
 
 				CurLightmapMesh.VertexData = CurVertexData;
 
@@ -254,12 +272,27 @@ ScenarioStructureBsp* ScenarioStructureBspSubsystem::LoadTag(
 
 				//// Lightmap vertex buffer data
 				{
+#if defined(CEA)
+					const std::span<const Blam::LightmapVertex>
+						CurLightmapVertexData
+						= std::span<const Blam::LightmapVertex>(
+							(const Blam::LightmapVertex*)GetMapFile()
+								.GetMapData()
+								.subspan(
+									SBSPHeader.cea.LightmapVerticesOffset
+									+ CurMaterial.LightmapGeometry
+										  .VertexBufferOffset
+								)
+								.data(),
+							CurMaterial.LightmapGeometry.VertexBufferCount
+						);
+#else
 					const std::span<const Blam::LightmapVertex>
 						CurLightmapVertexData
 						= CurMaterial.GetLightmapVertices(SBSPHeap);
+#endif
 					CurLightmapMesh.LightmapVertexData = CurLightmapVertexData;
 				}
-
 				VertexHeapIndexEnd += CurVertexData.size();
 			}
 

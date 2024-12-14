@@ -1223,16 +1223,33 @@ struct Tag<TagClass::Scenario>
 			};
 		}
 
-		struct SBSPHeader
+		union SBSPHeader
 		{
-			std::uint32_t VirtualOffset;
-			// These are unused on PC
-			std::uint32_t LightmapMaterialCountA;
-			std::uint32_t RenderedVertexOffset;
-			std::uint32_t LightmapMaterialCountB;
-			std::uint32_t LightmapVerticesOffset;
-			TagClass      Class; // `sbsp`
+			struct
+			{
+
+				std::uint32_t VirtualOffset;
+				// These are unused on PC
+				std::uint32_t LightmapMaterialCountA;
+				std::uint32_t RenderedVertexOffset;
+				std::uint32_t LightmapMaterialCountB;
+				std::uint32_t LightmapVerticesOffset;
+				TagClass      Class; // `sbsp`
+			} base;
+			struct
+			{
+
+				std::uint32_t VirtualOffset;
+				// These are unused on PC
+				std::uint32_t LightmapVertexSize;
+				std::uint32_t LightmapVerticesOffset;
+				std::uint64_t _Padding;
+				TagClass      Class; // `sbsp`
+			} cea;
 		};
+		static_assert(sizeof(SBSPHeader::base) == 24);
+		static_assert(sizeof(SBSPHeader::cea) == 24);
+		static_assert(sizeof(SBSPHeader) == 24);
 
 		const SBSPHeader& GetSBSPHeader(const VirtualHeap& SBSPHeap) const
 		{
@@ -1244,7 +1261,7 @@ struct Tag<TagClass::Scenario>
 		{
 			return SBSPHeap
 				.Read<Blam::Tag<Blam::TagClass::ScenarioStructureBsp>>(
-					GetSBSPHeader(SBSPHeap).VirtualOffset
+					GetSBSPHeader(SBSPHeap).base.VirtualOffset
 				);
 		}
 	};
