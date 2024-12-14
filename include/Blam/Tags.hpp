@@ -1360,7 +1360,7 @@ struct Tag<TagClass::ScenarioStructureBsp>
 			Vector3f      ShadowColor;
 			Vector4f      Plane;
 			std::int16_t  BreakableSurface;
-			std::uint16_t UnknownAE;
+			std::uint16_t RenderedVerticesFormat; // Blam::VertexFormat
 
 			struct VertexBufferReference
 			{
