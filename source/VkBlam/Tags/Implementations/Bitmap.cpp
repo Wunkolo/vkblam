@@ -42,7 +42,8 @@ BitmapSubsystem::~BitmapSubsystem()
 {
 }
 
-vk::BindImageMemoryInfo BitmapSubsystem::FindFreeBlock(vk::Image Image)
+std::optional<vk::BindImageMemoryInfo>
+	BitmapSubsystem::FindFreeBlock(vk::Image Image)
 {
 	const vk::PhysicalDevice& PhysicalDevice = VulkanContext.PhysicalDevice;
 	// Align the incoming memory-size to bufferImageGranularity
@@ -86,8 +87,12 @@ vk::BindImageMemoryInfo BitmapSubsystem::FindFreeBlock(vk::Image Image)
 	}
 
 	// No free block found, create a new one
+	// If the image is larger than the block size(?!) then just give it a whole
+	// block large enough to satisfy the allocation
 	const std::size_t NewBlockIndex = BlockFreeSpace.size();
-	BlockFreeSpace.emplace_back(BlockSize) -= ImageRequirements.size;
+	const std::size_t NewBlockSize
+		= std::max(ImageRequirements.size, BlockSize);
+	BlockFreeSpace.emplace_back(NewBlockSize) -= NewBlockSize;
 
 	// Allocate a new block
 	const vk::Device& Device = VulkanContext.LogicalDevice;
@@ -96,13 +101,15 @@ vk::BindImageMemoryInfo BitmapSubsystem::FindFreeBlock(vk::Image Image)
 		PhysicalDevice, ImageRequirements.memoryTypeBits,
 		vk::MemoryPropertyFlagBits::eDeviceLocal
 	);
+
 	if( MemoryTypeIndex < 0 )
 	{
 		// Unable to find any qualifying memory
+		return std::nullopt;
 	}
 
 	const vk::MemoryAllocateInfo BlockAllocInfo = {
-		.allocationSize  = BlockSize,
+		.allocationSize  = NewBlockSize,
 		.memoryTypeIndex = std::uint32_t(MemoryTypeIndex),
 	};
 
@@ -115,6 +122,7 @@ vk::BindImageMemoryInfo BitmapSubsystem::FindFreeBlock(vk::Image Image)
 	else
 	{
 		// Error allocating new block
+		return std::nullopt;
 	}
 
 	Vulkan::SetObjectName(
@@ -200,43 +208,20 @@ Bitmap* BitmapSubsystem::LoadTag(
 		NewBitmap->Bitmaps[CurSubTextureIdx] = std::move(CurSubBitmap);
 	}
 
-	// Create a single heap of device memory for all the subimages
-	// {
-	// 	std::vector<vk::Image> Images;
-	// 	for( const auto& Bitmap : NewBitmap->Bitmaps )
-	// 	{
-	// 		Images.push_back(Bitmap.Image.get());
-	// 	}
-
-	// 	if( auto [Result, Value] = Vulkan::CommitImageHeap(
-	// 			VulkanContext.LogicalDevice, VulkanContext.PhysicalDevice,
-	// 			Images, vk::MemoryPropertyFlagBits::eDeviceLocal
-	// 		);
-	// 		Result == vk::Result::eSuccess )
-	// 	{
-	// 		NewBitmap->Memory = std::move(Value);
-	// 	}
-	// 	else
-	// 	{
-	// 		std::fprintf(
-	// 			stderr, "Error committing image memory: %s\n",
-	// 			vk::to_string(Result).c_str()
-	// 		);
-	// 		return nullptr;
-	// 	}
-	// }
-
-	// Vulkan::SetObjectName(
-	// 	VulkanContext.LogicalDevice, NewBitmap->Memory.get(),
-	// 	"Bitmap[{:08X}]: DeviceMemory | {}", TagIndexEntry.TagID,
-	// 	TargetScene.GetMapFile().GetTagPath(TagIndexEntry.TagID)
-	// );
-
 	// Bind bitmaps to memory
 	std::vector<vk::BindImageMemoryInfo> ImageHeapBinds;
 	for( const auto& Bitmap : NewBitmap->Bitmaps )
 	{
-		ImageHeapBinds.emplace_back(FindFreeBlock(Bitmap.Image.get()));
+		if( const auto& AllocateInfo = FindFreeBlock(Bitmap.Image.get());
+			AllocateInfo.has_value() )
+		{
+			ImageHeapBinds.emplace_back(AllocateInfo.value());
+		}
+		else
+		{
+			// Error allocating space for image
+			return nullptr;
+		}
 	}
 
 	// Now bind them all in one call
@@ -249,6 +234,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 	else
 	{
 		// Error binding memory
+		return nullptr;
 	}
 
 	// Image is binded to memory now
@@ -271,7 +257,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 		const std::size_t LayerCount
 			= CurBitmapEntry.Type == Blam::BitmapEntryType::CubeMap ? 6 : 1;
 
-		const std::size_t BlockSize
+		const std::size_t FormatBlockSize
 			= vk::blockSize(VkBlam::BlamToVk(CurBitmapEntry.Format));
 		const std::array<std::uint8_t, 3> BlockExtent
 			= vk::blockExtent(VkBlam::BlamToVk(CurBitmapEntry.Format));
@@ -294,7 +280,7 @@ Bitmap* BitmapSubsystem::LoadTag(
 
 				const std::size_t CurPixelDataSize
 					= CurBlockCount[0] * CurBlockCount[1] * CurBlockCount[2]
-					* BlockSize;
+					* FormatBlockSize;
 
 				TargetScene.GetRasterizer().GetStreamBuffer().QueueImageUpload(
 					PixelData.subspan(PixelDataOff, CurPixelDataSize),
