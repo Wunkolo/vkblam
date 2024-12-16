@@ -173,6 +173,8 @@ int main(int argc, char* argv[])
 		);
 		return EXIT_FAILURE;
 	}
+
+	// Initialize instance functions
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(Instance.get());
 
 	//// Register debug messenger
@@ -278,6 +280,7 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	// Initialize device functions
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(Device.get());
 
 #ifdef CAPTURE
