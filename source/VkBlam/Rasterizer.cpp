@@ -1,6 +1,8 @@
-#include "Vulkan/DescriptorUpdateBatch.hpp"
-#include "Vulkan/StreamBuffer.hpp"
 #include <VkBlam/Rasterizer.hpp>
+#include <Vulkan/Debug.hpp>
+#include <Vulkan/DescriptorUpdateBatch.hpp>
+#include <Vulkan/StreamBuffer.hpp>
+
 #include <memory>
 #include <optional>
 
@@ -100,6 +102,9 @@ vk::UniqueRenderPass
 	if( auto CreateResult = Device.createRenderPassUnique(RenderPassInfo);
 		CreateResult.result == vk::Result::eSuccess )
 	{
+		Vulkan::SetObjectName(
+			Device, CreateResult.value.get(), "Main Render Pass"
+		);
 		return std::move(CreateResult.value);
 	}
 	else
