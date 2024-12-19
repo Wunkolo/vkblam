@@ -67,7 +67,7 @@ std::optional<vk::BindImageMemoryInfo>
 		const std::uint32_t CurBlockOffStartAlign
 			= Common::AlignUp(CurBlockOffStart, ImageRequirements.alignment);
 
-		const std::uint32_t CurBlockOffEnd
+		const std::uint32_t CurBlockOffNewEnd
 			= CurBlockOffStartAlign + ImageRequirements.size;
 
 		// Found a space
@@ -75,9 +75,9 @@ std::optional<vk::BindImageMemoryInfo>
 			= (ImageRequirements.memoryTypeBits & 1 << CurBlockMemoryIndex)
 		   != 0u;
 
-		if( ValidMemoryIndex && CurBlockOffEnd < BlockSize )
+		if( ValidMemoryIndex && CurBlockOffNewEnd < BlockSize )
 		{
-			CurBlockFreeSpace = BlockSize - CurBlockOffEnd;
+			CurBlockFreeSpace = BlockSize - CurBlockOffNewEnd;
 			return vk::BindImageMemoryInfo{
 				.image        = Image,
 				.memory       = BlockMemory[i].get(),
@@ -92,7 +92,7 @@ std::optional<vk::BindImageMemoryInfo>
 	const std::size_t NewBlockIndex = BlockFreeSpace.size();
 	const std::size_t NewBlockSize
 		= std::max(ImageRequirements.size, BlockSize);
-	BlockFreeSpace.emplace_back(NewBlockSize) -= NewBlockSize;
+	BlockFreeSpace.emplace_back(NewBlockSize) -= ImageRequirements.size;
 
 	// Allocate a new block
 	const vk::Device& Device = VulkanContext.LogicalDevice;
