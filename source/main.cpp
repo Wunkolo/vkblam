@@ -291,9 +291,9 @@ int main(int argc, char* argv[])
 #endif
 
 	// Main Rendering queue
-	vk::Queue RenderQueue = Device->getQueue(0, 0);
+	const vk::Queue RenderQueue = Device->getQueue(0, 0);
 	// Todo: Pick the fastest transfer queue here
-	vk::Queue TransferQueue = Device->getQueue(0, 0);
+	const vk::Queue TransferQueue = Device->getQueue(0, 0);
 
 	const Vulkan::Context VulkanContext{Device.get(),  PhysicalDevice,
 										RenderQueue,   0,
