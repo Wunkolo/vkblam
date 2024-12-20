@@ -546,6 +546,11 @@ std::uint64_t StreamBuffer::Flush()
 		);
 	};
 
+	Vulkan::InsertDebugLabel(
+		VulkanContext.TransferQueue, {1.0f, 1.0f, 0.0f, 0.0f},
+		"StreamBuffer::Flush #{}", FlushTick
+	);
+
 	if( const auto SubmitResult
 		= VulkanContext.TransferQueue.submit(SubmitInfoChain.get());
 		SubmitResult != vk::Result::eSuccess )
