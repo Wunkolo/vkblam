@@ -313,11 +313,12 @@ int main(int argc, char* argv[])
 
 		// Any heap with eLazilyAllocated support indicates support for
 		// memoryless transient images
-		const auto MemoryTypes = std::span{MemoryProperties.memoryTypes}.first(
-			MemoryProperties.memoryTypeCount
-		);
+		const std::span<const vk::MemoryType> MemoryTypes
+			= std::span{MemoryProperties.memoryTypes}.first(
+				MemoryProperties.memoryTypeCount
+			);
 
-		for( const auto& MemoryType : MemoryTypes )
+		for( const vk::MemoryType& MemoryType : MemoryTypes )
 		{
 			if( MemoryType.propertyFlags
 				& vk::MemoryPropertyFlagBits::eLazilyAllocated )
