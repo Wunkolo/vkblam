@@ -1,8 +1,11 @@
 #pragma once
 
 #include <Vulkan/VulkanAPI.hpp>
+
 #include <fmt/core.h>
+
 #include <string_view>
+#include <variant>
 
 namespace Vulkan
 {
@@ -102,12 +105,12 @@ void InsertDebugLabel(
 	);
 }
 
-// RAII-based utility-object that to automatically begin and end label-scopes
+// RAII-based utility-object to automatically begin and end label-scopes
 // within a command-buffer
 class DebugLabelScope
 {
 private:
-	const vk::CommandBuffer CommandBuffer;
+	const std::variant<vk::CommandBuffer, vk::Queue> Target;
 
 public:
 	template<typename... ArgsT>
@@ -116,10 +119,23 @@ public:
 		const std::array<float, 4>& Color, fmt::format_string<ArgsT...> Format,
 		ArgsT&&... Args
 	)
-		: CommandBuffer(TargetCommandBuffer)
+		: Target(TargetCommandBuffer)
 	{
 		BeginDebugLabel(
-			CommandBuffer, Color,
+			TargetCommandBuffer, Color,
+			fmt::format(Format, std::forward<ArgsT>(Args)...)
+		);
+	}
+
+	template<typename... ArgsT>
+	DebugLabelScope(
+		vk::Queue TargetQueue, const std::array<float, 4>& Color,
+		fmt::format_string<ArgsT...> Format, ArgsT&&... Args
+	)
+		: Target(TargetQueue)
+	{
+		BeginDebugLabel(
+			TargetQueue, Color,
 			fmt::format(Format, std::forward<ArgsT>(Args)...)
 		);
 	}
@@ -130,15 +146,32 @@ public:
 		ArgsT&&... Args
 	) const
 	{
-		InsertDebugLabel(
-			CommandBuffer, Color,
-			fmt::format(Format, std::forward<ArgsT>(Args)...)
-		);
+		if( Target.index() == 0 )
+		{
+			InsertDebugLabel(
+				std::get<vk::CommandBuffer>(Target), Color,
+				fmt::format(Format, std::forward<ArgsT>(Args)...)
+			);
+		}
+		else if( Target.index() == 1 )
+		{
+			InsertDebugLabel(
+				std::get<vk::Queue>(Target), Color,
+				fmt::format(Format, std::forward<ArgsT>(Args)...)
+			);
+		}
 	}
 
 	~DebugLabelScope()
 	{
-		EndDebugLabel(CommandBuffer);
+		if( Target.index() == 0 )
+		{
+			EndDebugLabel(std::get<vk::CommandBuffer>(Target));
+		}
+		else if( Target.index() == 1 )
+		{
+			EndDebugLabel(std::get<vk::Queue>(Target));
+		}
 	}
 };
 
