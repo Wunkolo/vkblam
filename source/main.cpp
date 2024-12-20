@@ -297,6 +297,10 @@ int main(int argc, char* argv[])
 	// Todo: Pick the fastest transfer queue here
 	const vk::Queue TransferQueue = Device->getQueue(0, 0);
 
+	Vulkan::DebugLabelScope(
+		TransferQueue, {1.0f, 1.0f, 1.0f, 1.0f}, "VkBlam Main"
+	);
+
 	const Vulkan::Context VulkanContext{Device.get(),  PhysicalDevice,
 										RenderQueue,   0,
 										TransferQueue, 0};
