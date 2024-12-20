@@ -894,7 +894,7 @@ int main(int argc, char* argv[])
 	}
 
 	// Wait for it
-	if( auto WaitResult = Device->waitForFences(Fence.get(), true, ~0ULL);
+	if( auto WaitResult = Device->waitForFences(Fence.get(), VK_TRUE, ~0ULL);
 		WaitResult != vk::Result::eSuccess )
 	{
 		std::fprintf(
