@@ -370,7 +370,7 @@ int main(int argc, char* argv[])
 			.allocationSize = DownloadBufferMemoryRequirements.size,
 		};
 
-		const vk::MemoryPropertyFlags DownloadBufferTypes[] = {
+		static const vk::MemoryPropertyFlags DownloadBufferTypes[] = {
 			vk::MemoryPropertyFlagBits::eHostVisible
 				| vk::MemoryPropertyFlagBits::eHostCoherent
 				| vk::MemoryPropertyFlagBits::eDeviceLocal,
