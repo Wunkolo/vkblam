@@ -214,4 +214,35 @@ void EndDebugLabel(vk::CommandBuffer CommandBuffer)
 	CommandBuffer.endDebugUtilsLabelEXT();
 }
 
+void BeginDebugLabel(
+	vk::Queue Queue, const std::array<float, 4>& Color,
+	std::string_view LabelName
+)
+{
+	const vk::DebugUtilsLabelEXT LabelInfo = {
+		.pLabelName = LabelName.data(),
+		.color      = Color,
+	};
+
+	Queue.beginDebugUtilsLabelEXT(LabelInfo);
+}
+
+void InsertDebugLabel(
+	vk::Queue Queue, const std::array<float, 4>& Color,
+	std::string_view LabelName
+)
+{
+	const vk::DebugUtilsLabelEXT LabelInfo = {
+		.pLabelName = LabelName.data(),
+		.color      = Color,
+	};
+
+	Queue.insertDebugUtilsLabelEXT(LabelInfo);
+}
+
+void EndDebugLabel(vk::Queue Queue)
+{
+	Queue.endDebugUtilsLabelEXT();
+}
+
 } // namespace Vulkan

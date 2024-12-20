@@ -9,6 +9,7 @@ namespace Vulkan
 
 vk::UniqueDebugUtilsMessengerEXT CreateDebugMessenger(vk::Instance Instance);
 
+// Command buffer markers
 void SetObjectName(
 	vk::Device Device, vk::ObjectType ObjectType, const void* ObjectHandle,
 	std::string_view ObjectName
@@ -24,9 +25,25 @@ void InsertDebugLabel(
 	std::string_view LabelName
 );
 
+void EndDebugLabel(vk::CommandBuffer CommandBuffer);
+
+// Queue buffer markers
+void BeginDebugLabel(
+	vk::Queue Queue, const std::array<float, 4>& Color,
+	std::string_view LabelName
+);
+
+void InsertDebugLabel(
+	vk::Queue Queue, const std::array<float, 4>& Color,
+	std::string_view LabelName
+);
+
+void EndDebugLabel(vk::Queue Queue);
+
 template<typename T>
 concept VulkanHandleType = vk::isVulkanHandleType<T>::value;
 
+// Set Vulkan-Object name (automatically deduce object-type)
 template<VulkanHandleType T, typename... ArgsT>
 inline void SetObjectName(
 	vk::Device Device, const T ObjectHandle,
@@ -39,6 +56,7 @@ inline void SetObjectName(
 	);
 }
 
+// Command buffer markers (formatted)
 template<typename... ArgsT>
 void BeginDebugLabel(
 	vk::CommandBuffer CommandBuffer, const std::array<float, 4>& Color,
@@ -61,8 +79,31 @@ void InsertDebugLabel(
 	);
 }
 
-void EndDebugLabel(vk::CommandBuffer CommandBuffer);
+// Command buffer markers (formatted)
+template<typename... ArgsT>
+void BeginDebugLabel(
+	vk::Queue Queue, const std::array<float, 4>& Color,
+	fmt::format_string<ArgsT...> Format, ArgsT&&... Args
+)
+{
+	BeginDebugLabel(
+		Queue, Color, fmt::format(Format, std::forward<ArgsT>(Args)...)
+	);
+}
 
+template<typename... ArgsT>
+void InsertDebugLabel(
+	vk::Queue Queue, const std::array<float, 4>& Color,
+	fmt::format_string<ArgsT...> Format, ArgsT&&... Args
+)
+{
+	InsertDebugLabel(
+		Queue, Color, fmt::format(Format, std::forward<ArgsT>(Args)...)
+	);
+}
+
+// RAII-based utility-object that to automatically begin and end label-scopes
+// within a command-buffer
 class DebugLabelScope
 {
 private:
