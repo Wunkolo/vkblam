@@ -16,6 +16,7 @@
 #include <Vulkan/DescriptorHeap.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/Pipeline.hpp>
+#include <Vulkan/QueryPool.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
 #include <VkBlam/Rasterizer.hpp>
@@ -738,10 +739,17 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
+	Vulkan::QueryPool TimestampPool(VulkanContext, vk::QueryType::eTimestamp);
+	Vulkan::QueryPool PipelinePool(
+		VulkanContext, vk::QueryType::ePipelineStatistics
+	);
+
 	{
 		Vulkan::DebugLabelScope FrameScope(
 			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame"
 		);
+		TimestampPool.WriteTimestamp(CommandBuffer.get(), 0);
+		PipelinePool.BeginQuery(CommandBuffer.get(), 0);
 
 		{
 			Vulkan::DebugLabelScope RenderPassScope(
@@ -841,6 +849,9 @@ int main(int argc, char* argv[])
 				}}
 			);
 		}
+
+		PipelinePool.EndQuery(CommandBuffer.get(), 0);
+		TimestampPool.WriteTimestamp(CommandBuffer.get(), 1);
 	}
 
 	if( auto EndResult = CommandBuffer->end();
@@ -913,6 +924,9 @@ int main(int argc, char* argv[])
 		);
 		return EXIT_FAILURE;
 	}
+
+	const auto Test1 = PipelinePool.GetQuery(0).value();
+	const auto Test2 = TimestampPool.GetQuery(0).value();
 
 #ifdef CAPTURE
 	if( rdoc_api )
