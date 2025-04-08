@@ -6,6 +6,10 @@
 namespace VkBlam
 {
 class TagPool;
+
+template<typename BaseT, typename T>
+concept IsBaseOf = std::is_base_of_v<T, BaseT>;
+
 class TagImplementationBase
 {
 private:
@@ -87,9 +91,7 @@ public:
 	) = 0;
 };
 
-template<
-	Blam::TagClass                           ClassT,
-	std::derived_from<TagImplementationBase> ImplementationT>
+template<Blam::TagClass ClassT, IsBaseOf<TagImplementationBase> ImplementationT>
 class TagSubsystem : public TagSubsystemBase
 {
 private:

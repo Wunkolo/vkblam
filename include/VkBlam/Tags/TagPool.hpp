@@ -54,7 +54,7 @@ public:
 	}
 
 	// Get a registered TagSubsystem. Null otherwise
-	template<std::derived_from<TagSubsystemBase> SubsystemT>
+	template<IsBaseOf<TagSubsystemBase> SubsystemT>
 	SubsystemT* GetTagSubsystem(Blam::TagClass TagClass)
 	{
 		if( TagSubsystems.contains(TagClass) )
@@ -77,13 +77,13 @@ public:
 		LoadTag(std::uint32_t TagID, const Blam::TagBase* TagData);
 
 	// Get a loaded tag, null otherwise
-	template<std::derived_from<TagImplementationBase> ImplementationT>
+	template<IsBaseOf<TagImplementationBase> ImplementationT>
 	ImplementationT* GetTag(std::uint32_t TagID) const
 	{
 		return reinterpret_cast<ImplementationT*>(GetTag(TagID));
 	}
 	// Load a tag's dependencies, then load the tag itself
-	template<std::derived_from<TagImplementationBase> ImplementationT>
+	template<IsBaseOf<TagImplementationBase> ImplementationT>
 	ImplementationT* LoadTag(std::uint32_t TagID)
 	{
 		return reinterpret_cast<ImplementationT*>(LoadTag(TagID));
