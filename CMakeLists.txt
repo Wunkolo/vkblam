@@ -240,7 +240,6 @@ add_executable(
 	source/VkBlam/Rasterizer.cpp
 	source/VkBlam/Scene.cpp
 	source/VkBlam/SceneView.cpp
-	source/VkBlam/Shader.cpp
 	source/VkBlam/Tags/Implementations/Bitmap.cpp
 	source/VkBlam/Tags/Implementations/Globals.cpp
 	source/VkBlam/Tags/Implementations/Scenario.cpp

@@ -311,6 +311,12 @@ int main(int argc, char* argv[])
 	std::unique_ptr<VkBlam::Scene> CurScene
 		= VkBlam::Scene::Create(Rasterizer, CurWorld);
 
+	if( !CurScene )
+	{
+		std::fprintf(stderr, "Error creating Scene\n");
+		return EXIT_FAILURE;
+	}
+
 	// Test for transient memory support
 	bool SupportsTransientImage = false;
 	{

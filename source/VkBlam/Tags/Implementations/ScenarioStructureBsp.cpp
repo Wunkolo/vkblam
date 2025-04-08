@@ -492,25 +492,23 @@ void ScenarioStructureBspSubsystem::Draw(
 	);
 
 	// Todo: Shader base-class needed here
-	const ShaderEnvironmentSubsystem* ShaderEnvironmentSubsystem
+	const ShaderEnvironmentSubsystem* ShaderSubsystem
 		= GetPool().GetTagSubsystem<Tags::ShaderEnvironmentSubsystem>(
 			Blam::TagClass::ShaderEnvironment
 		);
 
 	CommandBuffer.bindPipeline(
-		vk::PipelineBindPoint::eGraphics,
-		ShaderEnvironmentSubsystem->GetPipeline()
+		vk::PipelineBindPoint::eGraphics, ShaderSubsystem->GetPipeline()
 	);
 
 	CommandBuffer.pushConstants<VkBlam::CameraGlobals>(
-		ShaderEnvironmentSubsystem->GetPipelineLayout(),
+		ShaderSubsystem->GetPipelineLayout(),
 		vk::ShaderStageFlagBits::eAllGraphics, 0, {View.CameraGlobalsData}
 	);
 
 	CommandBuffer.bindDescriptorSets(
-		vk::PipelineBindPoint::eGraphics,
-		ShaderEnvironmentSubsystem->GetPipelineLayout(), 0,
-		{GetPool().GetScene().GetSceneDescriptorSet()}, {}
+		vk::PipelineBindPoint::eGraphics, ShaderSubsystem->GetPipelineLayout(),
+		0, {GetPool().GetScene().GetSceneDescriptorSet()}, {}
 	);
 
 	// Some basic command-buffer optimizations
@@ -542,8 +540,8 @@ void ScenarioStructureBspSubsystem::Draw(
 		{
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics,
-				ShaderEnvironmentSubsystem->GetPipelineLayout(), 1,
-				{ShaderDescriptorSet}, {}
+				ShaderSubsystem->GetPipelineLayout(), 1, {ShaderDescriptorSet},
+				{}
 			);
 			LastShaderDescriptorSet = ShaderDescriptorSet;
 		}
@@ -556,7 +554,7 @@ void ScenarioStructureBspSubsystem::Draw(
 
 			CommandBuffer.bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics,
-				ShaderEnvironmentSubsystem->GetPipelineLayout(), 2,
+				ShaderSubsystem->GetPipelineLayout(), 2,
 				{LightmapDescriptorSet}, {}
 			);
 			LastLightmapDescriptorSet = LightmapDescriptorSet;

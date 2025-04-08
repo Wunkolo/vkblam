@@ -233,7 +233,9 @@ ShaderEnvironment::ShaderEnvironment(
 	const Blam::TagIndexEntry&                          TagIndexEntry,
 	const Blam::Tag<Blam::TagClass::ShaderEnvironment>& Tag
 )
-	: TagImplementation<Blam::TagClass::ShaderEnvironment>(TagIndexEntry, Tag)
+	: ShaderImplementationBase<Blam::TagClass::ShaderEnvironment>(
+		  TagIndexEntry, Tag
+	  )
 {
 }
 
@@ -241,15 +243,12 @@ ShaderEnvironment::~ShaderEnvironment()
 {
 }
 
-vk::DescriptorSet ShaderEnvironment::GetDescriptorSet() const
-{
-	return DescriptorSet;
-}
-
 ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
 	TagPool& Pool, VkBlam::Rasterizer& Rasterizer
 )
-	: TagSubsystem<Blam::TagClass::ShaderEnvironment, ShaderEnvironment>(Pool),
+	: ShaderSubsystemBase<ShaderEnvironment, Blam::TagClass::ShaderEnvironment>(
+		  Pool, Rasterizer
+	  ),
 	  Rasterizer(Rasterizer)
 {
 	const auto& VulkanContext = Rasterizer.GetVulkanContext();
@@ -290,24 +289,23 @@ ShaderEnvironmentSubsystem::ShaderEnvironmentSubsystem(
 			Blam::TagClass::ScenarioStructureBsp
 		);
 
-	std::tie(ShaderEnvironmentPipeline, ShaderEnvironmentPipelineLayout)
-		= CreateGraphicsPipeline(
-			VulkanContext.LogicalDevice,
-			{{vk::PushConstantRange{
-				.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-				.offset     = 0,
-				.size       = sizeof(VkBlam::CameraGlobals),
-			}}},
-			{{
-				Pool.GetScene().GetSceneDescriptorLayout(),
-				ShaderEnvironmentDescriptorPool->GetDescriptorSetLayout(),
-				SBspSubsystem->GetLightmapDescriptorSetLayout(),
-			}},
-			ShaderEnvironmentVertexShaderModule,
-			ShaderEnvironmentFragmentShaderModule, VertexBindingDescriptions,
-			VertexAttributeDescriptions, RenderPass, RenderSamples,
-			vk::PolygonMode::eFill
-		);
+	std::tie(ShaderPipeline, ShaderPipelineLayout) = CreateGraphicsPipeline(
+		VulkanContext.LogicalDevice,
+		{{vk::PushConstantRange{
+			.stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+			.offset     = 0,
+			.size       = sizeof(VkBlam::CameraGlobals),
+		}}},
+		{{
+			Pool.GetScene().GetSceneDescriptorLayout(),
+			ShaderEnvironmentDescriptorPool->GetDescriptorSetLayout(),
+			SBspSubsystem->GetLightmapDescriptorSetLayout(),
+		}},
+		ShaderEnvironmentVertexShaderModule,
+		ShaderEnvironmentFragmentShaderModule, VertexBindingDescriptions,
+		VertexAttributeDescriptions, RenderPass, RenderSamples,
+		vk::PolygonMode::eFill
+	);
 }
 
 ShaderEnvironmentSubsystem::~ShaderEnvironmentSubsystem()

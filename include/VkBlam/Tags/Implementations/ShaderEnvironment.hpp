@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../TagImplementation.hpp"
+#include "Shader.hpp"
 
 #include <Blam/Tags.hpp>
 
@@ -10,11 +10,8 @@ namespace VkBlam::Tags
 {
 
 class ShaderEnvironment final
-	: public TagImplementation<Blam::TagClass::ShaderEnvironment>
+	: public ShaderImplementationBase<Blam::TagClass::ShaderEnvironment>
 {
-private:
-	vk::DescriptorSet DescriptorSet;
-
 public:
 	ShaderEnvironment(
 		const Blam::TagIndexEntry&                          TagIndexEntry,
@@ -22,19 +19,15 @@ public:
 	);
 	~ShaderEnvironment();
 
-	[[nodiscard]] vk::DescriptorSet GetDescriptorSet() const;
-
 	friend class ShaderEnvironmentSubsystem;
 };
 
-class ShaderEnvironmentSubsystem final
-	: public TagSubsystem<Blam::TagClass::ShaderEnvironment, ShaderEnvironment>
+class ShaderEnvironmentSubsystem
+	: public ShaderSubsystemBase<
+		  ShaderEnvironment, Blam::TagClass::ShaderEnvironment>
 {
 private:
 	VkBlam::Rasterizer& Rasterizer;
-
-	vk::UniquePipeline       ShaderEnvironmentPipeline       = {};
-	vk::UniquePipelineLayout ShaderEnvironmentPipelineLayout = {};
 
 	vk::ShaderModule ShaderEnvironmentVertexShaderModule;
 	vk::ShaderModule ShaderEnvironmentFragmentShaderModule;
@@ -46,16 +39,6 @@ private:
 public:
 	ShaderEnvironmentSubsystem(TagPool& Pool, VkBlam::Rasterizer& Rasterizer);
 	~ShaderEnvironmentSubsystem();
-
-	const vk::Pipeline& GetPipeline() const
-	{
-		return ShaderEnvironmentPipeline.get();
-	}
-
-	const vk::PipelineLayout& GetPipelineLayout() const
-	{
-		return ShaderEnvironmentPipelineLayout.get();
-	}
 
 	[[nodiscard]] std::vector<DependentTag> GetDependentTags(
 		const Blam::TagIndexEntry&                          TagIndexEntry,
