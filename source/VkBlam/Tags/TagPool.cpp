@@ -56,7 +56,24 @@ TagImplementationBase* TagPool::LoadTag(std::uint32_t TagID)
 	// Tag does not exist, load tag
 
 	// Get a subsystem that handles this tag
-	if( !TagSubsystems.contains(TagIndexEntryPtr->ClassPrimary) )
+	Blam::TagClass TagClassHandler = TagIndexEntryPtr->ClassPrimary;
+
+	// If no hander exists for the Primary class, handle it with the secondary
+	// class
+	if( !TagSubsystems.contains(TagClassHandler) )
+	{
+		TagClassHandler = TagIndexEntryPtr->ClassSecondary;
+	}
+
+	// If no hander exists for the Secondary class, handle it with the Tertiary
+	// class
+	if( !TagSubsystems.contains(TagClassHandler) )
+	{
+		TagClassHandler = TagIndexEntryPtr->ClassTertiary;
+	}
+
+	// If no handler exists for any of these classes, can't load this tag
+	if( !TagSubsystems.contains(TagClassHandler) )
 	{
 		// No subsystem handles this tag
 		return nullptr;
@@ -170,6 +187,15 @@ TagImplementationBase*
 		if( LoadTag(DependentTag.TagID) == nullptr )
 		{
 			// Error loading dependent tag
+			const std::string_view DependentTagName
+				= TargetScene.GetWorld().GetMapFile().GetTagPath(
+					DependentTag.TagID
+				);
+			std::fprintf(
+				stderr, "Error loading dependent tag: \'%.*s\'\n",
+				static_cast<int>(DependentTagName.size()),
+				DependentTagName.data()
+			);
 			return nullptr;
 		}
 	}
