@@ -276,3 +276,12 @@ target_link_libraries(
 	glm
 	${CMAKE_DL_LIBS}
 )
+
+#sdl
+set(SDL_DISABLE_UNINSTALL ON)
+set(SDL_TEST_LIBRARY OFF)
+set(SDL_TESTS OFF)
+set(SDL_EXAMPLES OFF)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
+add_subdirectory( external/sdl EXCLUDE_FROM_ALL )
