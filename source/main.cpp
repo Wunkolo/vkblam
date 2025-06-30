@@ -31,6 +31,14 @@
 
 #include "stb_image_write.h"
 
+/// SDL
+#define NO_SDL_VULKAN_TYPEDEFS
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_vulkan.h>
+
+///
+
 // Enable render-doc captures on non-windows for now
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(NDEBUG)
 #define CAPTURE
@@ -318,9 +326,37 @@ int main(int argc, char* argv[])
 		.TransferQueueFamilyIndex = 0,
 	};
 
-	auto Surface   = Instance->createHeadlessSurfaceEXTUnique({}).value;
+	/// SDL
+	SDL_Init(SDL_INIT_VIDEO);
+	SDL_Window* Window
+		= SDL_CreateWindow("vkblam", 512, 512, SDL_WINDOW_VULKAN);
+
+	vk::SurfaceKHR Surface{};
+
+	const bool UseSdl = true;
+	if( UseSdl )
+	{
+		VkSurfaceKHR SdlSurface;
+		if( SDL_Vulkan_CreateSurface(
+				Window, (VkInstance)Instance.get(), nullptr, &SdlSurface
+			) )
+		{
+			Surface = SdlSurface;
+		}
+		else
+		{
+			// Error creating SDL surface
+			return EXIT_FAILURE;
+		}
+	}
+	else
+	{
+		Surface = Instance->createHeadlessSurfaceEXT({}).value;
+	}
+	///
+
 	auto Swapchain = Vulkan::Swapchain::Create(
-		VulkanContext, Surface.get(),
+		VulkanContext, Surface,
 		vk::Extent2D{
 			.width  = 512,
 			.height = 512,
