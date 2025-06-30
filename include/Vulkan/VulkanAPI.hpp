@@ -22,10 +22,12 @@ struct Context
 	vk::Device         LogicalDevice;
 	vk::PhysicalDevice PhysicalDevice;
 
-	vk::Queue    RenderQueue;
-	std::uint8_t RenderQueueFamilyIndex;
+	vk::Queue PresentQueue;
+	vk::Queue RenderQueue;
+	vk::Queue TransferQueue;
 
-	vk::Queue    TransferQueue;
+	std::uint8_t PresentQueueFamilyIndex;
+	std::uint8_t RenderQueueFamilyIndex;
 	std::uint8_t TransferQueueFamilyIndex;
 };
 } // namespace Vulkan

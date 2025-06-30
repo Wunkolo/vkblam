@@ -292,7 +292,9 @@ int main(int argc, char* argv[])
 
 	// Main Rendering queue
 	const vk::Queue RenderQueue = Device->getQueue(0, 0);
-	Vulkan::SetObjectName(Device.get(), RenderQueue, "Primary Queue");
+
+	// Todo: Pick the most optimal present queue here
+	const vk::Queue PresentQueue = Device->getQueue(0, 0);
 
 	// Todo: Pick the fastest transfer queue here
 	const vk::Queue TransferQueue = Device->getQueue(0, 0);
@@ -301,9 +303,16 @@ int main(int argc, char* argv[])
 		TransferQueue, {1.0f, 1.0f, 1.0f, 1.0f}, "VkBlam Main"
 	);
 
-	const Vulkan::Context VulkanContext{Device.get(),  PhysicalDevice,
-										RenderQueue,   0,
-										TransferQueue, 0};
+	const Vulkan::Context VulkanContext{
+		.LogicalDevice            = Device.get(),
+		.PhysicalDevice           = PhysicalDevice,
+		.PresentQueue             = PresentQueue,
+		.RenderQueue              = RenderQueue,
+		.TransferQueue            = TransferQueue,
+		.PresentQueueFamilyIndex  = 0,
+		.RenderQueueFamilyIndex   = 0,
+		.TransferQueueFamilyIndex = 0,
+	};
 
 	VkBlam::Rasterizer Rasterizer
 		= VkBlam::Rasterizer::Create(VulkanContext).value();
