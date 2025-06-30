@@ -11,6 +11,8 @@ namespace Vulkan
 // images and synchronization primitives. This generally configures and
 // maintains settings relating to Vsync, Latency, HDR, and the
 // format/color-space of what gets presented physically to the user.
+// Users of this class are expected to be handling
+// framebuffers/renderpass/imageviews/etc
 // * Requires the `VK_KHR_surface` instance-extension
 class Swapchain final
 {

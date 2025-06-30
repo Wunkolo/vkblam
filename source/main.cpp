@@ -16,6 +16,7 @@
 #include <Vulkan/DescriptorHeap.hpp>
 #include <Vulkan/Memory.hpp>
 #include <Vulkan/Pipeline.hpp>
+#include <Vulkan/Swapchain.hpp>
 #include <Vulkan/VulkanAPI.hpp>
 
 #include <VkBlam/Rasterizer.hpp>
@@ -146,7 +147,9 @@ int main(int argc, char* argv[])
 #if defined(__APPLE__)
 		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #endif
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+		VK_KHR_SURFACE_EXTENSION_NAME,
+		VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME,
 	});
 
 	const vk::InstanceCreateInfo InstanceInfo = {
@@ -231,7 +234,8 @@ int main(int argc, char* argv[])
 #if defined(__APPLE__)
 		"VK_KHR_portability_subset",
 #endif
-		VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME
+		VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	};
 	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions;
 	DeviceInfo.enabledExtensionCount   = std::size(DeviceExtensions);
@@ -313,6 +317,16 @@ int main(int argc, char* argv[])
 		.RenderQueueFamilyIndex   = 0,
 		.TransferQueueFamilyIndex = 0,
 	};
+
+	auto Surface   = Instance->createHeadlessSurfaceEXTUnique({}).value;
+	auto Swapchain = Vulkan::Swapchain::Create(
+		VulkanContext, Surface.get(),
+		vk::Extent2D{
+			.width  = 512,
+			.height = 512,
+		},
+		3
+	);
 
 	VkBlam::Rasterizer Rasterizer
 		= VkBlam::Rasterizer::Create(VulkanContext).value();
@@ -758,10 +772,12 @@ int main(int argc, char* argv[])
 			);
 
 			static const vk::ClearValue ClearColors[] = {
-				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
+				vk::ClearColorValue(
+					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 				),
 				vk::ClearDepthStencilValue{1.0f, 0},
-				vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
+				vk::ClearColorValue(
+					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 				),
 			};
 
@@ -811,45 +827,161 @@ int main(int argc, char* argv[])
 			CommandBuffer->endRenderPass();
 		}
 
-		// Wait for image data to be ready
+		// Blit to swapchain
+
+		// TODO: Create an abstraction between a swapchain and "still image"
+		// Implement the still-image as a swapchain that just renders out an
+		// image sequence upon a "Present". This would be very useful to possily
+		// even render out into a video!
 		{
 			Vulkan::DebugLabelScope DebugCopyScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
-				"Upload framebuffer to download buffer"
+				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Blit to Swapchain"
 			);
-			// Render Image is TransferSrc at this moment
+			// Get ready to blit to the swap image
 			CommandBuffer->pipelineBarrier(
 				vk::PipelineStageFlagBits::eTransfer,
 				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
 				{},
-				{// Source Image
-				 vk::ImageMemoryBarrier{
-					 .srcAccessMask = vk::AccessFlagBits::eTransferRead,
-					 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
-					 .oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
-					 .newLayout     = vk::ImageLayout::eTransferSrcOptimal,
-					 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-					 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-					 .image               = RenderImage.get(),
-					 .subresourceRange    = vk::
-						 ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}
-				 }
+				{
+					// Source Image
+					// Wait for all reads to finish, get ready to read
+					vk::ImageMemoryBarrier{
+						.srcAccessMask = vk::AccessFlagBits::eTransferRead,
+						.dstAccessMask = vk::AccessFlagBits::eTransferRead,
+						.oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
+						.newLayout     = vk::ImageLayout::eTransferSrcOptimal,
+						.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						.image               = RenderImage.get(),
+						.subresourceRange    = vk::ImageSubresourceRange{
+							   .aspectMask     = vk::ImageAspectFlagBits::eColor,
+							   .baseMipLevel   = 0,
+							   .levelCount     = 1,
+							   .baseArrayLayer = 0,
+							   .layerCount     = 1,
+                        }
+					},
+					// Present image
+					// Wait for all reads to finish, get ready to write
+					vk::ImageMemoryBarrier{
+						.srcAccessMask = vk::AccessFlagBits::eTransferRead,
+						.dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+						.oldLayout     = vk::ImageLayout::eUndefined,
+						.newLayout     = vk::ImageLayout::eTransferDstOptimal,
+						.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						.image               = Swapchain->GetNextSwapImage(),
+						.subresourceRange    = vk::ImageSubresourceRange{
+							   .aspectMask     = vk::ImageAspectFlagBits::eColor,
+							   .baseMipLevel   = 0,
+							   .levelCount     = 1,
+							   .baseArrayLayer = 0,
+							   .layerCount     = 1,
+                        }
+					},
 				}
 			);
-			CommandBuffer->copyImageToBuffer(
+			const vk::ImageSubresourceLayers BlitSubresource{
+				.aspectMask     = vk::ImageAspectFlagBits::eColor,
+				.mipLevel       = 0,
+				.baseArrayLayer = 0,
+				.layerCount     = 1,
+			};
+			const vk::ImageBlit FrameBlit{
+				.srcSubresource = BlitSubresource,
+				.srcOffsets     = std::array{
+					vk::Offset3D{},
+					vk::Offset3D{
+						.x = RenderSize.x,
+						.y = RenderSize.y,
+						.z = 1,
+					},
+				},
+				.dstSubresource = BlitSubresource,
+				.dstOffsets     = std::array{
+					vk::Offset3D{},
+					vk::Offset3D{
+						.x = static_cast<std::int32_t>(Swapchain->GetWidth()),
+						.y = static_cast<std::int32_t>(Swapchain->GetHeight()),
+						.z = 1,
+					},
+				},
+			};
+
+			CommandBuffer->blitImage(
 				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
-				DownloadBuffer.get(),
-				{vk::BufferImageCopy{
-					.bufferOffset      = 0,
-					.bufferRowLength   = RenderSize.x,
-					.bufferImageHeight = RenderSize.y,
-					.imageSubresource  = vk::
-						ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
-					.imageOffset = {},
-					.imageExtent = vk::Extent3D{RenderSize.x, RenderSize.y, 1}
-				}}
+				Swapchain->GetNextSwapImage(),
+				vk::ImageLayout::eTransferDstOptimal, FrameBlit,
+				vk::Filter::eLinear
+			);
+
+			// Get ready to present the swap image
+			CommandBuffer->pipelineBarrier(
+				vk::PipelineStageFlagBits::eTransfer,
+				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
+				{},
+				{
+					// Present image
+					// Wait for all reads to finish, get ready to write
+					vk::ImageMemoryBarrier{
+						.srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+						.dstAccessMask = {},
+						.oldLayout     = vk::ImageLayout::eTransferDstOptimal,
+						.newLayout     = vk::ImageLayout::ePresentSrcKHR,
+						.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						.image               = Swapchain->GetNextSwapImage(),
+						.subresourceRange    = vk::ImageSubresourceRange{
+							   .aspectMask     = vk::ImageAspectFlagBits::eColor,
+							   .baseMipLevel   = 0,
+							   .levelCount     = 1,
+							   .baseArrayLayer = 0,
+							   .layerCount     = 1,
+                        }
+					},
+				}
 			);
 		}
+		// Wait for image data to be ready
+		// {
+		// 	Vulkan::DebugLabelScope DebugCopyScope(
+		// 		CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
+		// 		"Upload framebuffer to download buffer"
+		// 	);
+		// 	// Render Image is TransferSrc at this moment
+		// 	CommandBuffer->pipelineBarrier(
+		// 		vk::PipelineStageFlagBits::eTransfer,
+		// 		vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
+		// 		{},
+		// 		{// Source Image
+		// 		 vk::ImageMemoryBarrier{
+		// 			 .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+		// 			 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
+		// 			 .oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
+		// 			 .newLayout     = vk::ImageLayout::eTransferSrcOptimal,
+		// 			 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		// 			 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		// 			 .image               = RenderImage.get(),
+		// 			 .subresourceRange    = vk::ImageSubresourceRange{
+		//                  vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
+		//              }
+		// 		 }
+		// 		}
+		// 	);
+		// 	CommandBuffer->copyImageToBuffer(
+		// 		RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
+		// 		DownloadBuffer.get(),
+		// 		{vk::BufferImageCopy{
+		// 			.bufferOffset      = 0,
+		// 			.bufferRowLength   = RenderSize.x,
+		// 			.bufferImageHeight = RenderSize.y,
+		// 			.imageSubresource  = vk::
+		// 				ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor,
+		// 0, 0, 1}, 			.imageOffset = {}, 			.imageExtent =
+		// vk::Extent3D{RenderSize.x, RenderSize.y, 1}
+		// 		}}
+		// 	);
+		// }
 	}
 
 	if( auto EndResult = CommandBuffer->end();
@@ -861,8 +993,6 @@ int main(int argc, char* argv[])
 		);
 		return EXIT_FAILURE;
 	}
-
-	const std::uint64_t UploadTick = Rasterizer.GetStreamBuffer().Flush();
 
 	// Submit work
 	vk::UniqueFence Fence = {};
@@ -880,21 +1010,53 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	static const vk::PipelineStageFlags WaitStage
-		= vk::PipelineStageFlagBits::eTransfer;
+	std::vector<vk::Semaphore>          WaitSemaphores;
+	std::vector<vk::PipelineStageFlags> WaitStages;
+	std::vector<std::uint64_t>          WaitTimelineValues;
+
+	// Wait for transfers
+	const std::uint64_t UploadTick = Rasterizer.GetStreamBuffer().Flush();
+	WaitSemaphores.emplace_back(Rasterizer.GetStreamBuffer().GetSemaphore());
+	WaitStages.emplace_back(vk::PipelineStageFlagBits::eTransfer);
+	WaitTimelineValues.emplace_back(UploadTick);
+
+	// Wait for swapchain to be ready
+	if( const vk::Semaphore NextSwapImageReady = Swapchain->AcquireNextImage();
+		NextSwapImageReady )
+	{
+		WaitSemaphores.emplace_back(
+			Swapchain->GetCurrentImageAcquiredSemaphore()
+		);
+		WaitStages.emplace_back(
+			vk::PipelineStageFlagBits::eColorAttachmentOutput
+		);
+		// This is a binary semaphore, push a dummy value
+		WaitTimelineValues.emplace_back(0);
+	}
+
+	std::vector<vk::Semaphore> SignalSemaphores;
+
+	SignalSemaphores.emplace_back(
+		Swapchain->GetNextImagePresentReadySemaphore()
+	);
 
 	const vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
-		SubmitInfoChain = {
+		SubmitInfoChain{
 			vk::SubmitInfo{
-				.waitSemaphoreCount = 1,
-				.pWaitSemaphores = &Rasterizer.GetStreamBuffer().GetSemaphore(),
-				.pWaitDstStageMask  = &WaitStage,
+				.waitSemaphoreCount
+				= static_cast<std::uint32_t>(WaitSemaphores.size()),
+				.pWaitSemaphores    = WaitSemaphores.data(),
+				.pWaitDstStageMask  = WaitStages.data(),
 				.commandBufferCount = 1,
 				.pCommandBuffers    = &CommandBuffer.get(),
+				.signalSemaphoreCount
+				= static_cast<std::uint32_t>(SignalSemaphores.size()),
+				.pSignalSemaphores = SignalSemaphores.data(),
 			},
 			vk::TimelineSemaphoreSubmitInfo{
-				.waitSemaphoreValueCount = 1,
-				.pWaitSemaphoreValues    = &UploadTick,
+				.waitSemaphoreValueCount
+				= static_cast<std::uint32_t>(WaitTimelineValues.size()),
+				.pWaitSemaphoreValues = WaitTimelineValues.data(),
 			},
 		};
 
@@ -911,6 +1073,8 @@ int main(int argc, char* argv[])
 		);
 		return EXIT_FAILURE;
 	}
+
+	Swapchain->Present();
 
 	// Wait for it
 	if( auto WaitResult = Device->waitForFences(Fence.get(), VK_TRUE, ~0ULL);
