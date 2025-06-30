@@ -279,10 +279,25 @@ target_link_libraries(
 )
 
 #sdl
-set(SDL_DISABLE_UNINSTALL ON)
-set(SDL_TEST_LIBRARY OFF)
-set(SDL_TESTS OFF)
-set(SDL_EXAMPLES OFF)
-set(SDL_SHARED OFF)
-set(SDL_STATIC ON)
-add_subdirectory( external/sdl EXCLUDE_FROM_ALL )
+
+# try to find a pre-build package, otherwise use the vendored submodule
+find_package(SDL3 QUIET)
+
+if(SDL3_FOUND)
+	message(STATUS "SDL found on host")
+else(NOT SDL3_FOUND)
+	message(STATUS "SDL not found on host, using vendored libraries")
+	set(SDL_DISABLE_UNINSTALL ON)
+	set(SDL_TEST_LIBRARY OFF)
+	set(SDL_TESTS OFF)
+	set(SDL_EXAMPLES OFF)
+	set(SDL_SHARED OFF)
+	set(SDL_STATIC ON)
+	add_subdirectory( external/sdl EXCLUDE_FROM_ALL )
+endif()
+
+target_link_libraries(
+	vkblam
+	PRIVATE
+	SDL3::SDL3
+)
