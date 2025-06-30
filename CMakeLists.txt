@@ -258,6 +258,7 @@ add_executable(
 	source/Vulkan/SamplerCache.cpp
 	source/Vulkan/ShaderModuleCache.cpp
 	source/Vulkan/StreamBuffer.cpp
+	source/Vulkan/Swapchain.cpp
 	source/Vulkan/VulkanAPI.cpp
 )
 target_include_directories(
