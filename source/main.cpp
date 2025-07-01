@@ -342,8 +342,9 @@ int main(int argc, char* argv[])
 	};
 
 	/// SDL
-	SDL_Window* Window
-		= SDL_CreateWindow("vkblam", 1024, 1024, SDL_WINDOW_VULKAN);
+	SDL_Window* Window = SDL_CreateWindow(
+		"vkblam", 1024, 1024, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+	);
 
 	vk::SurfaceKHR Surface{};
 
@@ -1064,6 +1065,7 @@ int main(int argc, char* argv[])
 	std::vector<vk::Semaphore>          WaitSemaphores;
 	std::vector<vk::PipelineStageFlags> WaitStages;
 	std::vector<std::uint64_t>          WaitTimelineValues;
+	std::vector<vk::Semaphore>          SignalSemaphores;
 
 	// Wait for transfers
 	const std::uint64_t UploadTick = Rasterizer.GetStreamBuffer().Flush();
@@ -1071,10 +1073,11 @@ int main(int argc, char* argv[])
 	WaitStages.emplace_back(vk::PipelineStageFlagBits::eTransfer);
 	WaitTimelineValues.emplace_back(UploadTick);
 
-	// Wait for swapchain to be ready
+	// Swapchain synchronization
 	if( const vk::Semaphore NextSwapImageReady = Swapchain->AcquireNextImage();
 		NextSwapImageReady )
 	{
+		// Wait for the swapchain image to be acquired
 		WaitSemaphores.emplace_back(
 			Swapchain->GetCurrentImageAcquiredSemaphore()
 		);
@@ -1083,13 +1086,12 @@ int main(int argc, char* argv[])
 		);
 		// This is a binary semaphore, push a dummy value
 		WaitTimelineValues.emplace_back(0);
+
+		// Signal that the image is ready to be presented
+		SignalSemaphores.emplace_back(
+			Swapchain->GetNextImagePresentReadySemaphore()
+		);
 	}
-
-	std::vector<vk::Semaphore> SignalSemaphores;
-
-	SignalSemaphores.emplace_back(
-		Swapchain->GetNextImagePresentReadySemaphore()
-	);
 
 	const vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
 		SubmitInfoChain{
