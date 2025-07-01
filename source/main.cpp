@@ -151,21 +151,36 @@ int main(int argc, char* argv[])
 		.apiVersion         = VK_API_VERSION_1_1,
 	};
 
-	static const std::array InstanceExtensions = std::to_array({
+	std::vector<const char*> InstanceExtensions{
 #if defined(__APPLE__)
 		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #endif
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 		VK_KHR_SURFACE_EXTENSION_NAME,
 		VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME,
-	});
+	};
+
+	/// SDL instance extensions
+	SDL_Init(SDL_INIT_VIDEO);
+	{
+		std::uint32_t      SdlExtensionCount;
+		const char* const* SdlExtensionNames
+			= SDL_Vulkan_GetInstanceExtensions(&SdlExtensionCount);
+
+		for( std::uint32_t ExtensionIndex = 0;
+			 ExtensionIndex < SdlExtensionCount; ++ExtensionIndex )
+		{
+			InstanceExtensions.emplace_back(SdlExtensionNames[ExtensionIndex]);
+		}
+	}
 
 	const vk::InstanceCreateInfo InstanceInfo = {
 #if defined(__APPLE__)
 		.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR,
 #endif
-		.pApplicationInfo        = &ApplicationInfo,
-		.enabledExtensionCount   = InstanceExtensions.size(),
+		.pApplicationInfo = &ApplicationInfo,
+		.enabledExtensionCount
+		= static_cast<std::uint32_t>(InstanceExtensions.size()),
 		.ppEnabledExtensionNames = InstanceExtensions.data(),
 	};
 
@@ -327,9 +342,8 @@ int main(int argc, char* argv[])
 	};
 
 	/// SDL
-	SDL_Init(SDL_INIT_VIDEO);
 	SDL_Window* Window
-		= SDL_CreateWindow("vkblam", 512, 512, SDL_WINDOW_VULKAN);
+		= SDL_CreateWindow("vkblam", 1024, 1024, SDL_WINDOW_VULKAN);
 
 	vk::SurfaceKHR Surface{};
 
@@ -346,6 +360,7 @@ int main(int argc, char* argv[])
 		else
 		{
 			// Error creating SDL surface
+			auto Error = SDL_GetError();
 			return EXIT_FAILURE;
 		}
 	}
