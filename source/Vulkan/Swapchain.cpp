@@ -20,11 +20,11 @@ vk::SurfaceFormatKHR FindSurfaceFormat(
 		SurfaceFormats = std::move(EnumerateResult.value);
 	}
 
-	// Prefer a non-sRGB image format
+	// Prefer an sRGB image format
 	std::ranges::stable_partition(
 		SurfaceFormats, [](const vk::SurfaceFormatKHR& SurfaceFormat) -> bool {
 			return std::string_view("SRGB")
-				!= vk::componentNumericFormat(SurfaceFormat.format, 0);
+				== vk::componentNumericFormat(SurfaceFormat.format, 0);
 		}
 	);
 
