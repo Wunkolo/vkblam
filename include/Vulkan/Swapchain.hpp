@@ -116,11 +116,13 @@ public:
 	// on for when the image is actually ready to be rendered into. Returns a
 	// null-handle if there was an error or if the swapchain needs to be
 	// recreated.
-	vk::Semaphore AcquireNextImage();
+	[[nodiscard]] vk::Semaphore AcquireNextImage();
 
 	// Waits on the current "Present-Ready"-semaphore and presents the current
 	// swapchain image to the present-queue
-	void Present();
+	// Returns true on a successful present
+	// Returns false otherwise(swapchain was invalidated)
+	bool Present();
 
 	static std::optional<Swapchain> Create(
 		const Vulkan::Context& VulkanContext, const vk::SurfaceKHR& Surface,

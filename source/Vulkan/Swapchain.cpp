@@ -144,7 +144,7 @@ vk::Semaphore Swapchain::AcquireNextImage()
 	return ImageAcquired;
 }
 
-void Swapchain::Present()
+bool Swapchain::Present()
 {
 	vk::PresentInfoKHR PresentInfo{};
 
@@ -173,19 +173,21 @@ void Swapchain::Present()
 	case vk::Result::eErrorOutOfDateKHR:
 	{
 		// TODO: Swapchain needs to be recreated
-		return;
+		return false;
 	}
 	default:
 	{
 
 		// Unhandled result
-		return;
+		return false;
 	}
 	}
 
 	// Move on to the next semaphore
 	CurImageAcquireSemaphoreIndex
 		= (CurImageAcquireSemaphoreIndex + 1) % GetSwapchainCount();
+
+	return true;
 }
 
 std::optional<Swapchain> Swapchain::Create(
