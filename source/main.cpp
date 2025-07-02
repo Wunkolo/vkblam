@@ -213,6 +213,32 @@ int main(int argc, char* argv[])
 	const vk::UniqueDebugUtilsMessengerEXT DebugMessenger
 		= Vulkan::CreateDebugMessenger(Instance.get());
 
+	/// SDL
+
+	vk::SurfaceKHR Surface{};
+
+	if( UseSdl )
+	{
+		SDL_Window* Window = SDL_CreateWindow(
+			"vkblam", 1024, 1024, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+		);
+
+		VkSurfaceKHR SdlSurface;
+		if( SDL_Vulkan_CreateSurface(
+				Window, (VkInstance)Instance.get(), nullptr, &SdlSurface
+			) )
+		{
+			Surface = SdlSurface;
+		}
+		else
+		{
+			// Error creating SDL surface
+			auto Error = SDL_GetError();
+			return EXIT_FAILURE;
+		}
+	}
+	///
+
 	//// Pick physical device
 	vk::PhysicalDevice PhysicalDevice = {};
 
@@ -287,16 +313,111 @@ int main(int argc, char* argv[])
 
 	DeviceInfo.pNext = &DeviceFeatureChain.get();
 
+	std::optional<std::uint32_t> PresentQueueIndex  = {};
+	std::uint32_t                RenderQueueIndex   = ~0u;
+	std::uint32_t                TransferQueueIndex = ~0u;
+
+	// Determine which queue families to use
+	{
+		const std::vector<vk::QueueFamilyProperties> QueueFamilyProperties
+			= PhysicalDevice.getQueueFamilyProperties();
+
+		// Present
+		if( UseSdl && Surface )
+		{
+			for( std::uint32_t                    CurQueueFamilyIndex = 0;
+				 const vk::QueueFamilyProperties& QueueFamilyProperty :
+				 QueueFamilyProperties )
+			{
+				(void)QueueFamilyProperty;
+
+				// If the queue-family supports presenting to this particular
+				// surface, then we want it!
+				if( auto GetResult = PhysicalDevice.getSurfaceSupportKHR(
+						CurQueueFamilyIndex, Surface
+					);
+					GetResult.result == vk::Result::eSuccess )
+				{
+					if( GetResult.value == VK_TRUE )
+					{
+						PresentQueueIndex = CurQueueFamilyIndex;
+						break;
+					}
+				}
+				CurQueueFamilyIndex++;
+			}
+		}
+		// Render
+		// Just get the first queue family that supports rendering, unless there
+		// are other requirements that we care for at some point such as
+		// transfer granularity or timestamp resolution
+		for( std::uint32_t                    CurQueueFamilyIndex = 0;
+			 const vk::QueueFamilyProperties& QueueFamilyProperty :
+			 QueueFamilyProperties )
+		{
+			if( QueueFamilyProperty.queueFlags & vk::QueueFlagBits::eGraphics )
+			{
+				RenderQueueIndex = CurQueueFamilyIndex;
+				break;
+			}
+			CurQueueFamilyIndex++;
+		}
+		// Transfer
+		// A queue with the transfer bit set, and the least amount of other
+		// bits set, generally maps to dedicated DMA hardware
+		for( std::uint32_t CurQueueFamilyIndex    = 0,
+						   MinQueueFamilyBitCount = ~0u;
+			 const vk::QueueFamilyProperties& QueueFamilyProperty :
+			 QueueFamilyProperties )
+		{
+			// Keep track of the queue with the least amount of bits set
+			const std::uint32_t CurQueueFamilyBitCount = std::popcount(
+				static_cast<std::uint32_t>(QueueFamilyProperty.queueFlags)
+			);
+
+			if( QueueFamilyProperty.queueFlags & vk::QueueFlagBits::eTransfer
+				&& CurQueueFamilyBitCount < MinQueueFamilyBitCount )
+			{
+				MinQueueFamilyBitCount = CurQueueFamilyBitCount;
+				TransferQueueIndex     = CurQueueFamilyIndex;
+			}
+			CurQueueFamilyIndex++;
+		}
+	}
+
 	static const float QueuePriority = 1.0f;
 
-	static const vk::DeviceQueueCreateInfo QueueInfo = {
-		.queueFamilyIndex = 0,
-		.queueCount       = 1,
-		.pQueuePriorities = &QueuePriority,
-	};
+	std::vector<vk::DeviceQueueCreateInfo> QueueInfo;
+	if( PresentQueueIndex.has_value() )
+	{
+		QueueInfo.emplace_back(
+			vk::DeviceQueueCreateInfo{
+				.flags            = {},
+				.queueFamilyIndex = PresentQueueIndex.value(),
+				.queueCount       = 1,
+				.pQueuePriorities = &QueuePriority,
+			}
+		);
+	}
+	QueueInfo.emplace_back(
+		vk::DeviceQueueCreateInfo{
+			.flags            = {},
+			.queueFamilyIndex = RenderQueueIndex,
+			.queueCount       = 1,
+			.pQueuePriorities = &QueuePriority,
+		}
+	);
+	QueueInfo.emplace_back(
+		vk::DeviceQueueCreateInfo{
+			.flags            = {},
+			.queueFamilyIndex = TransferQueueIndex,
+			.queueCount       = 1,
+			.pQueuePriorities = &QueuePriority,
+		}
+	);
 
-	DeviceInfo.queueCreateInfoCount = 1;
-	DeviceInfo.pQueueCreateInfos    = &QueueInfo;
+	DeviceInfo.queueCreateInfoCount = QueueInfo.size();
+	DeviceInfo.pQueueCreateInfos    = QueueInfo.data();
 
 	vk::UniqueDevice Device = {};
 	if( auto CreateResult = PhysicalDevice.createDeviceUnique(DeviceInfo);
@@ -324,54 +445,33 @@ int main(int argc, char* argv[])
 #endif
 
 	// Main Rendering queue
-	const vk::Queue RenderQueue = Device->getQueue(0, 0);
-
-	// Todo: Pick the most optimal present queue here
-	const vk::Queue PresentQueue = Device->getQueue(0, 0);
-
-	// Todo: Pick the fastest transfer queue here
-	const vk::Queue TransferQueue = Device->getQueue(0, 0);
+	const vk::Queue PresentQueue
+		= PresentQueueIndex.has_value()
+			? Device->getQueue(PresentQueueIndex.value(), 0)
+			: vk::Queue{};
+	const vk::Queue RenderQueue   = Device->getQueue(RenderQueueIndex, 0);
+	const vk::Queue TransferQueue = Device->getQueue(TransferQueueIndex, 0);
 
 	Vulkan::DebugLabelScope(
 		TransferQueue, {1.0f, 1.0f, 1.0f, 1.0f}, "VkBlam Main"
 	);
 
 	const Vulkan::Context VulkanContext{
-		.LogicalDevice            = Device.get(),
-		.PhysicalDevice           = PhysicalDevice,
-		.PresentQueue             = PresentQueue,
-		.RenderQueue              = RenderQueue,
-		.TransferQueue            = TransferQueue,
-		.PresentQueueFamilyIndex  = 0,
-		.RenderQueueFamilyIndex   = 0,
-		.TransferQueueFamilyIndex = 0,
+		.LogicalDevice  = Device.get(),
+		.PhysicalDevice = PhysicalDevice,
+		.PresentQueue   = PresentQueue,
+		.RenderQueue    = RenderQueue,
+		.TransferQueue  = TransferQueue,
+
+		.PresentQueueFamilyIndex  = PresentQueueIndex.value_or(~0u),
+		.RenderQueueFamilyIndex   = RenderQueueIndex,
+		.TransferQueueFamilyIndex = TransferQueueIndex,
 	};
 
-	/// SDL
-
-	vk::SurfaceKHR                   Surface{};
 	std::optional<Vulkan::Swapchain> Swapchain;
 
-	if( UseSdl )
+	if( UseSdl && Surface )
 	{
-		SDL_Window* Window = SDL_CreateWindow(
-			"vkblam", 1024, 1024, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
-		);
-
-		VkSurfaceKHR SdlSurface;
-		if( SDL_Vulkan_CreateSurface(
-				Window, (VkInstance)Instance.get(), nullptr, &SdlSurface
-			) )
-		{
-			Surface = SdlSurface;
-		}
-		else
-		{
-			// Error creating SDL surface
-			auto Error = SDL_GetError();
-			return EXIT_FAILURE;
-		}
-
 		auto NewSwapchain = Vulkan::Swapchain::Create(
 			VulkanContext, Surface,
 			vk::Extent2D{
@@ -386,7 +486,6 @@ int main(int argc, char* argv[])
 			Swapchain.emplace(std::move(NewSwapchain.value()));
 		}
 	}
-	///
 
 	VkBlam::Rasterizer Rasterizer
 		= VkBlam::Rasterizer::Create(VulkanContext).value();

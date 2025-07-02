@@ -26,8 +26,8 @@ struct Context
 	vk::Queue RenderQueue;
 	vk::Queue TransferQueue;
 
-	std::uint8_t PresentQueueFamilyIndex;
-	std::uint8_t RenderQueueFamilyIndex;
-	std::uint8_t TransferQueueFamilyIndex;
+	std::uint32_t PresentQueueFamilyIndex;
+	std::uint32_t RenderQueueFamilyIndex;
+	std::uint32_t TransferQueueFamilyIndex;
 };
 } // namespace Vulkan
