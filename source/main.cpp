@@ -159,7 +159,6 @@ int main(int argc, char* argv[])
 #endif
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 		VK_KHR_SURFACE_EXTENSION_NAME,
-		VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME,
 	};
 
 	/// SDL instance extensions
