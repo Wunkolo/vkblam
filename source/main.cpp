@@ -347,6 +347,7 @@ int main(int argc, char* argv[])
 				CurQueueFamilyIndex++;
 			}
 		}
+
 		// Render
 		// Just get the first queue family that supports rendering, unless there
 		// are other requirements that we care for at some point such as
@@ -362,7 +363,13 @@ int main(int argc, char* argv[])
 			}
 			CurQueueFamilyIndex++;
 		}
+
 		// Transfer
+		// Some drivers(Snapdragon) do not report a transfer queue at all, for
+		// some reason. So default the transfer queue to the render queue by
+		// default for now:
+		TransferQueueIndex = RenderQueueIndex;
+
 		// A queue with the transfer bit set, and the least amount of other
 		// bits set, generally maps to dedicated DMA hardware
 		for( std::uint32_t CurQueueFamilyIndex    = 0,
