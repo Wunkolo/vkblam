@@ -472,14 +472,8 @@ int main(int argc, char* argv[])
 
 	if( UseSdl && Surface )
 	{
-		auto NewSwapchain = Vulkan::Swapchain::Create(
-			VulkanContext, Surface,
-			vk::Extent2D{
-				.width  = 512,
-				.height = 512,
-			},
-			3
-		);
+		auto NewSwapchain
+			= Vulkan::Swapchain::Create(VulkanContext, Surface, 3, true);
 
 		if( NewSwapchain.has_value() )
 		{
@@ -1055,7 +1049,7 @@ int main(int argc, char* argv[])
 					"Main Render Pass"
 				);
 
-				static const vk::ClearValue ClearColors[] = {
+				const vk::ClearValue ClearColors[] = {
 					vk::ClearColorValue(
 						std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
 					),

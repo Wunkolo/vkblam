@@ -21,12 +21,13 @@ vk::SurfaceFormatKHR FindSurfaceFormat(
 	}
 
 	// Prefer an sRGB image format
-	std::ranges::stable_partition(
-		SurfaceFormats, [](const vk::SurfaceFormatKHR& SurfaceFormat) -> bool {
-			return std::string_view("SRGB")
-				== vk::componentNumericFormat(SurfaceFormat.format, 0);
-		}
-	);
+	// std::ranges::stable_partition(
+	//	SurfaceFormats,
+	//	[](const vk::SurfaceFormatKHR& SurfaceFormat) -> bool {
+	//		return std::string_view("SRGB")
+	//			== vk::componentNumericFormat(SurfaceFormat.format, 0);
+	//	}
+	//);
 
 	// Prefer an sRGB presentation color-space
 	std::ranges::stable_partition(
@@ -104,110 +105,26 @@ Swapchain::Swapchain(const Vulkan::Context& VulkanContext)
 	: VulkanContext(VulkanContext)
 {
 }
-vk::Semaphore Swapchain::AcquireNextImage()
-{
 
-	// Semaphore to signal when the image has been acquired, generally all image
-	// operations that use the swapchain image should wait on this semaphore
-	const vk::Semaphore ImageAcquired
-		= SwapSemaphoreImageAcquired[CurImageAcquireSemaphoreIndex].get();
-
-	// Get the next swapchain image to render into
-	constexpr std::uint64_t Timeout = std::numeric_limits<std::uint64_t>::max();
-	const vk::ResultValue<std::uint32_t> AcquireResult
-		= VulkanContext.LogicalDevice.acquireNextImageKHR(
-			SwapchainInstance.get(), Timeout, ImageAcquired, vk::Fence{}
-		);
-
-	switch( AcquireResult.result )
-	{
-	case vk::Result::eSuccess:
-	{
-		assert(AcquireResult.value <= 0xFF);
-
-		// Got the next swapchain image to render into
-		NextSwapImageIndex = AcquireResult.value;
-		break;
-	}
-	case vk::Result::eSuboptimalKHR:
-	case vk::Result::eErrorSurfaceLostKHR:
-	case vk::Result::eErrorOutOfDateKHR:
-	{
-		// TODO: Swapchain needs to be recreated
-		return {};
-		break;
-	}
-	default:
-		return {};
-	}
-
-	return ImageAcquired;
-}
-
-bool Swapchain::Present()
-{
-	vk::PresentInfoKHR PresentInfo{};
-
-	const vk::SwapchainKHR& Swapchain = SwapchainInstance.get();
-	PresentInfo.setSwapchains(Swapchain);
-
-	const std::uint32_t NextImageIndex = NextSwapImageIndex;
-	PresentInfo.setImageIndices(NextImageIndex);
-
-	// Wait for the image to be ready to be presented into
-	std::vector<vk::Semaphore> WaitSemaphores;
-	WaitSemaphores.emplace_back(GetNextImagePresentReadySemaphore());
-	PresentInfo.setWaitSemaphores(WaitSemaphores);
-
-	const vk::Result PresentResult
-		= VulkanContext.PresentQueue.presentKHR(PresentInfo);
-
-	switch( PresentResult )
-	{
-	case vk::Result::eSuccess:
-	{
-		break;
-	}
-	case vk::Result::eSuboptimalKHR:
-	case vk::Result::eErrorSurfaceLostKHR:
-	case vk::Result::eErrorOutOfDateKHR:
-	{
-		// TODO: Swapchain needs to be recreated
-		return false;
-	}
-	default:
-	{
-
-		// Unhandled result
-		return false;
-	}
-	}
-
-	// Move on to the next semaphore
-	CurImageAcquireSemaphoreIndex
-		= (CurImageAcquireSemaphoreIndex + 1) % GetSwapchainCount();
-
-	return true;
-}
-
-std::optional<Swapchain> Swapchain::Create(
-	const Vulkan::Context& VulkanContext, const vk::SurfaceKHR& Surface,
-	vk::Extent2D SwapchainExtents, std::uint8_t SwapchainCount,
-	const Swapchain* OldSwapchain
+bool Swapchain::RecreateSwapchain(
+	std::optional<vk::Extent2D>     NewExtent,
+	std::optional<vk::SwapchainKHR> OldSwapchain
 )
 {
-	Swapchain NewSwapchain(VulkanContext);
-
-	NewSwapchain.Surface = Surface;
+	// Unfortunately this is the best way to ensure that any currently in-flight
+	// frames are done.
+	// TODO: VK_{KHR,EXT}_swapchain_maintenance1 has better swapchain
+	// waiting/cleanup mechanisms that should be used here - 11/7/2025
+	if( const auto WaitResult = VulkanContext.LogicalDevice.waitIdle();
+		WaitResult != vk::Result::eSuccess )
+	{
+		return false;
+	}
 
 	/// Swapchain surface format
-	const vk::SurfaceFormatKHR SurfaceFormat
-		= FindSurfaceFormat(VulkanContext.PhysicalDevice, Surface);
-
-	NewSwapchain.SurfaceFormat = SurfaceFormat;
+	SurfaceFormat = FindSurfaceFormat(VulkanContext.PhysicalDevice, Surface);
 
 	// Get present mode
-	constexpr bool           Vsync = false;
 	const vk::PresentModeKHR PresetMode
 		= FindPresentMode(VulkanContext.PhysicalDevice, Surface, Vsync);
 
@@ -221,7 +138,7 @@ std::optional<Swapchain> Swapchain::Create(
 	else
 	{
 		// Error getting surface capabilities
-		return std::nullopt;
+		return false;
 	}
 
 	/// Swapchain image count
@@ -230,30 +147,30 @@ std::optional<Swapchain> Swapchain::Create(
 	// `maxImageCount` may be `0`, indicating there is no limit
 	if( SurfaceCapabilities.maxImageCount != 0u )
 	{
-		SwapchainCount = std::clamp<std::uint32_t>(
-			SwapchainCount, SurfaceCapabilities.minImageCount,
+		SwapImageCount = std::clamp<std::uint32_t>(
+			SwapImageCount, SurfaceCapabilities.minImageCount,
 			SurfaceCapabilities.maxImageCount
 		);
 	}
 	else
 	{
-		SwapchainCount = std::max<std::uint32_t>(
-			SwapchainCount, SurfaceCapabilities.minImageCount
+		SwapImageCount = std::max<std::uint32_t>(
+			SwapImageCount, SurfaceCapabilities.minImageCount
 		);
 	}
-	NewSwapchain.SwapImageCount = SwapchainCount;
 
 	/// Swapchain image extents
-	// Clamp the requested swapchain image size between the supported min/max
-	SwapchainExtents.width = std::clamp<std::uint32_t>(
-		SwapchainExtents.width, SurfaceCapabilities.minImageExtent.width,
-		SurfaceCapabilities.maxImageExtent.width
-	);
-	SwapchainExtents.height = std::clamp<std::uint32_t>(
-		SwapchainExtents.height, SurfaceCapabilities.minImageExtent.height,
-		SurfaceCapabilities.maxImageExtent.height
-	);
-	NewSwapchain.SwapImageExtents = SwapchainExtents;
+	if( SurfaceCapabilities.currentExtent.width == 0
+		|| SurfaceCapabilities.currentExtent.height == 0 )
+	{
+		// Window is likely minimized
+		SwapImages.clear();
+		SwapchainInstance.reset();
+		return true;
+	}
+
+	// Set new size, or preserve the older one
+	SwapImageExtents = NewExtent.value_or(SurfaceCapabilities.currentExtent);
 
 	/// Swapchain image usage
 	// Color-attachment is mandated by the vulkan spec
@@ -288,21 +205,20 @@ std::optional<Swapchain> Swapchain::Create(
 		SurfaceTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity;
 	}
 
-	// Use old swapchain if available
+	// Use old(current) swapchain if available, or the user-provided one
 	// This seems to help allow previous image handles to be recycled, such as
 	// how resizing a window to be smaller means you can just use a smaller
 	// subset of the larger image. Or when the window is minified.
 	const vk::SwapchainKHR OldSwapchainInstance
-		= (OldSwapchain != nullptr) ? OldSwapchain->SwapchainInstance.get()
-									: vk::SwapchainKHR{};
+		= OldSwapchain.value_or(SwapchainInstance.get());
 
 	const vk::SwapchainCreateInfoKHR SwapchainInfo{
 		.flags                 = {},
 		.surface               = Surface,
-		.minImageCount         = SwapchainCount,
+		.minImageCount         = SwapImageCount,
 		.imageFormat           = SurfaceFormat.format,
 		.imageColorSpace       = SurfaceFormat.colorSpace,
-		.imageExtent           = SwapchainExtents,
+		.imageExtent           = SwapImageExtents,
 		.imageArrayLayers      = 1u,
 		.imageUsage            = SwapchainImageFlags,
 		.imageSharingMode      = vk::SharingMode::eExclusive,
@@ -311,7 +227,7 @@ std::optional<Swapchain> Swapchain::Create(
 		.preTransform          = SurfaceTransform,
 		.compositeAlpha        = vk::CompositeAlphaFlagBitsKHR::eOpaque,
 		.presentMode           = PresetMode,
-		.clipped               = VK_TRUE,
+		.clipped               = vk::True,
 		.oldSwapchain          = OldSwapchainInstance,
 	};
 
@@ -323,31 +239,206 @@ std::optional<Swapchain> Swapchain::Create(
 			VulkanContext.LogicalDevice, CreateResult.value.get(), "Swapchain"
 		);
 
-		NewSwapchain.SwapchainInstance = std::move(CreateResult.value);
+		SwapchainInstance = std::move(CreateResult.value);
 	}
 	else
 	{
 		// Error creating swapchain
-		return std::nullopt;
+		return false;
 	}
 
 	/// Get swapchain images
 	if( auto GetResult = VulkanContext.LogicalDevice.getSwapchainImagesKHR(
-			NewSwapchain.SwapchainInstance.get()
+			SwapchainInstance.get()
 		);
 		GetResult.result == vk::Result::eSuccess )
 	{
-		NewSwapchain.SwapImages = std::move(GetResult.value);
+		SwapImages = std::move(GetResult.value);
 	}
 	else
 	{
 		// Error getting swapchain images;
-		return std::nullopt;
+		return false;
 	}
+
+	return true;
+}
+
+vk::Semaphore Swapchain::AcquireNextImage()
+{
+	if( !SwapchainInstance )
+	{
+		return {};
+	}
+
+	// Semaphore to signal when the image has been acquired, generally all image
+	// operations that use the swapchain image should wait on this semaphore
+	const vk::Semaphore SemaphoreImageAcquired
+		= SwapSemaphoreImageAcquired[CurImageAcquireSemaphoreIndex].get();
+
+	// Get the next swapchain image to render into
+	constexpr std::uint64_t Timeout = std::numeric_limits<std::uint64_t>::max();
+
+	// Bypass the default vulkan-hpp implementation which asserts upon results
+	// such as `eErrorSurfaceLostKHR` and `eErrorOutOfDateKHR`
+	const auto UnwrappedAcquireNextImageKHR
+		= [](vk::Device m_device, vk::SwapchainKHR swapchain, uint64_t timeout,
+			 vk::Semaphore semaphore, vk::Fence fence,
+			 VULKAN_HPP_DEFAULT_DISPATCHER_TYPE const& d
+			 = VULKAN_HPP_DEFAULT_DISPATCHER) {
+			  VULKAN_HPP_ASSERT(d.getVkHeaderVersion() == vk::HeaderVersion);
+#if ( VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1 )
+			  VULKAN_HPP_ASSERT(
+			d.vkAcquireNextImageKHR
+			&& "Function <vkAcquireNextImageKHR> requires <VK_KHR_swapchain>"
+		);
+#endif
+
+			  std::uint32_t imageIndex;
+			  vk::Result    result
+				  = static_cast<vk::Result>(d.vkAcquireNextImageKHR(
+					  m_device, static_cast<VkSwapchainKHR>(swapchain), timeout,
+					  static_cast<VkSemaphore>(semaphore),
+					  static_cast<VkFence>(fence), &imageIndex
+				  ));
+
+			  return vk::ResultValue<uint32_t>(result, imageIndex);
+		  };
+
+	// const vk::ResultValue<std::uint32_t> AcquireResult
+	//	= VulkanContext.LogicalDevice.acquireNextImageKHR(
+	//		SwapchainInstance.get(), Timeout, SemaphoreImageAcquired,
+	//		vk::Fence{}
+	//	);
+	const vk::ResultValue<std::uint32_t> AcquireResult
+		= UnwrappedAcquireNextImageKHR(
+			VulkanContext.LogicalDevice, SwapchainInstance.get(), Timeout,
+			SemaphoreImageAcquired, vk::Fence{}
+		);
+
+	switch( AcquireResult.result )
+	{
+	case vk::Result::eSuccess:
+	{
+		assert(
+			AcquireResult.value
+			<= std::numeric_limits<decltype(NextSwapImageIndex)>::max()
+		);
+
+		// Got the next swapchain image to render into
+		NextSwapImageIndex = AcquireResult.value;
+		break;
+	}
+	case vk::Result::eSuboptimalKHR:
+	case vk::Result::eErrorSurfaceLostKHR:
+	case vk::Result::eErrorOutOfDateKHR:
+	{
+		// TODO: Swapchain needs to be recreated
+		if( RecreateSwapchain({}, SwapchainInstance.get()) )
+		{
+			return AcquireNextImage();
+		}
+		else
+		{
+			return {};
+		}
+		break;
+	}
+	default:
+		return {};
+	}
+
+	return SemaphoreImageAcquired;
+}
+
+bool Swapchain::Present()
+{
+	vk::PresentInfoKHR PresentInfo{};
+
+	const vk::SwapchainKHR& Swapchain = SwapchainInstance.get();
+	PresentInfo.setSwapchains(Swapchain);
+
+	const std::uint32_t NextImageIndex = NextSwapImageIndex;
+	PresentInfo.setImageIndices(NextImageIndex);
+
+	// Wait for the image to be ready to be presented into
+	std::vector<vk::Semaphore> WaitSemaphores;
+	WaitSemaphores.emplace_back(GetNextImagePresentReadySemaphore());
+	PresentInfo.setWaitSemaphores(WaitSemaphores);
+
+	// Bypass the default vulkan-hpp implementation which asserts upon results
+	// such as `eErrorSurfaceLostKHR` and `eErrorOutOfDateKHR`
+	const auto UnwrappedPresentKHR =
+		[](vk::Queue m_queue, const vk::PresentInfoKHR& presentInfo,
+		   VULKAN_HPP_DEFAULT_DISPATCHER_TYPE const& d
+		   = VULKAN_HPP_DEFAULT_DISPATCHER) {
+			VULKAN_HPP_ASSERT(d.getVkHeaderVersion() == vk::HeaderVersion);
+#if ( VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1 )
+			VULKAN_HPP_ASSERT(
+				d.vkQueuePresentKHR
+				&& "Function <vkQueuePresentKHR> requires <VK_KHR_swapchain>"
+			);
+#endif
+
+			return static_cast<vk::Result>(d.vkQueuePresentKHR(
+				m_queue, reinterpret_cast<const VkPresentInfoKHR*>(&presentInfo)
+			));
+		};
+
+	// const vk::Result PresentResult
+	//	= VulkanContext.PresentQueue.presentKHR(PresentInfo);
+	const vk::Result PresentResult
+		= UnwrappedPresentKHR(VulkanContext.PresentQueue, PresentInfo);
+
+	switch( PresentResult )
+	{
+	case vk::Result::eSuccess:
+	{
+		break;
+	}
+	case vk::Result::eSuboptimalKHR:
+	case vk::Result::eErrorSurfaceLostKHR:
+	case vk::Result::eErrorOutOfDateKHR:
+	{
+		return false;
+	}
+	default:
+	{
+		// Unhandled result
+		return false;
+	}
+	}
+
+	// Move on to the next semaphore
+	CurImageAcquireSemaphoreIndex
+		= (CurImageAcquireSemaphoreIndex + 1) % GetSwapchainCount();
+
+	return true;
+}
+
+std::expected<Swapchain, vk::Result> Swapchain::Create(
+	const Vulkan::Context& VulkanContext, const vk::SurfaceKHR& Surface,
+	std::uint8_t SwapchainCount, bool Vsync, const Swapchain* OldSwapchain
+)
+{
+	Swapchain NewSwapchain(VulkanContext);
+
+	NewSwapchain.Surface = Surface;
+	NewSwapchain.Vsync   = Vsync;
+
+	// Let RecreateSwapchain "fix" these assignments
+	NewSwapchain.SwapImageCount = SwapchainCount;
+
+	const vk::SwapchainKHR OldSwapchainHandle
+		= OldSwapchain != nullptr ? OldSwapchain->SwapchainInstance.get()
+								  : vk::SwapchainKHR();
+
+	NewSwapchain.RecreateSwapchain({}, OldSwapchainHandle);
 
 	/// Swapchain synchronization primitives
 	const vk::SemaphoreCreateInfo SemaphoreInfo{};
-	for( std::uint8_t SwapIndex = 0; SwapIndex < SwapchainCount; ++SwapIndex )
+	for( std::uint8_t SwapIndex = 0; SwapIndex < NewSwapchain.SwapImageCount;
+		 ++SwapIndex )
 	{
 		Vulkan::SetObjectName(
 			VulkanContext.LogicalDevice, NewSwapchain.SwapImages[SwapIndex],
@@ -370,7 +461,7 @@ std::optional<Swapchain> Swapchain::Create(
 		else
 		{
 			// Error creating swapchain acquire-semaphore
-			return std::nullopt;
+			return std::unexpected(CreateResult.result);
 		}
 
 		if( auto CreateResult
@@ -389,10 +480,10 @@ std::optional<Swapchain> Swapchain::Create(
 		else
 		{
 			// Error creating swapchain present-ready-semaphore
-			return std::nullopt;
+			return std::unexpected(CreateResult.result);
 		}
 	}
 
-	return {std::move(NewSwapchain)};
+	return NewSwapchain;
 }
 } // namespace Vulkan

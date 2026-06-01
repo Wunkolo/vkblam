@@ -2,6 +2,7 @@
 
 #include <Vulkan/VulkanAPI.hpp>
 
+#include <expected>
 #include <optional>
 
 namespace Vulkan
@@ -26,6 +27,8 @@ private:
 	vk::SurfaceKHR       Surface;
 	vk::SurfaceFormatKHR SurfaceFormat;
 
+	bool Vsync;
+
 	std::uint8_t SwapImageCount = 0u;
 	vk::Extent2D SwapImageExtents;
 
@@ -47,8 +50,8 @@ private:
 	std::vector<vk::UniqueSemaphore> SwapSemaphorePresentReady;
 
 public:
-	~Swapchain()           = default;
 	Swapchain(Swapchain&&) = default;
+	~Swapchain()           = default;
 
 	[[nodiscard]] const vk::SurfaceFormatKHR& GetSurfaceFormat() const
 	{
@@ -112,6 +115,11 @@ public:
 		return GetImagePresentReadySemaphore(NextSwapImageIndex);
 	}
 
+	bool RecreateSwapchain(
+		std::optional<vk::Extent2D>     NewExtent    = {},
+		std::optional<vk::SwapchainKHR> OldSwapchain = {}
+	);
+
 	// Move on to the next image in the swapchain. Returns the semaphore to wait
 	// on for when the image is actually ready to be rendered into. Returns a
 	// null-handle if there was an error or if the swapchain needs to be
@@ -124,9 +132,9 @@ public:
 	// Returns false otherwise(swapchain was invalidated)
 	bool Present();
 
-	static std::optional<Swapchain> Create(
+	static std::expected<Swapchain, vk::Result> Create(
 		const Vulkan::Context& VulkanContext, const vk::SurfaceKHR& Surface,
-		vk::Extent2D SwapchainExtents, std::uint8_t SwapchainCount,
+		std::uint8_t SwapchainCount, bool Vsync,
 		const Swapchain* OldSwapchain = nullptr
 	);
 };
