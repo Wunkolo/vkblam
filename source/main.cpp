@@ -52,7 +52,7 @@ RENDERDOC_API_1_4_1* rdoc_api = NULL;
 
 static constexpr glm::uvec2 RenderSize = {1024, 1024};
 
-static constexpr bool UseSdl = false;
+static constexpr bool UseSdl = true;
 
 vk::UniqueRenderPass CreateMainRenderPass(
 	vk::Device              Device,
@@ -443,13 +443,6 @@ int main(int argc, char* argv[])
 
 	// Initialize device functions
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(Device.get());
-
-#ifdef CAPTURE
-	if( rdoc_api )
-		rdoc_api->StartFrameCapture(
-			*(void**)(VkInstance)(*Instance.operator->()), NULL
-		);
-#endif
 
 	// Main Rendering queue
 	const vk::Queue PresentQueue
@@ -871,6 +864,7 @@ int main(int argc, char* argv[])
 
 	//// Create Command Pool
 	const vk::CommandPoolCreateInfo CommandPoolInfo = {
+		.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		.queueFamilyIndex = 0,
 	};
 
@@ -913,99 +907,196 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	const vk::CommandBufferBeginInfo BeginInfo = {
-		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+	VkBlam::SceneView SceneView{
+		.AspectRatio = RenderSize.x / static_cast<glm::f32>(RenderSize.y)
 	};
-
-	if( auto BeginResult = CommandBuffer->begin(BeginInfo);
-		BeginResult != vk::Result::eSuccess )
 	{
-		std::fprintf(
-			stderr, "Error beginning command buffer: %s\n",
-			vk::to_string(BeginResult).c_str()
-		);
-		return EXIT_FAILURE;
+		const auto WorldBounds = CurWorld.GetWorldBounds();
+
+		const glm::f32 MaxExtent
+			= glm::compMax(glm::xyz(WorldBounds[1] - WorldBounds[0])) / 2.0f;
+
+		// SceneView.Position
+		// 	= glm::vec3(WorldBounds[1].x, WorldBounds[1].y, MaxExtent) * 1.5f;
+
+		// SceneView.Rotation
+		// 	= glm::rotation(
+		// 		  glm::f32vec3(1, 0, 0), glm::normalize(glm::f32vec3(1, 1, 0))
+		// 	  )
+		// 	* glm::rotation(
+		// 		  glm::f32vec3(1, 0, 0), glm::normalize(glm::f32vec3(1, 0, -1))
+		// 	);
 	}
 
+	bool Quit          = false;
+	auto PrevFrameTime = std::chrono::high_resolution_clock::now();
+	while( !Quit )
 	{
-		Vulkan::DebugLabelScope FrameScope(
-			CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame"
-		);
+		const auto CurFrameTime = std::chrono::high_resolution_clock::now();
+		const std::chrono::high_resolution_clock::duration DeltaTime
+			= CurFrameTime - PrevFrameTime;
+		const std::chrono::duration<float> DeltaTimeSeconds = DeltaTime;
+		PrevFrameTime                                       = CurFrameTime;
 
+		SDL_Event e;
+		while( SDL_PollEvent(&e) != 0 )
 		{
-			Vulkan::DebugLabelScope RenderPassScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Main Render Pass"
-			);
+			switch( e.type )
+			{
+			case SDL_EVENT_QUIT:
+			{
+				Quit = true;
+				break;
+			}
+			}
+		}
+		// Handle input
+		const bool* KeyStates = SDL_GetKeyboardState(nullptr);
 
-			static const vk::ClearValue ClearColors[] = {
-				vk::ClearColorValue(
-					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
-				),
-				vk::ClearDepthStencilValue{1.0f, 0},
-				vk::ClearColorValue(
-					std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
-				),
-			};
-
-			const vk::RenderPassBeginInfo RenderBeginInfo = {
-				.renderPass      = MainRenderPass.get(),
-				.framebuffer     = RenderFramebuffer.get(),
-				.renderArea      = vk::Rect2D{{}, {RenderSize.x, RenderSize.y}},
-				.clearValueCount = std::size(ClearColors),
-				.pClearValues    = ClearColors,
-			};
-			CommandBuffer->beginRenderPass(
-				RenderBeginInfo, vk::SubpassContents::eInline
-			);
-
-			// Draw
-
-			const auto WorldBounds = CurWorld.GetWorldBounds();
-
-			const glm::vec3 WorldCenter
-				= glm::mix(WorldBounds[0], WorldBounds[1], 0.5);
-
-			const glm::f32 MaxExtent
-				= glm::compMax(glm::xyz(WorldBounds[1] - WorldBounds[0]))
-				/ 2.0f;
-
-			const auto View = glm::lookAt<glm::f32>(
-				glm::vec3(WorldBounds[1].x, WorldBounds[1].y, MaxExtent) * 1.5f,
-				// glm::vec3(WorldCenter.x, WorldCenter.y, WorldBoundMax.z),
-				glm::vec3(WorldCenter.x, WorldCenter.y, WorldBounds[0].z),
-				glm::vec3(0, 0, 1)
-			);
-
-			const auto Projection
-				// = glm::ortho<glm::f32>(
-				// 	-MaxExtent, MaxExtent, -MaxExtent, MaxExtent, 0.0f,
-				// 	WorldBoundMax.z - WorldBoundMin.z);
-				= glm::perspective<glm::f32>(
-					glm::radians(60.0f),
-					static_cast<float>(RenderSize.x) / RenderSize.y, 1.0f,
-					1000.0f
-				);
-
-			VkBlam::SceneView SceneView(View, Projection, RenderSize);
-
-			CurScene->Render(SceneView, CommandBuffer.get());
-
-			CommandBuffer->endRenderPass();
+		if( KeyStates[SDL_SCANCODE_ESCAPE] )
+		{
+			Quit = true;
 		}
 
-		// Blit to swapchain
-
-		// TODO: Create an abstraction between a swapchain and "still image"
-		// Implement the still-image as a swapchain that just renders out an
-		// image sequence upon a "Present". This would be very useful to possily
-		// even render out into a video!
-		if( Swapchain.has_value() )
+		// Rotate camera
 		{
-			Vulkan::DebugLabelScope DebugCopyScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0}, "Blit to Swapchain"
+			glm::f32vec2 RotateDirection{};
+			{
+				RotateDirection = glm::f32vec2{
+					KeyStates[SDL_SCANCODE_RIGHT]
+						- KeyStates[SDL_SCANCODE_LEFT],
+					KeyStates[SDL_SCANCODE_UP] - KeyStates[SDL_SCANCODE_DOWN]
+				};
+			}
+
+			const float SpinSpeed = glm::pi<float>() / 2.0f;
+
+			// Turn up/down in local space
+			SceneView.Rotation
+				= SceneView.Rotation
+				* glm::angleAxis(
+					  RotateDirection.y * SpinSpeed * DeltaTimeSeconds.count(),
+					  // Positive rotation is clock-wise, so we use -Y here.
+					  glm::f32vec3(0, -1, 0)
+				);
+
+			// Turn left-right in global space
+			SceneView.Rotation
+				= glm::angleAxis(
+					  RotateDirection.x * SpinSpeed * DeltaTimeSeconds.count(),
+					  // Positive rotation is clock-wise, so we use +Y here.
+					  glm::f32vec3(0, 0, 1)
+				  )
+				* SceneView.Rotation;
+		}
+
+		// Move camera
+		{
+			glm::f32vec3 MoveDirection{};
+			float        MoveSpeed = 64.0f;
+			{
+				MoveDirection = glm::f32vec3{
+					KeyStates[SDL_SCANCODE_D] - KeyStates[SDL_SCANCODE_A],
+					KeyStates[SDL_SCANCODE_W] - KeyStates[SDL_SCANCODE_S],
+					KeyStates[SDL_SCANCODE_Q] - KeyStates[SDL_SCANCODE_E]
+				};
+				MoveSpeed += KeyStates[SDL_SCANCODE_LSHIFT] ? MoveSpeed : 0.0f;
+			}
+
+			const glm::f32vec3 LocalForward(
+				SceneView.Rotation * glm::f32vec3(1.0f, 0.0f, 0.0f)
 			);
-			// Get ready to blit to the swap image
-			CommandBuffer->pipelineBarrier(
+			const glm::f32vec3 LocalRight(
+				SceneView.Rotation * glm::f32vec3(0.0f, 1.0f, 0.0f)
+			);
+			const glm::f32vec3 WorldUp(0.0f, 0.0f, 1.0f);
+
+			SceneView.Position
+				+= LocalForward
+				 * (MoveDirection.y * DeltaTimeSeconds.count() * MoveSpeed);
+			SceneView.Position
+				+= LocalRight
+				 * (MoveDirection.x * DeltaTimeSeconds.count() * MoveSpeed);
+			SceneView.Position
+				+= WorldUp
+				 * (MoveDirection.z * DeltaTimeSeconds.count() * MoveSpeed);
+		}
+		SceneView.UpdateCameraGlobals();
+
+#ifdef CAPTURE
+		if( rdoc_api )
+			rdoc_api->StartFrameCapture(
+				*(void**)(VkInstance)(*Instance.operator->()), NULL
+			);
+#endif
+
+		const vk::CommandBufferBeginInfo BeginInfo = {
+			.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+		};
+
+		if( auto BeginResult = CommandBuffer->begin(BeginInfo);
+			BeginResult != vk::Result::eSuccess )
+		{
+			std::fprintf(
+				stderr, "Error beginning command buffer: %s\n",
+				vk::to_string(BeginResult).c_str()
+			);
+			return EXIT_FAILURE;
+		}
+
+		{
+			Vulkan::DebugLabelScope FrameScope(
+				CommandBuffer.get(), {1.0, 0.0, 1.0, 1.0}, "Frame"
+			);
+
+			{
+				Vulkan::DebugLabelScope RenderPassScope(
+					CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
+					"Main Render Pass"
+				);
+
+				static const vk::ClearValue ClearColors[] = {
+					vk::ClearColorValue(
+						std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
+					),
+					vk::ClearDepthStencilValue{1.0f, 0},
+					vk::ClearColorValue(
+						std::array<float, 4>{0.0f, 0.0f, 0.0f, 0.0f}
+					),
+				};
+
+				const vk::RenderPassBeginInfo RenderBeginInfo = {
+					.renderPass  = MainRenderPass.get(),
+					.framebuffer = RenderFramebuffer.get(),
+					.renderArea  = vk::Rect2D{{}, {RenderSize.x, RenderSize.y}},
+					.clearValueCount = std::size(ClearColors),
+					.pClearValues    = ClearColors,
+				};
+				CommandBuffer->beginRenderPass(
+					RenderBeginInfo, vk::SubpassContents::eInline
+				);
+
+				// Draw
+
+				CurScene->Render(SceneView, CommandBuffer.get());
+
+				CommandBuffer->endRenderPass();
+			}
+
+			// Blit to swapchain
+
+			// TODO: Create an abstraction between a swapchain and "still image"
+			// Implement the still-image as a swapchain that just renders out an
+			// image sequence upon a "Present". This would be very useful to
+			// possily even render out into a video!
+			if( Swapchain.has_value() )
+			{
+				Vulkan::DebugLabelScope DebugCopyScope(
+					CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
+					"Blit to Swapchain"
+				);
+				// Get ready to blit to the swap image
+				CommandBuffer->pipelineBarrier(
 				vk::PipelineStageFlagBits::eTransfer,
 				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
 				{},
@@ -1048,13 +1139,13 @@ int main(int argc, char* argv[])
 					},
 				}
 			);
-			const vk::ImageSubresourceLayers BlitSubresource{
-				.aspectMask     = vk::ImageAspectFlagBits::eColor,
-				.mipLevel       = 0,
-				.baseArrayLayer = 0,
-				.layerCount     = 1,
-			};
-			const vk::ImageBlit FrameBlit{
+				const vk::ImageSubresourceLayers BlitSubresource{
+					.aspectMask     = vk::ImageAspectFlagBits::eColor,
+					.mipLevel       = 0,
+					.baseArrayLayer = 0,
+					.layerCount     = 1,
+				};
+				const vk::ImageBlit FrameBlit{
 				.srcSubresource = BlitSubresource,
 				.srcOffsets     = std::array{
 					vk::Offset3D{},
@@ -1075,201 +1166,207 @@ int main(int argc, char* argv[])
 				},
 			};
 
-			CommandBuffer->blitImage(
-				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
-				Swapchain->GetNextSwapImage(),
-				vk::ImageLayout::eTransferDstOptimal, FrameBlit,
-				vk::Filter::eLinear
-			);
+				CommandBuffer->blitImage(
+					RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
+					Swapchain->GetNextSwapImage(),
+					vk::ImageLayout::eTransferDstOptimal, FrameBlit,
+					vk::Filter::eLinear
+				);
 
-			// Get ready to present the swap image
-			CommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer,
-				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
-				{},
-				{
-					// Present image
-					// Wait for all reads to finish, get ready to write
-					vk::ImageMemoryBarrier{
-						.srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-						.dstAccessMask = {},
-						.oldLayout     = vk::ImageLayout::eTransferDstOptimal,
-						.newLayout     = vk::ImageLayout::ePresentSrcKHR,
-						.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-						.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-						.image               = Swapchain->GetNextSwapImage(),
-						.subresourceRange    = vk::ImageSubresourceRange{
-							   .aspectMask     = vk::ImageAspectFlagBits::eColor,
-							   .baseMipLevel   = 0,
-							   .levelCount     = 1,
-							   .baseArrayLayer = 0,
-							   .layerCount     = 1,
-                        }
-					},
-				}
+				// Get ready to present the swap image
+				CommandBuffer->pipelineBarrier(
+					vk::PipelineStageFlagBits::eTransfer,
+					vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(),
+					{}, {},
+					{
+						// Present image
+						// Wait for all reads to finish, get ready to write
+						vk::ImageMemoryBarrier{
+							.srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+							.dstAccessMask = {},
+							.oldLayout = vk::ImageLayout::eTransferDstOptimal,
+							.newLayout = vk::ImageLayout::ePresentSrcKHR,
+							.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+							.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+							.image            = Swapchain->GetNextSwapImage(),
+							.subresourceRange = vk::ImageSubresourceRange{
+								.aspectMask   = vk::ImageAspectFlagBits::eColor,
+								.baseMipLevel = 0,
+								.levelCount   = 1,
+								.baseArrayLayer = 0,
+								.layerCount     = 1,
+							}
+						},
+					}
+				);
+			}
+			else
+			// Wait for image data to be ready, copy to staging
+			{
+				Vulkan::DebugLabelScope DebugCopyScope(
+					CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
+					"Upload framebuffer to download buffer"
+				);
+				// Render Image is TransferSrc at this moment
+				CommandBuffer->pipelineBarrier(
+					vk::PipelineStageFlagBits::eTransfer,
+					vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(),
+					{}, {},
+					{// Source Image
+					 vk::ImageMemoryBarrier{
+						 .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+						 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
+						 .oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
+						 .newLayout     = vk::ImageLayout::eTransferSrcOptimal,
+						 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+						 .image               = RenderImage.get(),
+						 .subresourceRange    = vk::ImageSubresourceRange{
+                             vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
+                         }
+					 }
+					}
+				);
+				CommandBuffer->copyImageToBuffer(
+					RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
+					DownloadBuffer.get(),
+					{vk::BufferImageCopy{
+						.bufferOffset      = 0,
+						.bufferRowLength   = RenderSize.x,
+						.bufferImageHeight = RenderSize.y,
+						.imageSubresource  = vk::
+							ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
+						.imageOffset = {},
+						.imageExtent
+						= vk::Extent3D{RenderSize.x, RenderSize.y, 1}
+					}}
+				);
+			}
+		}
+
+		if( auto EndResult = CommandBuffer->end();
+			EndResult != vk::Result::eSuccess )
+		{
+			std::fprintf(
+				stderr, "Error ending command buffer: %s\n",
+				vk::to_string(EndResult).c_str()
 			);
+			return EXIT_FAILURE;
+		}
+
+		// Submit work
+		vk::UniqueFence Fence = {};
+		if( auto CreateResult = Device->createFenceUnique({});
+			CreateResult.result == vk::Result::eSuccess )
+		{
+			Fence = std::move(CreateResult.value);
 		}
 		else
-		// Wait for image data to be ready, copy to staging
 		{
-			Vulkan::DebugLabelScope DebugCopyScope(
-				CommandBuffer.get(), {1.0, 1.0, 0.0, 1.0},
-				"Upload framebuffer to download buffer"
+			std::fprintf(
+				stderr, "Error creating fence: %s\n",
+				vk::to_string(CreateResult.result).c_str()
 			);
-			// Render Image is TransferSrc at this moment
-			CommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer,
-				vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags(), {},
-				{},
-				{// Source Image
-				 vk::ImageMemoryBarrier{
-					 .srcAccessMask = vk::AccessFlagBits::eTransferRead,
-					 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
-					 .oldLayout     = vk::ImageLayout::eTransferSrcOptimal,
-					 .newLayout     = vk::ImageLayout::eTransferSrcOptimal,
-					 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-					 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-					 .image               = RenderImage.get(),
-					 .subresourceRange    = vk::ImageSubresourceRange{
-                         vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1
-                     }
-				 }
-				}
-			);
-			CommandBuffer->copyImageToBuffer(
-				RenderImage.get(), vk::ImageLayout::eTransferSrcOptimal,
-				DownloadBuffer.get(),
-				{vk::BufferImageCopy{
-					.bufferOffset      = 0,
-					.bufferRowLength   = RenderSize.x,
-					.bufferImageHeight = RenderSize.y,
-					.imageSubresource  = vk::
-						ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
-					.imageOffset = {},
-					.imageExtent = vk::Extent3D{RenderSize.x, RenderSize.y, 1}
-				}}
-			);
+			return EXIT_FAILURE;
 		}
-	}
 
-	if( auto EndResult = CommandBuffer->end();
-		EndResult != vk::Result::eSuccess )
-	{
-		std::fprintf(
-			stderr, "Error ending command buffer: %s\n",
-			vk::to_string(EndResult).c_str()
+		std::vector<vk::Semaphore>          WaitSemaphores;
+		std::vector<vk::PipelineStageFlags> WaitStages;
+		std::vector<std::uint64_t>          WaitTimelineValues;
+		std::vector<vk::Semaphore>          SignalSemaphores;
+
+		// Wait for transfers
+		const std::uint64_t UploadTick = Rasterizer.GetStreamBuffer().Flush();
+		WaitSemaphores.emplace_back(
+			Rasterizer.GetStreamBuffer().GetSemaphore()
 		);
-		return EXIT_FAILURE;
-	}
+		WaitStages.emplace_back(vk::PipelineStageFlagBits::eTransfer);
+		WaitTimelineValues.emplace_back(UploadTick);
 
-	// Submit work
-	vk::UniqueFence Fence = {};
-	if( auto CreateResult = Device->createFenceUnique({});
-		CreateResult.result == vk::Result::eSuccess )
-	{
-		Fence = std::move(CreateResult.value);
-	}
-	else
-	{
-		std::fprintf(
-			stderr, "Error creating fence: %s\n",
-			vk::to_string(CreateResult.result).c_str()
-		);
-		return EXIT_FAILURE;
-	}
-
-	std::vector<vk::Semaphore>          WaitSemaphores;
-	std::vector<vk::PipelineStageFlags> WaitStages;
-	std::vector<std::uint64_t>          WaitTimelineValues;
-	std::vector<vk::Semaphore>          SignalSemaphores;
-
-	// Wait for transfers
-	const std::uint64_t UploadTick = Rasterizer.GetStreamBuffer().Flush();
-	WaitSemaphores.emplace_back(Rasterizer.GetStreamBuffer().GetSemaphore());
-	WaitStages.emplace_back(vk::PipelineStageFlagBits::eTransfer);
-	WaitTimelineValues.emplace_back(UploadTick);
-
-	// Swapchain synchronization
-	if( Swapchain.has_value() )
-	{
-
-		if( const vk::Semaphore NextSwapImageReady
-			= Swapchain->AcquireNextImage();
-			NextSwapImageReady )
+		// Swapchain synchronization
+		if( Swapchain.has_value() )
 		{
-			// Wait for the swapchain image to be acquired
-			WaitSemaphores.emplace_back(
-				Swapchain->GetCurrentImageAcquiredSemaphore()
-			);
-			WaitStages.emplace_back(
-				vk::PipelineStageFlagBits::eColorAttachmentOutput
-			);
-			// This is a binary semaphore, push a dummy value
-			WaitTimelineValues.emplace_back(0);
 
-			// Signal that the image is ready to be presented
-			SignalSemaphores.emplace_back(
-				Swapchain->GetNextImagePresentReadySemaphore()
-			);
+			if( const vk::Semaphore NextSwapImageReady
+				= Swapchain->AcquireNextImage();
+				NextSwapImageReady )
+			{
+				// Wait for the swapchain image to be acquired
+				WaitSemaphores.emplace_back(
+					Swapchain->GetCurrentImageAcquiredSemaphore()
+				);
+				WaitStages.emplace_back(
+					vk::PipelineStageFlagBits::eColorAttachmentOutput
+				);
+				// This is a binary semaphore, push a dummy value
+				WaitTimelineValues.emplace_back(0);
+
+				// Signal that the image is ready to be presented
+				SignalSemaphores.emplace_back(
+					Swapchain->GetNextImagePresentReadySemaphore()
+				);
+			}
 		}
-	}
 
-	const vk::StructureChain<vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
-		SubmitInfoChain{
-			vk::SubmitInfo{
-				.waitSemaphoreCount
-				= static_cast<std::uint32_t>(WaitSemaphores.size()),
-				.pWaitSemaphores    = WaitSemaphores.data(),
-				.pWaitDstStageMask  = WaitStages.data(),
-				.commandBufferCount = 1,
-				.pCommandBuffers    = &CommandBuffer.get(),
-				.signalSemaphoreCount
-				= static_cast<std::uint32_t>(SignalSemaphores.size()),
-				.pSignalSemaphores = SignalSemaphores.data(),
-			},
-			vk::TimelineSemaphoreSubmitInfo{
-				.waitSemaphoreValueCount
-				= static_cast<std::uint32_t>(WaitTimelineValues.size()),
-				.pWaitSemaphoreValues = WaitTimelineValues.data(),
-			},
-		};
+		const vk::StructureChain<
+			vk::SubmitInfo, vk::TimelineSemaphoreSubmitInfo>
+			SubmitInfoChain{
+				vk::SubmitInfo{
+					.waitSemaphoreCount
+					= static_cast<std::uint32_t>(WaitSemaphores.size()),
+					.pWaitSemaphores    = WaitSemaphores.data(),
+					.pWaitDstStageMask  = WaitStages.data(),
+					.commandBufferCount = 1,
+					.pCommandBuffers    = &CommandBuffer.get(),
+					.signalSemaphoreCount
+					= static_cast<std::uint32_t>(SignalSemaphores.size()),
+					.pSignalSemaphores = SignalSemaphores.data(),
+				},
+				vk::TimelineSemaphoreSubmitInfo{
+					.waitSemaphoreValueCount
+					= static_cast<std::uint32_t>(WaitTimelineValues.size()),
+					.pWaitSemaphoreValues = WaitTimelineValues.data(),
+				},
+			};
 
-	Vulkan::InsertDebugLabel(
-		VulkanContext.RenderQueue, {0.0f, 1.0f, 0.0f, 0.0f}, "Render Frame"
-	);
-	if( auto SubmitResult
-		= RenderQueue.submit(SubmitInfoChain.get(), Fence.get());
-		SubmitResult != vk::Result::eSuccess )
-	{
-		std::fprintf(
-			stderr, "Error submitting command buffer: %s\n",
-			vk::to_string(SubmitResult).c_str()
+		Vulkan::InsertDebugLabel(
+			VulkanContext.RenderQueue, {0.0f, 1.0f, 0.0f, 0.0f}, "Render Frame"
 		);
-		return EXIT_FAILURE;
-	}
+		if( auto SubmitResult
+			= RenderQueue.submit(SubmitInfoChain.get(), Fence.get());
+			SubmitResult != vk::Result::eSuccess )
+		{
+			std::fprintf(
+				stderr, "Error submitting command buffer: %s\n",
+				vk::to_string(SubmitResult).c_str()
+			);
+			return EXIT_FAILURE;
+		}
 
-	if( UseSdl && Swapchain.has_value() )
-	{
-		Swapchain->Present();
-	}
+		if( UseSdl && Swapchain.has_value() )
+		{
+			Swapchain->Present();
+		}
 
-	// Wait for it
-	if( auto WaitResult = Device->waitForFences(Fence.get(), VK_TRUE, ~0ULL);
-		WaitResult != vk::Result::eSuccess )
-	{
-		std::fprintf(
-			stderr, "Error waiting for fence: %s\n",
-			vk::to_string(WaitResult).c_str()
-		);
-		return EXIT_FAILURE;
-	}
+		// Wait for it
+		if( auto WaitResult
+			= Device->waitForFences(Fence.get(), VK_TRUE, ~0ULL);
+			WaitResult != vk::Result::eSuccess )
+		{
+			std::fprintf(
+				stderr, "Error waiting for fence: %s\n",
+				vk::to_string(WaitResult).c_str()
+			);
+			return EXIT_FAILURE;
+		}
 
 #ifdef CAPTURE
-	if( rdoc_api )
-		rdoc_api->EndFrameCapture(
-			*(void**)(VkInstance)(*Instance.operator->()), NULL
-		);
+		if( rdoc_api )
+			rdoc_api->EndFrameCapture(
+				*(void**)(VkInstance)(*Instance.operator->()), NULL
+			);
 #endif
+	}
 
 	// Ensure all GPU writes are ready to be read
 	const vk::MappedMemoryRange MappedMemoryRanges[] = {
