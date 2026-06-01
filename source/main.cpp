@@ -1235,7 +1235,7 @@ int main(int argc, char* argv[])
 		};
 
 	Vulkan::InsertDebugLabel(
-		VulkanContext.TransferQueue, {0.0f, 1.0f, 0.0f, 0.0f}, "Render Frame"
+		VulkanContext.RenderQueue, {0.0f, 1.0f, 0.0f, 0.0f}, "Render Frame"
 	);
 	if( auto SubmitResult
 		= RenderQueue.submit(SubmitInfoChain.get(), Fence.get());
