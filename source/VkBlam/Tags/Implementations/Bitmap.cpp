@@ -175,7 +175,27 @@ Bitmap* BitmapSubsystem::LoadTag(
 		ImageInfo.usage       = vk::ImageUsageFlagBits::eSampled
 						| vk::ImageUsageFlagBits::eTransferDst
 						| vk::ImageUsageFlagBits::eTransferSrc;
-		ImageInfo.sharingMode   = vk::SharingMode::eExclusive;
+
+		// This image should only ever be touched by the render-queue and the
+		// transfer-queue(for streaming). If the two queues are not the same,
+		// then it must be designated with concurrent sharing.
+		const std::uint32_t SharedQueues[2] = {
+			VulkanContext.RenderQueueFamilyIndex,
+			VulkanContext.TransferQueueFamilyIndex,
+		};
+		if( VulkanContext.RenderQueueFamilyIndex
+			== VulkanContext.TransferQueueFamilyIndex )
+		{
+			// Queues are the same exclusively owned by this queue
+			ImageInfo.sharingMode = vk::SharingMode::eExclusive;
+		}
+		else
+		{
+			// Queues are different, concurrently shared by two queues
+			ImageInfo.sharingMode = vk::SharingMode::eConcurrent;
+			ImageInfo.setQueueFamilyIndices(SharedQueues);
+		}
+
 		ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
 
 		if( CurBitmapEntry.Type == Blam::BitmapEntryType::CubeMap )
